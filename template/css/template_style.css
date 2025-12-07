@@ -1,0 +1,52 @@
+#container {
+  min-height:120vh !important;
+  background-color: #816951;
+}
+
+.jq-toast-wrap.top-right {
+  top: 75px !important;
+  right: 60px;
+}
+
+.jq-toast-single {
+  background-color: rgba(197, 119, 0, 0.2) !important;
+  width: 300px;
+}
+
+.border-radius-7 {
+  border-radius: 7px
+}
+
+.select2-results__option{
+  font-size: 14px !important;
+}
+
+.form-select{
+  color: #212529 !important;
+  font-size: 14px !important;
+}
+
+.select2-selection__placeholder{
+  font-size: 14px !important;
+  color: #212529 !important;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+  box-shadow: 0 0 0 .25rem rgba(13,110,253,.25) !important;
+}
+
+.select2-selection__choice{
+  font-size: 14px !important;
+}
+
+.select2-search__field{
+  font-size: 14px !important;
+}
+
+.selection__rendered{
+  font-size: 14px !important;
+}
+
+.select2-selection__rendered{
+  font-size: 14px !important;
+}

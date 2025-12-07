@@ -1,0 +1,98 @@
+.modal-left {
+	position: fixed;
+	top: 0;
+	left: -300px; /* Inicialmente fuera de la pantalla */
+	width: 300px; /* Ancho del menú */
+	height: 100%; /* Altura completa de la pantalla */
+	background-color: #f8f9fa;
+	box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+	transition: transform 0.3s ease-out;
+	overflow-y: auto;
+}
+
+.modal.show .modal-left {
+	transform: translateX(300px); /* Desplazar el menú a la derecha al mostrar */
+}
+
+.modal-right {
+    position: fixed;
+    top: 0;
+    right: -300px; /* Inicialmente fuera de la pantalla a la derecha */
+    width: 300px; /* Ancho del modal */
+    height: 100%; /* Altura completa */
+    background-color: #f8f9fa;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-out;
+    overflow-y: auto;
+    z-index: 2000;
+}
+
+/* Cuando el modal está visible, se mueve a la derecha */
+.modal.show .modal-right {
+    transform: translateX(-300px); /* Mover el modal a la derecha de la pantalla */
+}
+.modal-content {
+	border: none;
+	background: white;
+}
+/*
+.modal-header, .modal-body, .modal-footer {
+	padding: 20px;
+}*/
+
+.fondo-login-background{
+	background-image: url('../images/fondo_login.jpg');
+	background-size: cover; 
+	background-position: center center; 
+	background-repeat: no-repeat; 
+	background-attachment: fixed;
+}
+
+.fondo-background{
+	background-image: url('../images/fondo_dashboard.jpeg');
+	background-size: cover; 
+	background-position: center center; 
+	background-repeat: no-repeat; 
+	background-attachment: fixed;
+}
+
+.menu-link {
+	color: white;
+	text-decoration: none;
+	padding: 10px;
+	display: flex;
+	align-items: center;
+}
+
+/* Elimina el efecto hover */
+.menu-link:hover {
+	background-color: inherit; /* Sin cambio en el fondo */
+	color: inherit; /* Mantiene el color original */
+	border-radius: 0; /* Sin bordes redondeados */
+}
+
+.menu-link i:first-child {
+	font-size: 1.2rem;
+	margin-right: 10px;
+}
+
+/* Rotación de flechas */
+.menu-link .rotate {
+	transition: transform 0.3s ease;
+}
+
+.collapse.show + .menu-link .rotate {
+	transform: rotate(90deg);
+}
+
+.ms-3 {
+	margin-left: 1.5rem;
+}
+
+ul.list-unstyled li {
+	padding: 5px 0;
+}
+
+body{
+	overflow-x: hidden;
+}

@@ -1,0 +1,2442 @@
+<?php
+  session_start();
+
+  include('cnx/cnx.php');
+  include('global/variables.php');
+  include('global/auxiliares.php');
+
+  if(!isset($_SESSION["Id"])){
+    header('Location: index.php');
+  }
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <!-- Meta, title, CSS, favicons, etc. -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="<?php echo $favicon; ?>" type="image/png"/>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+
+    <!-- Íconos -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
+
+    <!-- Select2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <link rel="stylesheet" href="<?php echo $url_lims?>/global/styles.css">
+
+    <style type="text/css">
+      .modal-xxl {
+        max-width: 98% !important;
+      }
+
+      #div_valorizacion_detalle {
+        transition: width 0.3s ease;
+      }
+    </style>
+
+    <!-- Estilos para agrupaciones por N° Valorización -->
+    <style>
+      tr.valo-row { transition: background-color .15s ease-in-out; }
+      tr.valo-row:hover { filter: brightness(0.98); }
+
+      /* mantiene tu estilo de estado */
+      td.estado-pill { color:#fff; font-weight:bold; vertical-align:middle; }
+
+      .badge-version{
+        font-weight:600; border:1px solid currentColor;
+        padding:.35em .55em; border-radius:999px; letter-spacing:.2px;
+      }
+
+      .corr-wrapper{
+        display:inline-flex; align-items:center; gap:.35rem;
+        color:#0d6efd; font-weight:700;
+      }
+      .corr-wrapper u{ text-underline-offset:2px; }
+
+      /* separador cuando inicia grupo */
+      tr.group-start td{ border-top:2px solid var(--group-border, #bbb); }
+    </style>
+
+    <title><?php echo $nom_app; ?> | Valorización de Compra</title>
+
+    <script type="text/javascript">
+      let id_valorizacion_Selected = 0;
+      let item_valorizacion_Selected = 0;
+    </script>
+  </head>
+  <body class="bg-light" onload="f_Init();" style="zoom: 80%;">
+    <div class="container-fluid">
+      <div class="row">
+        <!-- Llamando a Navbar -->
+        <?php echo $navbar_maintop; ?>
+
+        <!-- Modal (Menú Lateral) -->
+        <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+          <div class="modal-dialog modal-left" style="margin-top: 0px !important; margin-left: 0px !important;">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="menuModalLabel">Menú de Opciones</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div  class="modal-body" style="background: #25476a; color: white; border-top: solid #EFB810 3px; padding: 0px !important;">
+                <ul class="list-unstyled">
+                  <div id="div_menu1"></div>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal (Menú Lateral) -->
+        <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+          <div class="modal-dialog modal-right" style="margin-top: 0px !important; margin-left: 0px !important;">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="menuModalLabel">Filtro de Opciones</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div  class="modal-body" style="padding: 0px !important;">
+
+                <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+                  <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+                    <div class="row" style="padding-left: 10px; padding-right: 10px;">
+                      <h6 style="font-size: 14px;">Fecha Ingreso a Balanza  
+                        <button class="btn btn-info text-end" type="button" onclick="f_LoadResultados();" style="font-size: 14px; background-color: #ffffff; padding: 5px; margin-left: 5px; margin-top: -5px;">
+                          <img src="<?php echo $img_refresh ?>" style="width: 25px;">
+                        </button>
+                      </h6>
+                    </div>
+
+                    <div class="row" style="margin-top: 1px; padding-left: 20px; padding-right: 20px;">
+                      <hr style="border-color: #D9D9D9;"/>
+                    </div>
+
+                    <div class="row" >
+                      <div class="col-md-12 col-sm-12 col-xs-12">
+                        <input id="fecha_inicio" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>" onchange="f_LoadFiltroClientes();">
+                      </div>
+                      <br><br>
+                      <div class="col-md-12 col-sm-12 col-xs-12">
+                        <input id="fecha_fin" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>" onchange="f_LoadFiltroClientes();">
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+                  <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 2px;">
+                    <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+                      <div class="row" style="padding-left: 10px; padding-right: 10px;">
+                        <h6 style="font-size: 14px;">Por Lotes:</h6>
+                      </div>
+                      <div class="row" style="margin-top: 1px; padding-left: 20px; padding-right: 20px;">
+                        <hr style="border-color: #D9D9D9;" />
+                      </div>
+                      <div class="d-flex" style="margin-top: -5px; padding-left: 10px; padding-right: 10px;">
+                        <select id="filtro_lote" class="form-control" multiple data-placeholder="Elija una o más opciones..." style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
+                            <?php
+
+                            $q_lotes = "SELECT ccod_Lote
+                                            FROM catalogolotes
+                                          WHERE YEAR(dFechaIngreso) >= 2024
+                                          ORDER BY ccod_Lote DESC";
+
+                            if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
+                              if (mysqli_num_rows($res_lotes) > 0) {
+                                while ($row_lotes = mysqli_fetch_array($res_lotes)) {
+                            ?>
+
+                                  <option value="<?php echo $row_lotes["ccod_Lote"]; ?>"><?php echo $row_lotes["ccod_Lote"]; ?></option>
+
+                            <?php
+                                }
+                              }
+                            }
+
+                            ?>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row" style="padding-left: 10px;margin-top: 30px;font-size: 13px;padding-right: 10px;">
+                  <div class="col-md-12 col-sm-12 col-xs-12">
+                    <button class="btn btn-secondary" type="button" onclick="f_LoadResultados();" style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; background-color: #cfaa41; margin-bottom: 10px;">
+                      <i class="bi bi-search"></i> <b>Ejecutar Búsqueda</b>
+                    </button>
+                  </div>
+                  <br><br>
+                  <div class="col-md-12 col-sm-12 col-xs-12">
+                    <button class="btn btn-success" type="button" onclick="f_ExportToExcel();" style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; margin-bottom: 12px;">
+                      <b>Exportar a Excel</b>
+                    </button>
+                  </div>
+                </div>
+              
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-12 col-sm-12 col-xs-12" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding-top: 10px; padding-left: 35px;">
+          <div class="d-flex row">
+            <div class="row" style="padding: 0px;">
+
+              <div id="div_valorizacion_lista" class="col-md-6 col-sm-6 col-xs-12" style="padding: 5px;">
+                <div class="" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; padding: 0px;">
+                  <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 0px;">
+                    <div class="row" style="padding-top: 10px; padding-left : 20px; padding-right: 20px;">
+                      <div class="col-md-8 col-sm-8 col-xs-12">
+                        <div class="d-flex">
+                          <h6>Valorizaciones</h6>
+                          <div id="wt_valorizaciones" class="" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+                            <img src="<?php echo $img_waiting ?>" style="width: 20px;">
+                            <label style="font-style: italic;"> Cargando datos...</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-4 col-sm-4 col-xs-12 text-end">
+                        <button class="btn btn-primary btn-sm" style="margin-top: -7px;" onclick="f_AdminValorizacion('x');">
+                          <i class="bi bi-plus-circle"></i> Nueva Valorización
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding-left: 20px; padding-right: 20px; margin-top: -15px;">
+                    <hr style="border-color: #D9D9D9;"/>
+                  </div>
+
+                  <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 20px; margin-top: -22px; overflow-x: scroll; width: 100%;">
+                    <table class="table table-bordered table-hover" style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
+                      <thead>
+                        <tr style="font-size: 12px;">
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 30px; border-top-left-radius: 15px;">#</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">N°<br>Valorización</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">N°<br>Oficio</th>
+                          <th colspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Información Proveedor</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 50px;">Versión</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">Elaborado<br>por</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">Aprobado<br>por</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Estado</th>
+                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px; border-top-right-radius: 15px;">Acción</th>
+                        </tr>
+
+                        <tr style="font-size: 12px;">
+                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">RUC</th>
+                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Proveedor</th>
+                        </tr>
+                      </thead>
+
+                      <tbody id="tbl_valorizaciones">
+
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div id="div_valorizacion_detalle" class="col-md-6 col-sm-6 col-xs-12" style="padding: 5px;">
+                <div class="" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; padding: 0px;">
+                  <div class="col-md-10 col-sm-10 col-xs-10" style="padding: 0px;">
+                    <div class="row" style="padding-top: 10px; padding-left : 20px; padding-right: 20px;">
+                      <div class="col-md-12 col-sm-12 col-xs-12">
+                        <div class="d-flex">
+                          <button id="btn_toggle_panel" class="btn btn-sm btn-outline-secondary me-2" style="margin-top: -5px; margin-bottom: 3px;" onclick="f_TogglePanel();">
+                            <i class="bi bi-arrows-angle-expand"></i>
+                          </button>
+                          <h6>Detalle de Valorización:</h6>
+                          <h6 id="lbl_titulovalorizacion" class="ms-2 text-primary"></h6>
+                          <div id="wt_detallevalorizacion" style="font-size: 12px; display: none; padding-left: 10px;">
+                            <img src="<?php echo $img_waiting ?>" style="width: 20px;">
+                            <label style="font-style: italic;"> Cargando detalle...</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding-left: 20px; padding-right: 20px; margin-top: -15px;">
+                    <hr style="border-color: #D9D9D9;"/>
+                  </div>
+
+                  <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 20px; margin-top: -22px; overflow-x: scroll; width: 100%;">
+                    <table class="table table-bordered table-hover" style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
+                      <thead>
+                        <tr style="font-size: 12px;">
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Elemento</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">Lote</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">GEL</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">G.R.R.</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">G.R.T.</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 90px;">Fecha<br>Ingreso</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMH</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">% H2O</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMS</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Ley<br>(oz/tc)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REC<br>(%)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">INTER<br>($/oz)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">DES. INTER<br>($/oz)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">MAQUILA<br>($/oz)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REACT<br>($/oz)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">FLETE</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">FACTOR</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">PRECIO * TN</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">INCENTIVO</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">PRECIO * TN<br>(Final)</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TOTAL</th>
+                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tbl_valorizacion_detalle"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL: NUEVA/EDITAR VALORIZACIÓN -->
+        <div class="modal fade" id="modal_valorizacion" tabindex="-1" aria-labelledby="modal_valorizacionLabel" aria-hidden="true">
+          <div class="modal-dialog modal-xxl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+              
+              <!-- ENCABEZADO -->
+              <div class="modal-header">
+                <h6 class="modal-title" id="modal_valorizacionLabel">Nueva Valorización</h6>
+                <button type="button" class="btn-close text-primary" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+
+              <!-- CUERPO -->
+              <div class="modal-body" style="padding-bottom: 0px;">
+                <form id="form_valorizacion">
+                  <!-- Fila combinada: Proveedor -->
+                  <div class="row mb-3">
+                    <div class="d-flex">
+                      <div class="col-md-1">
+                        <label class="form-label fw-bold">Proveedor:</label>
+                      </div>
+
+                      <div class="col-md-11">
+                        <select id="cmb_proveedor" class="form-select" style="width: 100%; font-size: 14px; margin-top: -5px;" onchange="f_CargarConcesionesPorProveedor(); f_LoadListaCuentasBancarias(); f_LoadListaCuentaDetraccion();">
+                          <option value="">[Seleccione proveedor]</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Grupo: Información Concesión -->
+                  <div class="d-flex">
+                    <div class="col-md-6 col-sm-6 col-xs-12">
+                      <div class="row mt-3">
+                        <div class="col-md-12">
+                          <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
+                            Información Concesión
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="row mb-2 mt-2" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 0px; padding: 10px; margin-top: 2px !important;">
+                        <div class="col-md-4">
+                          <label class="form-label" style="font-size: 14px;">Concesión:</label>
+                          <select id="cmb_concesion" class="form-select" style="width: 100%; font-size: 14px;" onchange="f_MostrarInfoConcesionSeleccionada();">
+                            <option value="">[Seleccione concesión]</option>
+                          </select>
+                        </div>
+                        <div class="col-md-3">
+                          <label class="form-label" style="font-size: 14px;">Código Único:</label>
+                          <input type="text" id="txt_codigo_unico" class="form-control form-control-sm" style="height: 35px; background-color: #e9ecef; font-weight: bold; text-align: center;" readonly>
+                        </div>
+                        <div class="col-md-5">
+                          <label class="form-label" style="font-size: 14px;">Procedencia:</label>
+                          <input type="text" id="txt_procedencia" class="form-control form-control-sm" style="height: 35px; background-color: #e9ecef; font-weight: bold; text-align: center;" readonly>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: 5px;">
+                      <div class="row mt-3">
+                        <div class="col-md-12">
+                          <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
+                            Información Bancaria
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="row mb-2 mt-2" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 0px; padding: 10px; margin-top: 2px !important;">
+                        <div class="col-md-9">
+                          <label class="form-label" style="font-size: 14px;">Cuenta Bancaria:</label>
+
+                          <select id="valorizacion_cuentaproveedor" class="form-select" style="width: 100%; font-size: 14px;">
+                          </select>
+                        </div>
+
+                        <div class="col-md-3">
+                          <label class="form-label" style="font-size: 14px;">Cuenta Detracción:</label>
+
+                          <select id="valorizacion_cuentadetraccionproveedor" class="form-select" style="width: 100%; font-size: 14px;">
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Grupo: Detalle Valorización -->
+                  <div class="row mt-4">
+                    <div class="col-md-10">
+                      <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
+                        Detalle Valorización
+                      </div>
+                    </div>
+
+                    <div class="col-md-2" style="padding: 0px;">
+                      <button type="button" class="btn btn-info btn-sm" style="width: 93%; color: #ffffff;" onclick="f_AdminLotes('x');">
+                        <i class="bi bi-plus-circle"></i> Nuevo Lote
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Botón + tabla -->
+                  <div class="row">
+                    <div class="col-md-12" style="width: 100%; overflow-x: scroll;">
+                      <table class="table table-bordered table-hover" id="tbl_lotes_valorizacion" style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
+                        <thead>
+                          <tr style="font-size: 12px;">
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Elemento</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Lote</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">GEL</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">G.R.R.</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">G.R.T.</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Fecha<br>Ingreso</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMH</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">% H2O</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMS</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Ley<br>(oz/tc)</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REC<br>(%)</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">INTER<br>($/oz)</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">DES. INTER<br>($/oz)</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">MAQUILA<br>($/oz)</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REACT<br>($/oz)</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">FACTOR</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">PRECIO * TN</th>
+                            <!-- <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">INCENTIVO</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">PRECIO * TN<br>(Final)</th> -->
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TOTAL</th>
+                            <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody id="tbody_lotes_valorizacion">
+                          <!-- Contenido dinámico -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </form>
+              </div>
+
+              <input type="hidden" id="hd_idvalorizacion">
+              <input type="hidden" id="hd_modograbar_valorizacion">
+
+              <!-- FOOTER -->
+              <div class="modal-footer">
+                <div id="wt_grabarvalorizacion" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+                  <img src="<?php echo $img_waiting ?>" style="width: 20px;">
+                  <label style="font-style: italic;"> Grabando datos...</label>
+                </div>
+
+                <button type="button" class="btn btn-secondary wt_grabarvalorizacion_button" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary wt_grabarvalorizacion_button" onclick="f_GrabarValorizacion();">Grabar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL: NUEVO LOTE -->
+        <div class="modal fade" id="modal_nuevolote" tabindex="-1" aria-labelledby="modal_nuevoloteLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border: solid; border-width: 1px; border-color: #816951;">
+
+              <!-- ENCABEZADO -->
+              <div class="modal-header">
+                <h5 class="modal-title" id="modal_nuevoloteLabel">Agregando Lote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+
+              <!-- CUERPO -->
+              <div class="modal-body" style="padding-bottom: 0px;">
+                <form id="form_nuevolote">
+                  <div class="row mb-2">
+                    <!-- Lote -->
+                    <div class="col-md-1"><label class="form-label">Lote:</label></div>
+
+                    <!-- Combo de Lote (Nuevo) -->
+                    <div class="col-md-5" id="div_lote_combo" style="padding: 0px;">
+                      <select id="cmb_lotes" class="form-select form-select-sm select2" style="width: 100%;">
+                        <option value="">[Seleccione]</option>
+                      </select>
+                    </div>
+
+                    <!-- Texto de Lote (Editar) -->
+                    <div class="col-md-5" id="div_lote_static" style="display: none; margin-top: -7px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
+                      <label id="lbl_lote_static" class="form-control-plaintext" style="font-size: 14px;"></label>
+                    </div>
+
+                    <!-- Elemento -->
+                    <div class="col-md-2" style="text-align: right;"><label class="form-label">Elemento:</label></div>
+
+                    <!-- Combo de Elemento (Nuevo) -->
+                    <div class="col-md-4" id="div_elemento_combo">
+                      <select id="cmb_elemento" class="form-select form-select-sm select2" style="width: 100%;">
+                        <option value="">Seleccione un Lote...</option>
+                      </select>
+                    </div>
+
+                    <!-- Texto de Elemento (Editar) -->
+                    <div class="col-md-4" id="div_elemento_static" style="display: none; margin-top: -7px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
+                      <label id="lbl_elemento_static" class="form-control-plaintext" style="font-size: 14px;"></label>
+                    </div>
+                  </div>
+
+                  <div class="row mb-2">
+                    <!-- Mostrar solo en edición -->
+                    <input type="text" id="txt_lote_visible" class="form-control form-control-sm" style="display: none; text-align: center; background-color: #e9ecef; font-weight: bold;" readonly>
+                    <input type="text" id="txt_elemento_visible" class="form-control form-control-sm" style="display: none; text-align: center; background-color: #e9ecef; font-weight: bold;" readonly>
+                  </div>
+
+                  <div id="div_sinvalorcomercial" class="row mb-12">
+                    <div class="col-md-1"><label class="form-label"></label></div>
+
+                    <!-- Combo de Lote (Nuevo) -->
+                    <div class="col-md-5" style="margin-top: -15px; background-color: #dc3545; text-align: center; font-size: 13px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
+                      <label style="color: #ffffff;">
+                        Sin Valor Comercial
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="row mb-12">
+                    <div class="col-md-6">
+                      <div class="row mt-3">
+                        <div class="col-md-12">
+                          <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px; margin-bottom: 5px;">
+                            Información Lote
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Código GEL -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Código GEL:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_codigo_gel" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- G.R.R. -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">G.R.R.:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_grr" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- G.R.T. -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">G.R.T.:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_grt" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- Fecha Ingreso -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Fecha Ingreso:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_fecha_ingreso" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- TMH -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">TMH:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_tmh" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- % H2O -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">% H2O:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_h2o" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- TMS -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">TMS:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_tms" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- Ley -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Ley (oz/tc):</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_ley" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="row mt-3">
+                        <div class="col-md-12">
+                          <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px; margin-bottom: 5px;">
+                            Información Valorización
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- REC % -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">REC %:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_recuperacion" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      </div>
+
+                      <!-- INTER -->
+                      <div class="row mb-2">
+                        <div class="col-md-5">
+                          <label class="form-label" style="font-size: 14px; margin-top: 5px;">INTER ($/oz):</label>
+                        </div>
+                        <div class="col-md-7 d-flex">
+                          <!-- <button type="button" class="btn btn-outline-secondary btn-sm me-1"
+                                  title="Obtener precio internacional (London Fix - PM)"
+                                  onclick="f_GetPrecioInternacionalAu('txt_inter', '<?php echo $g_date ?>')">
+                            <i class="bi bi-cloud-download"></i>
+                          </button> -->
+                          <input type="text" id="txt_inter" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();">
+                        </div>
+                      </div>
+
+                      <!-- DESCUENTO INTER -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">DES. INTER ($/oz):</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_desc_inter" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      </div>
+
+                      <!-- MAQUILA -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">MAQUILA ($/tc):</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_maquila" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      </div>
+
+                      <!-- REACT -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">REACT ($/tc):</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_reactivo" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      </div>
+
+                      <!-- FACTOR -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">FACTOR:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_factor" style="text-align: center;" class="form-control form-control-sm" style="text-align: center;" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      </div>
+
+                      <!-- PRECIO * TN -->
+                      <div class="row mb-2" style="display: none;">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">PRECIO * TN:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_precio_tn" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- INCENTIVO -->
+                      <div class="row mb-2" style="display: none;">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">INCENTIVO:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_incentivo" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      </div>
+
+                      <!-- PRECIO TN FINAL -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">PRECIO * TN (Final):</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_precio_tn_final" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+
+                      <!-- TOTAL -->
+                      <div class="row mb-2">
+                        <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">TOTAL:</label></div>
+                        <div class="col-md-7"><input type="text" id="txt_total" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <input type="hidden" id="hd_modograbar_lote">
+              <input type="hidden" id="hd_id_lote">
+              <input type="hidden" id="hd_id_elemento">
+              <input type="hidden" id="hd_cc_proveedorruc"> <!-- Para Proveedor de Condiciones Comerciales -->
+              <input type="hidden" id="hd_fila_edicion">
+
+              <!-- FOOTER -->
+              <div class="modal-footer">
+                <div id="wt_grabarlote" style="font-size: 12px; padding-top: 10px; display: none;">
+                  <img src="<?php echo $img_waiting ?>" style="width: 20px;">
+                  <label style="font-style: italic;"> Grabando lote...</label>
+                </div>
+
+                <button type="button" class="btn btn-secondary wt_grabarlote_button" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary wt_grabarlote_button" onclick="f_GrabarLoteValorizacion();">Agregar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="modal_AddCuentaBancaria" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_AddCuentaBancaria" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content" style="border: solid; border-width: 1px; border-color: #816951;">
+              <div class="modal-header">
+                <h1 class="modal-title fs-6" id="modal_AddCuentaBancaria"> Nueva Cuenta Bancaria</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+
+                <div class="row" style="padding: 5px;">
+                  <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                    Banco:
+                  </div>
+
+                  <div class="col-md-8 col-sm-8 col-xs-8">
+                    <select id="cliente_banco_id_banco" class="form-select" style="text-align: left;">
+                      <option selected value="">Elija una opción...</option>
+
+                      <?php
+
+                      $q_banco = "SELECT Id,
+                                         descripcion
+                                    FROM tb_bancos
+                                   WHERE estado = 'A'";
+
+                      if ($res_banco = mysqli_query($enlace, $q_banco)){
+                        if (mysqli_num_rows($res_banco) > 0) {
+                          while($row_banco = mysqli_fetch_array($res_banco)){
+                            ?>
+
+                            <option value="<?php echo $row_banco["Id"]; ?>"><?php echo $row_banco["descripcion"]; ?></option>
+
+                            <?php
+                          }
+                        }
+                      }
+
+                      ?>
+
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row" style="padding: 5px;">
+                  <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                    Moneda:
+                  </div>
+
+                  <div class="col-md-8 col-sm-8 col-xs-8">
+                    <select id="cliente_banco_id_moneda" class="form-select" style="text-align: left;">
+                      <option selected value="">Elija una opción...</option>
+
+                      <?php
+
+                      $q_moneda = "SELECT Id,
+                                          descripcion
+                                     FROM tbconfig_monedas
+                                    WHERE estado = 'A'";
+
+                      if ($res_moneda = mysqli_query($enlace, $q_moneda)){
+                        if (mysqli_num_rows($res_moneda) > 0) {
+                          while($row_moneda = mysqli_fetch_array($res_moneda)){
+                            ?>
+
+                            <option value="<?php echo $row_moneda["Id"]; ?>"><?php echo $row_moneda["descripcion"]; ?></option>
+
+                            <?php
+                          }
+                        }
+                      }
+
+                      ?>
+
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row" style="padding: 5px;">
+                  <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                    Número de cuenta:
+                  </div>
+
+                  <div class="col-md-8 col-sm-8 col-xs-8">
+                    <input id="cliente_banco_num_cuenta" type="text" class="form-control col-md-12 col-xs-12" style="text-align: center;" >
+                  </div>
+                </div>
+
+                <div id="div_cuentacci" class="row" style="padding: 5px; display: none;">
+                  <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                    CCI:
+                  </div>
+
+                  <div class="col-md-8 col-sm-8 col-xs-8">
+                    <input id="cliente_banco_cci" type="text" class="form-control col-md-12 col-xs-12" style="text-align: center;" >
+                  </div>
+                </div>
+              </div>
+
+              <input id="hd_iscuentadetraccion" type="hidden">
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="f_GrabarCuentaBancaria();">Grabar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Referenciando a JQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
+
+    <!-- Select2 -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
+
+    <!-- Referenciando auxiliares -->
+    <?php include('global/auxiliares_js.php'); ?>
+
+    <!-- Funciones de Inicio -->
+    <script type="text/javascript">
+      function f_Init(){
+        // Genera menús
+          f_GetMenuPrincipal();
+
+        // Titulo de Pantalla
+          $("#nv_titulo").html('| Valorización de Compra');
+
+        // Cargando listas generales
+          f_LoadProveedoresValorizacion();
+          // f_LoadElementosValorizacion();
+
+        // Cargando datos
+          f_LoadValorizaciones();
+      }
+    </script>
+
+    <!-- Seteando objetos Select2 -->
+    <script type="text/javascript">
+      // // Listas para edición
+      //   $('#cmb_proveedor').select2({
+      //     theme: "bootstrap-5",
+      //     width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+      //     placeholder: $( this ).data( 'placeholder' ),
+      //     allowClear: true,
+      //     dropdownParent: $('#modal_valorizacion')
+      //   });
+
+      // $('.select2-search__field').css('font-size', '14px');
+      // $('.select2-selection__rendered').css('font-size', '14px');
+    </script>
+
+    <!-- Funciones Principales -->
+    <script type="text/javascript">
+      function f_LoadValorizaciones() {
+        $('#tbl_valorizaciones').html('');
+        $('#wt_valorizaciones').show();
+
+        $.post('apis/backend.php', { accion: 'get_ValorizacionCompra_ListaValorizaciones' }, function(data) {
+          $('#wt_valorizaciones').hide();
+
+          if (data.estado == 1) {
+            // 1) Conteo por correlativo (para saber si hay múltiples versiones)
+            const counts = {};
+            (data.registros || []).forEach(r => {
+              const key = String(r.correlativo || '');
+              counts[key] = (counts[key] || 0) + 1;
+            });
+
+            // 2) Paleta por grupo (ajústala si deseas)
+            const PALETTE = [
+              { border:'#2563eb', bg:'#e8f0ff', ink:'#1e3a8a' }, // azul
+              { border:'#059669', bg:'#e6faf3', ink:'#065f46' }, // verde
+              { border:'#d97706', bg:'#fff4e5', ink:'#92400e' }, // ámbar
+              { border:'#6d28d9', bg:'#f2e8ff', ink:'#4c1d95' }, // violeta
+              { border:'#db2777', bg:'#ffe8f2', ink:'#9d174d' }, // rosa
+              { border:'#0ea5e9', bg:'#e6f7fd', ink:'#075985' }, // celeste
+            ];
+
+            let _html = '';
+            let i = 1, prevCorrelativo = null, groupIndex = -1;
+
+            $.each(data.registros, function(x, row) {
+              // Estado (tu misma lógica)
+              let estado_txt = '', estado_color = '';
+              if (row.estado == 'A'){ estado_txt='Activo'; estado_color='#2E8B57'; }
+              else if (row.estado == 'I'){ estado_txt='Inactivo'; estado_color='#e0a800'; }
+              else { estado_txt='Eliminado'; estado_color='#dc3545'; }
+
+              // Detectar cambio de grupo
+              const corrKey = String(row.correlativo || '');
+              let isGroupStart = false;
+              if (corrKey !== prevCorrelativo){ groupIndex++; prevCorrelativo = corrKey; isGroupStart = true; }
+              const pal = PALETTE[groupIndex % PALETTE.length];
+
+              // Estilos por grupo
+              const groupStyles = `
+                --group-border:${pal.border};
+                --group-bg:${pal.bg};
+                --group-ink:${pal.ink};
+                border-left:3px solid var(--group-border);
+                background-color:var(--group-bg);
+              `;
+
+              // Indicadores
+              const totalVersions = counts[corrKey] || 1;
+              const hasMany = totalVersions > 1;
+              const versionsIcon = hasMany ? `<i class="bi bi-layers" title="Tiene ${totalVersions} versiones"></i>` : '';
+              const versionBadge = `<span class="badge-version" style="color:${pal.border}; background:#fff;">v${row.version}</span>`;
+
+              _html += `
+                <tr class="valo-row ${isGroupStart ? 'group-start' : ''}"
+                    data-id="${row.Id}" data-codigo="${row.correlativo}"
+                    data-ruc="${row.ruc}" data-proveedor="${row.proveedor}"
+                    style="font-size:12px; cursor:pointer; ${groupStyles}"
+                    onclick="f_SelectValorizacion(this);">
+                  <td id="tdvalorizaciones_1_${i}" style="text-align:center; vertical-align:middle;">${i}</td>
+
+                  <td id="tdvalorizaciones_2_${i}" style="text-align:center; vertical-align:middle;"
+                      onclick="f_PrintValorizacion('${row.ID_MD5}'); event.stopPropagation();">
+                    <span class="corr-wrapper" style="color:${pal.ink}">
+                      ${versionsIcon}
+                      <u>${row.correlativo}</u>
+                    </span>
+                  </td>
+
+                  <td id="tdvalorizaciones_3_${i}" style="text-align:center; vertical-align:middle;">${row.nro_oficio || '---'}</td>
+                  <td id="tdvalorizaciones_4_${i}" style="text-align:center; vertical-align:middle;">${row.ruc}</td>
+                  <td id="tdvalorizaciones_5_${i}" style="text-align:center; vertical-align:middle;">${row.proveedor}</td>
+
+                  <td style="text-align:center; vertical-align:middle;">${versionBadge}</td>
+
+                  <td id="tdvalorizaciones_6_${i}" style="text-align:center; vertical-align:middle;">
+                    <b>${row.usuario_registro}</b><br>${row.fechahora_registro}
+                  </td>
+
+                  <td id="tdvalorizaciones_7_${i}" style="text-align:center; vertical-align:middle;">`;
+
+                  if (row.IS_VALORIZACIONAPROBADA == 0){
+                    _html += `<button class="btn btn-primary btn-sm" style="font-size: 13px;" onclick="event.stopPropagation(); f_AprobarValorizacion(${row.Id}, ${row.correlativo}, ${row.version});">
+                                Aprobar
+                              </button>`;
+                  }
+                  else{
+                    if (row.is_aprobado == 1){
+                      _html += `<b>${row.is_aprobado_usuarioregistro}</b><br>${row.is_aprobado_fechahoraregistro}`;
+                    }
+                  }
+
+              _html += `
+                  </td>
+
+                  <td id="tdvalorizaciones_8_${i}" class="text-center estado-pill" style="background-color:${estado_color};">
+                    ${estado_txt}
+                  </td>
+
+                  <td class="text-center" style="vertical-align:middle;">
+                    <div class="d-flex justify-content-center align-items-center">
+                      <div class="d-flex flex-column mb-1">
+                        <button class="btn btn-sm btn-primary" title="Editar" style="margin:2px;"
+                                onclick="event.stopPropagation(); f_AdminValorizacion('E', ${i}, ${row.Id}, '${row.num_oficio || ''}', ${row.id_proveedor || ''}, ${row.id_concesion || ''}, ${row.id_cuentabancaria}, ${row.id_cuentadetraccion});">
+                          <i class="bi bi-pencil-square"></i>
+                        </button>
+
+                        <button class="btn btn-sm btn-secondary" title="Nueva versión" style="margin:2px;"
+                                onclick="event.stopPropagation(); f_NuevaVersion(${row.Id}, ${row.correlativo});">
+                          <i class="bi bi-clouds"></i>
+                        </button>
+                      </div>
+
+                      <div class="d-flex flex-column mb-1">
+                        ${
+                          row.estado == 'A'
+                            ? `<button class="btn btn-sm btn-warning" title="Inactivar" style="margin:2px;"
+                                      onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'I');">
+                                 <i class="bi bi-x-circle"></i>
+                               </button>`
+                            : `<button class="btn btn-sm btn-success" title="Activar" style="margin:2px;"
+                                      onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'A');">
+                                 <i class="bi bi-check-circle"></i>
+                               </button>`
+                        }
+                        <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
+                                onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              `;
+              i++;
+            });
+
+            $('#tbl_valorizaciones').html(_html);
+
+            const firstRow = document.querySelector('#tbl_valorizaciones tr');
+            if (firstRow) { f_SelectValorizacion(firstRow); }
+          } else {
+            $('#tbl_valorizaciones').html('<tr><td colspan="10" style="text-align:center;">No se encontraron registros.</td></tr>');
+          }
+        }, 'json');
+      }
+
+      function f_SelectValorizacion(tr) {
+        // Resaltar visualmente la fila seleccionada
+        $('#tbl_valorizaciones tr').css('background-color', ''); // limpia todos
+        $(tr).css('background-color', '#FFF587'); // pinta seleccionado
+
+        // Obtener ID
+        let id_valorizacion = $(tr).data('id');
+        let correlativo = $(tr).data('codigo');
+        let ruc = $(tr).data('ruc');
+        let proveedor = $(tr).data('proveedor');
+
+        // Mostrar título y cargar detalle
+        $('#lbl_titulovalorizacion').html('N° ' + correlativo + ' | ' + ruc + ' - ' + proveedor);
+        id_valorizacion_Selected = id_valorizacion;
+        f_LoadDetalleValorizacion(id_valorizacion);
+      }
+
+      function f_LoadDetalleValorizacion(id_valorizacion) {
+        $('#tbl_valorizacion_detalle').html('');
+        $('#wt_detallevalorizacion').show();
+
+        $.post('apis/backend.php', { accion: 'get_ValorizacionCompra_Detalle', id_valorizacion: id_valorizacion }, function(data) {
+          $('#wt_detallevalorizacion').hide();
+
+          if (data.estado == 1) {
+            let _html = '';
+            let d = 0;
+
+            $.each(data.registros, function(i, v) {
+              _html += `
+                <tr style="font-size: 13px;">
+                  <td style="text-align: center; vertical-align: middle; font-weight: bold;">${v.elemento}</td>
+                  <td id="lote_resumen_${d}" style="text-align: center; vertical-align: middle;">${v.cod_lote}</td>
+                  <td id="gel_resumen_${d}" style="text-align: center; vertical-align: middle;">${v.cod_gel}</td>
+                  <td style="text-align: center; vertical-align: middle;">${v.guiaremision_remitente}</td>
+                  <td style="text-align: center; vertical-align: middle;">${v.guiaremision_transportista}</td>
+                  <td style="text-align: center; vertical-align: middle;">${v.fecha_ingreso}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.pesto_tmh, 3)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${((v.porc_h20 == null) ? '' : f_RedondearDecimales(v.porc_h20, 2))}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.peso_tms, 3)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.ley_oztc, 3)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.porc_rec, 0)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.precio_inter, 2)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.precio_inter_desc, 2)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.maquila, 2)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.precio_reac, 2)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.factor, 4)}</td>
+                  <td style="text-align: right; vertical-align: middle;">${f_RedondearDecimales(v.subtotal, 2)}</td>
+                  <td style="text-align: right; vertical-align: middle; display: none;">${f_RedondearDecimales(v.incentivo, 2)}</td>
+                  <td style="text-align: right; vertical-align: middle; display: none;">${f_RedondearDecimales(v.subtotal_final, 2)}</td>
+                  <td id="total_resumen_${d}" style="text-align: right; vertical-align: middle; font-weight: bold;">${f_RedondearDecimales(v.total, 2)}</td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-danger" onclick="f_EliminarRegistro(${v.Id})">
+                      <i class="bi bi-trash3-fill"></i>
+                    </button>
+                  </td>
+                </tr>
+              `;
+
+              d ++;
+            });
+
+            $('#tbl_valorizacion_detalle').html(_html);
+
+            // Setear Total de Valorización (Resumen)
+              f_GetTotalValorizacion_Resumen()
+          }
+          else {
+            $('#tbl_valorizacion_detalle').html('<tr><td colspan="20" style="text-align:center;">No hay detalle disponible.</td></tr>');
+          }
+        }, 'json');
+      }
+
+      async function f_AdminValorizacion(_item, _pos = 0, _id_valorizacion = '', _num_oficio = '', _id_proveedor = '', _id_concesion = '', _id_cuentabancaria = '', _id_cuentadetraccion = ''){
+        let titulo = "";
+        let tipo = "";
+
+        if (_item != 'x') {
+          tipo = "E";
+          titulo = 'Editar Valorización: <b class="text-primary">N° ' + $("#tdvalorizaciones_2_" + _pos).html() + ' | ' + $("#tdvalorizaciones_4_" + _pos).html() + ' - ' + $("#tdvalorizaciones_5_" + _pos).html() + '</b>';
+        } else {
+          tipo = "N";
+          titulo = "Nueva Valorización";
+        }
+
+        // Seteando variables hidden
+          $("#hd_idvalorizacion").val(_id_valorizacion);
+          $("#hd_modograbar_valorizacion").val(tipo);
+
+        // Setea Título
+          $("#modal_valorizacionLabel").html(titulo);
+
+        // Setea objetos
+          $("#tbody_lotes_valorizacion").html('');
+          $("#valorizacion_cuentaproveedor").html('');
+          $("#valorizacion_cuentadetraccionproveedor").html('');
+          $("#cmb_proveedor").prop('disabled', false);
+          $("#cmb_concesion").prop('disabled', false);
+
+        // Abre modal
+          f_OpenModal('modal_valorizacion');
+
+        if (tipo != "N") {
+          $("#hd_id_valorizacion").val(_id_valorizacion);
+          $("#txt_nro_oficio").val(f_CleanInjection(_num_oficio));
+          // $("#cmb_proveedor").val(_id_proveedor).trigger('change');
+          $("#cmb_proveedor").val(_id_proveedor);
+
+          $("#cmb_proveedor").prop('disabled', true);
+          $("#cmb_concesion").prop('disabled', false);
+
+          // Esperar carga de concesiones antes de asignar valor
+            await f_CargarConcesionesPorProveedor(_id_concesion);
+            $("#cmb_concesion").val(_id_concesion);
+
+            f_MostrarInfoConcesionSeleccionada();
+
+          // Carga listas de Cuentas
+            await f_LoadListaCuentasBancarias(_id_cuentabancaria);
+            await f_LoadListaCuentaDetraccion(_id_cuentadetraccion);
+
+          // Recarga detalle de lotes
+            await f_CargarDetalleValorizacion_Editar(_id_valorizacion);
+        }
+        else {
+          $("#hd_id_valorizacion").val(0);
+          $("#txt_nro_oficio").val('');
+          $("#cmb_proveedor").val('').trigger('change');
+
+          $("#txt_concesion").val('');
+          $("#txt_codigo_unico").val('');
+          $("#txt_procedencia").val('');
+        }
+
+        // Setear Total de Valorización
+          f_GetTotalValorizacion();
+      }
+
+      function f_LoadProveedoresValorizacion() {
+        let _html = '<option value="">[Seleccione proveedor]</option>';
+
+        $.post("apis/backend.php", { accion: "get_ValorizacionCompra_ListaProveedores" }, function(data) {
+          if (data.estado == 1) {
+            $.each(data.registros, function(i, v) {
+              _html += `<option value="${v.Id}">${v.documento} - ${v.razon_social}</option>`;
+            });
+            $("#cmb_proveedor").html(_html);
+          }
+        }, "json");
+      }
+
+      // function f_CargarConcesionesPorProveedor() {
+      //   let id_proveedor = $("#cmb_proveedor").val();
+      //   $("#cmb_concesion").html('<option value="">[Seleccione concesión]</option>');
+      //   $("#txt_codigo_unico").val('');
+      //   $("#txt_procedencia").val('');
+
+      //   if (id_proveedor == '') return;
+
+      //   $.post("apis/backend.php", { accion: "get_ValorizacionCompra_ListaConcesiones", id_proveedor: id_proveedor }, function(data) {
+      //     if (data.estado == 1) {
+      //       let _html = '<option value="">[Seleccione concesión]</option>';
+      //       $.each(data.registros, function(i, v) {
+      //         _html += `<option value="${v.Id}" data-codigo="${v.codigo_unico}" data-procedencia="${v.procedencia}">${v.descripcion}</option>`;
+      //       });
+      //       $("#cmb_concesion").html(_html);
+      //     }
+      //   }, "json");
+      // }
+
+      async function f_CargarConcesionesPorProveedor(_id_concesion) {
+        return new Promise((resolve) => {
+          let id_proveedor = $("#cmb_proveedor").val();
+          $("#cmb_concesion").html('<option value="">[Seleccione concesión]</option>');
+          $("#txt_codigo_unico").val('');
+          $("#txt_procedencia").val('');
+
+          if (id_proveedor == '') return resolve(); // ← Resuelve si no hay proveedor
+
+          $.post("apis/backend.php", { accion: "get_ValorizacionCompra_ListaConcesiones", id_proveedor: id_proveedor }, function(data) {
+            if (data.estado == 1) {
+              let _html = '<option value="">[Seleccione concesión]</option>';
+              $.each(data.registros, function(i, v) {
+                _html += '<option ' + ((_id_concesion == v.Id) ? 'selected' : '') + ' value="' + v.Id + '" data-codigo="' + v.codigo_unico + '" data-procedencia="' + v.procedencia + '">' + v.descripcion + '</option>';
+              });
+              $("#cmb_concesion").html(_html);
+            }
+            resolve(); // ← Confirma que terminó la carga
+          }, "json");
+        });
+      }
+
+      function f_MostrarInfoConcesionSeleccionada() {
+        let sel = $("#cmb_concesion option:selected");
+
+        $("#txt_codigo_unico").val(sel.data("codigo") || '');
+        $("#txt_procedencia").val(sel.data("procedencia") || '');
+
+        f_CargarLotesDisponibles();
+      }
+
+      function f_AdminLotes(_item, index_fila = '', _id_lote = '', _id_elemento = '', _txt_lote = '', _txt_elemento = '', _inter = '', _desc_inter = '', _maquila = '', _reactivo = '', _recuperacion = '', _incentivo = '', _proveedor_ruc = '', _ley = '') {
+        let titulo = '';
+        let tipo = '';
+
+        if (_item != 'x') {
+          tipo = 'E';
+          // titulo = 'Editar Lote: <b>' + _txt_elemento + ' - ' + _txt_lote + '</b>';
+          titulo = 'Editar Lote:';
+        } else {
+          tipo = 'N';
+          titulo = 'Agregar Lote a Valorización';
+        }
+
+        // Validar proveedor/concesión
+          const id_proveedor = $("#cmb_proveedor").val();
+          const id_concesion = $("#cmb_concesion").val();
+          const id_cuentabancaria = $("#valorizacion_cuentaproveedor").val();
+          const id_cuentadetraccion = $("#valorizacion_cuentadetraccionproveedor").val();
+
+          if (tipo == 'N') {
+            if (id_proveedor.length == 0) {
+              alert("Antes de agregar un Lote debe seleccionar el Proveedor.");
+              return;
+            }
+
+            if (id_concesion.length == 0) {
+              alert("Antes de agregar un Lote debe seleccionar la Concesión.");
+              return;
+            }
+
+            if (id_cuentabancaria.length == 0) {
+              alert("Antes de agregar un Lote debe seleccionar la Cuenta Bancaria del Proveedor.");
+              return;
+            }
+
+            if (id_cuentadetraccion.length == 0) {
+              alert("Antes de agregar un Lote debe seleccionar la Cuenta de Detracción del Proveedor.");
+              return;
+            }
+          }
+
+        // Seteando objetos hidden
+          $("#hd_id_lote").val(_id_lote);
+          $("#hd_id_elemento").val(_id_elemento);
+          $("#hd_cc_proveedorruc").val(_proveedor_ruc);
+
+        // Título y modo
+          $('#modal_nuevoloteLabel').html(titulo);
+          $('#hd_modograbar_lote').val(tipo);
+          $('#hd_fila_edicion').val(index_fila);
+
+        // Limpiar campos
+          $('#txt_codigo_gel').val('');
+          $('#txt_grr').val('');
+          $('#txt_grt').val('');
+          $('#txt_fecha_ingreso').val('');
+          $('#txt_tmh').val('');
+          $('#txt_h2o').val('');
+          $('#txt_tms').val('');
+          $('#txt_ley').val('');
+          $('#txt_recuperacion').val('');
+          $('#txt_inter').val('');
+          $('#txt_desc_inter').val('');
+          $('#txt_maquila').val('');
+          $('#txt_reactivo').val('');
+          $('#txt_factor').val('');
+          $('#txt_precio_tn').val('');
+          $('#txt_incentivo').val('');
+          $('#txt_precio_tn_final').val('');
+          $('#txt_total').val('');
+
+        if (tipo == 'E') {
+          // Mostrar inputs estáticos, ocultar combos
+          $('#div_lote_static').show();
+          $('#div_elemento_static').show();
+          $('#div_lote_combo').hide();
+          $('#div_elemento_combo').hide();
+
+          // Mostrar valores como texto en los labels
+          $('#lbl_lote_static').html(`<strong>${_txt_lote}</strong>`);
+          $('#lbl_elemento_static').html(`<strong>${_txt_elemento}</strong>`);
+
+          // Asignar valores
+          $('#txt_inter').val(_inter.replace(/,/g, ''));
+          $('#txt_desc_inter').val(_desc_inter.replace(/,/g, ''));
+          $('#txt_maquila').val(_maquila.replace(/,/g, ''));
+          $('#txt_reactivo').val(_reactivo.replace(/,/g, ''));
+          $('#txt_recuperacion').val(_recuperacion.replace(/,/g, ''));
+          $('#txt_incentivo').val(_incentivo.replace(/,/g, ''));
+
+          f_CargarDatosLotePorId(index_fila, _id_lote);
+
+          // Cargando Condiciones Comrciales
+            // f_ObtenerCondicionesComerciales();
+
+          // Seteando objetos hidden
+            $("#hd_id_lote").val(_id_lote);
+            $("#hd_id_elemento").val(_id_elemento);
+        }
+        else {
+          // Nuevo
+          $('#hd_fila_edicion').val('');
+
+          $('#cmb_lotes').prop('disabled', false);
+          $('#cmb_elemento').prop('disabled', false);
+
+          $('#div_lote_static').hide();
+          $('#div_elemento_static').hide();
+          $('#div_lote_combo').show();
+          $('#div_elemento_combo').show();
+
+          f_CargarLotesDisponibles();
+        }
+
+        // Mostrar modal
+        f_OpenModal('modal_nuevolote');
+      }
+
+      function f_LoadElementosValorizacion() {
+        var id_valorizacion = $("#hd_idvalorizacion").val();
+        var cod_lote = $("#cmb_lotes option:selected").text().trim();
+
+        $.post("apis/backend.php", { accion: "get_ValorizacionCompra_Elementos", id_valorizacion, cod_lote }, function (data) {
+          if (data.estado == 1) {
+            let html = '<option value="">[Seleccione]</option>';
+            $.each(data.registros, function (i, e) {
+              html += `<option value="${e.Id}">${e.abv}</option>`;
+            });
+            $('#cmb_elemento').html(html);
+          }
+        }, 'json');
+      }
+
+      function f_CargarLotesDisponibles() {
+        let id_proveedor = $("#cmb_proveedor").val();
+        let id_concesion = $("#cmb_concesion").val();
+
+        if (id_proveedor == "" || id_concesion == "") return;
+
+        // Limpiando Elementos
+          $('#cmb_lotes').val('').trigger('change');
+
+        // Cargando Lotes
+          $.post("apis/backend.php", {
+            accion: "get_ValorizacionCompra_LotesDisponibles",
+            id_proveedor: id_proveedor,
+            id_concesion: id_concesion
+          }, function(data) {
+            if (data.estado == 1) {
+              let _html = '<option value="">[Seleccione]</option>';
+
+              $.each(data.registros, function(i, v) {
+                _html += `<option value="${v.Id}"
+                                data-idcodlote="${v.ID_CODLOTE}"
+                                data-codgel="${v.CODIGO_GEL}"
+                                data-grr="${v.GUIA_REMITENTE}"
+                                data-grt="${v.GUIA_TRANSPORTISTA}"
+                                data-fecha="${v.lote_pesoinicial_fechahoraregistro}"
+                                data-tmh="${v.TMH}"
+                                data-h2o="${v.h2o}"
+                                data-tms="${v.tms}"
+                                data-ley="${v.ley_au_oz}"
+                                data-leyag="${v.ley_ag_oz}"
+                                data-factor="${v.factor}"
+                                data-sinvc="${v.IS_SINVALORCOMERCIAL}">
+                            ${v.lote_cod_lote}
+                          </option>`;
+              });
+
+              $('#cmb_lotes').html(_html);
+            }
+
+          }, "json");
+      }
+
+      $('#cmb_lotes').on('change', function () {
+        const sel = $('#cmb_lotes option:selected');
+
+        let id_codlote = parseFloat(sel.data('idcodlote')) || 0;
+        let tmh = parseFloat(sel.data('tmh')) || '';
+        let h2o = parseFloat(sel.data('h2o')) || '';
+        let tms = ((h2o.length == 0) ? tmh : ((100 - h2o) / 100) * tmh);
+        let ley = parseFloat(sel.data('ley')) || '';
+        let factor = ((tmh.length == 0) ? '' : (tmh <= 1) ? 1 : 1.1023);
+
+        $('#txt_codigo_gel').val(sel.data('codgel') || '');
+        $('#txt_grr').val(sel.data('grr') || '');
+        $('#txt_grt').val(sel.data('grt') || '');
+        $('#txt_fecha_ingreso').val(sel.data('fecha') || '');
+        $('#txt_tmh').val(((tmh.length == 0) ? '' : tmh.toFixed(3)));
+        $('#txt_h2o').val(((h2o.length == 0) ? '' : h2o.toFixed(2)));
+        $('#txt_tms').val(((tms.length == 0) ? '' : tms.toFixed(3)));
+        // $('#txt_ley').val(((ley.length == 0) ? '' : ley.toFixed(5)));
+        $('#txt_factor').val(factor);
+
+        // Nueva llamada para filtrar elementos permitidos
+          f_CargarElementosPorLote(id_codlote);
+
+        // Setea Sin Valor Comercial
+          $("#div_sinvalorcomercial").hide();
+
+          $("#txt_inter").val('');
+          // $("#txt_inter").prop('disabled', false);
+
+          if (sel.data('sinvc') == 1){
+            $("#div_sinvalorcomercial").show();
+
+          //   $("#txt_inter").val('0.00');
+          //   $("#txt_inter").prop('disabled', true);
+          }
+      });
+
+      $("#cmb_elemento").on('change', function (){
+        f_ObtenerCondicionesComerciales();
+      });
+
+      function f_ObtenerCondicionesComerciales() {
+        let ley_au_oz = '';
+        let documento = '';
+
+        // Limpia objetos
+          $("#txt_recuperacion").val('');
+          $("#txt_desc_inter").val('');
+          $('#txt_maquila').val('');
+          $('#txt_reactivo').val('');
+
+        // Validando datos
+          if ($("#cmb_elemento").val() == ''){
+            return;
+          }
+
+        if ($("#hd_modograbar_lote").val() == 'N'){
+          const sel = $('#cmb_lotes option:selected');
+
+          // Obtiene Ley según el elemento seleccionado
+            if ($("#cmb_elemento").val() == 33){ // Si selecciona Au
+              ley_oz = parseFloat(sel.data('ley'), 2);
+            }
+
+            if ($("#cmb_elemento").val() == 34){ // Si selecciona Ag
+              ley_oz = parseFloat(sel.data('leyag'), 2);
+            }
+
+            $("#txt_ley").val(f_RedondearDecimales(ley_oz, 2));
+
+          documento = $('#cmb_proveedor option:selected').text().split(' - ')[0];
+        }
+        else{
+          documento = $('#hd_cc_proveedorruc').val();
+        }
+
+        // Obtiene Condiciones Comerciales
+          if ($("#cmb_elemento").val() == 33){
+            if ($("#hd_modograbar_lote").val() == 'N'){
+              $.post("apis/backend.php", {
+                accion: "get_ValorizacionCompra_CondicionesComerciales",
+                documento: documento,
+                ley: ley_oz },
+                function(data) {
+                  if (data.estado == 1) {
+                    if ($("#hd_modograbar_lote").val() == 'N'){
+                      $("#txt_recuperacion").val(data.recuperacion);
+                      $("#txt_desc_inter").val(60);
+                      $('#txt_maquila').val(data.maquila);
+                      $('#txt_reactivo').val(data.consumo);
+                    }
+
+                    $('#txt_recuperacion').prop('disabled', false);
+                    $('#txt_maquila').prop('disabled', false);
+                    $('#txt_reactivo').prop('disabled', false);
+                  }
+                  else {
+                    $('#txt_recuperacion').val('C.C. No Definida');
+                    $('#txt_maquila').val('C.C. No Definida');
+                    $('#txt_reactivo').val('C.C. No Definida');
+
+                    $('#txt_recuperacion').prop('disabled', true);
+                    $('#txt_maquila').prop('disabled', true);
+                    $('#txt_reactivo').prop('disabled', true);
+                  }
+
+                  // Recalcular valores
+                    f_CalcularTotalesValorizacion();
+
+                }, "json");
+            }
+          }
+          else{
+            $("#txt_recuperacion").val(40);
+            $("#txt_desc_inter").val('');
+            $('#txt_maquila').val('');
+            $('#txt_reactivo').val('');
+          }
+      }
+
+      function f_CalcularTotalesValorizacion() {
+        // Obtener valores desde los inputs
+        const inter = parseFloat($("#txt_inter").val()) || 0;
+        const desc_inter = parseFloat($("#txt_desc_inter").val()) || 0;
+        const ley = parseFloat($("#txt_ley").val()) || 0;
+        const rec = parseFloat($("#txt_recuperacion").val()) || 0;
+        const maquila = parseFloat($("#txt_maquila").val()) || 0;
+        const react = parseFloat($("#txt_reactivo").val()) || 0;
+        const factor = parseFloat($("#txt_factor").val()) || 0;
+        const incentivo = parseFloat($("#txt_incentivo").val()) || 0;
+        const tms = parseFloat($("#txt_tms").val()) || 0;
+
+        // Calcular PRECIO * TN
+        let precio_tn = ((inter - desc_inter) * ley * (rec / 100)) - maquila - react;
+        precio_tn = precio_tn * factor;
+        precio_tn = Math.round(precio_tn * 100) / 100;
+        if (precio_tn < 0) precio_tn = 0;
+
+        // Calcular PRECIO * TN (Final)
+        let precio_tn_final = precio_tn + incentivo;
+        if (precio_tn_final < 0) precio_tn_final = 0;
+
+        // Calcular TOTAL
+        let total = precio_tn_final * tms;
+        // total = Math.round(total * 100) / 100;
+
+        // Definir Precio y Total
+          const sel = $('#cmb_lotes option:selected');
+
+          if (sel.data('sinvc') == 1){
+            $("#txt_precio_tn").val(f_RedondearDecimales(0, 2));
+            $("#txt_precio_tn_final").val(f_RedondearDecimales(0, 2));
+            $("#txt_total").val(f_RedondearDecimales(0, 2));
+          }
+          else{
+            $("#txt_precio_tn").val(f_RedondearDecimales(precio_tn, 2));
+            $("#txt_precio_tn_final").val(f_RedondearDecimales(precio_tn_final, 2));
+            $("#txt_total").val(f_RedondearDecimales(total, 2));
+          }
+      }
+
+      function f_CargarElementosPorLote(id_lote, callback = null) {
+        if (id_lote == '') {
+          $('#cmb_elemento').html('<option value="">[Seleccione]</option>');
+          return;
+        }
+
+        let usados = [];
+        $('#tbody_lotes_valorizacion tr').each(function () {
+          let elemento = $(this).data('elemento');
+          let lote = $(this).data('lote');
+
+          if (lote == id_lote){
+            usados.push(elemento.toString());
+          }
+        });
+
+        // if (usados.includes('33') && usados.includes('34')) {
+        //   alert('Este lote ya fue valorizado para Au y Ag.');
+        //   $('#cmb_elemento').html('<option value="">[Seleccione]</option>');
+        //   return;
+        // }
+
+        var id_valorizacion = $("#hd_idvalorizacion").val();
+        var cod_lote = $("#cmb_lotes option:selected").text();
+
+        $.post("apis/backend.php", { accion: "get_ValorizacionCompra_Elementos", id_valorizacion, cod_lote }, function (data) {
+          if (data.estado == 1) {
+            let _html = '<option value="">[Seleccione]</option>';
+            data.registros.forEach(function (el) {
+              if (!usados.includes(el.Id.toString())) {
+                _html += `<option value="${el.Id}">${el.abv}</option>`;
+              }
+            });
+            $('#cmb_elemento').html(_html);
+
+            if (callback) callback(); // 👈 ejecutar callback al terminar
+          }
+        }, "json");
+      }
+
+      function f_CargarDatosLotePorId(_item, id_lote) {
+        if ($("#hd_modograbar_lote").val() == 'N'){
+          const sel = $('#cmb_lotes option[value="' + id_lote + '"]');
+
+          let tmh    = parseFloat(sel.data('tmh')) || '';
+          let h2o    = parseFloat(sel.data('h2o')) || '';
+          let tms    = (h2o === '' ? tmh : ((100 - h2o) / 100) * tmh);
+          let ley    = parseFloat(sel.data('ley')) || '';
+          let factor = (tmh === '' ? '' : (tmh <= 1 ? 1 : 1.1023));
+
+          $('#txt_codigo_gel').val(sel.data('codgel') || '');
+          $('#txt_grr').val(sel.data('grr') || '');
+          $('#txt_grt').val(sel.data('grt') || '');
+          $('#txt_fecha_ingreso').val(sel.data('fecha') || '');
+          $('#txt_tmh').val((tmh === '' ? '' : tmh.toFixed(3)));
+          $('#txt_h2o').val((h2o === '' ? '' : h2o.toFixed(2)));
+          $('#txt_tms').val((tms === '' ? '' : tms.toFixed(3)));
+          $('#txt_ley').val((ley === '' ? '' : ley.toFixed(3)));
+          $('#txt_factor').val(factor);
+        }
+        else{
+          $('#txt_codigo_gel').val($("#gel_" + _item).html());
+          $('#txt_grr').val($("#grr_" + _item).html());
+          $('#txt_grt').val($("#grt_" + _item).html());
+          $('#txt_fecha_ingreso').val($("#ingreso_" + _item).html());
+          $('#txt_tmh').val(parseFloat($("#tmh_" + _item).html()).toFixed(3));
+          $('#txt_h2o').val((($("#h2o_" + _item).html().length == 0) ? '' : parseFloat($("#h2o_" + _item).html()).toFixed(2)));
+          $('#txt_tms').val(parseFloat($("#tms_" + _item).html()).toFixed(3));
+          $('#txt_ley').val((($("#ley_" + _item).html().length == 0) ? '<label style="color: #F23030;">Pendiente</label>' : parseFloat($("#ley_" + _item).html()).toFixed(3)));
+          $('#txt_factor').val(parseFloat($("#factor_" + _item).html()).toFixed(4));
+        }
+
+        // f_ObtenerCondicionesComerciales();
+
+        // Recalcular Totales
+          f_CalcularTotalesValorizacion();
+      }
+
+      function f_PrintValorizacion(_idmd5_valorizacion){
+        var url = 'print_valorizacion_compramineral.php?x=' + _idmd5_valorizacion;
+
+        window.open(url,'_blank',"");
+      }
+
+      async function f_CargarDetalleValorizacion_Editar(id_valorizacion) {
+        $('#tbody_lotes_valorizacion').html('');
+
+        const data = await $.post('apis/backend.php', { accion: 'get_ValorizacionCompra_Detalle', id_valorizacion });
+
+        if (data.estado === 1) {
+          let _html = '';
+
+          data.registros.forEach((v, i) => {
+            const total_str = f_RedondearDecimales(v.total, 2);
+            const btn_editar = `f_AdminLotes('E', ${i}, '${v.ID_LOTE}', '${v.id_elemento}', '${v.cod_lote}', '${v.elemento_original}', '${f_RedondearDecimales(v.precio_inter, 2)}', '${f_RedondearDecimales(v.precio_inter_desc, 2)}', '${f_RedondearDecimales(v.maquila, 2)}', '${f_RedondearDecimales(v.precio_reac, 2)}', '${f_RedondearDecimales(v.porc_rec, 0)}', '${v.incentivo || ''}', '${v.PROVEEDOR_RUC}', ${f_RedondearDecimales(v.ley_oztc, 3)})`;
+
+            _html += `
+              <tr data-elemento="${v.id_elemento}" data-lote="${v.ID_LOTE}" style="font-size: 14px;">
+                <td id="elemento_${i}" style="text-align:center; vertical-align: middle;">${v.elemento_original}</td>
+                <td id="lote_${i}" style="text-align:center; vertical-align: middle; font-weight:bold;">${v.cod_lote}</td>
+                <td id="gel_${i}" style="text-align:center; vertical-align: middle;">${v.cod_gel}</td>
+                <td id="grr_${i}" style="text-align:center; vertical-align: middle;">${v.guiaremision_remitente}</td>
+                <td id="grt_${i}" style="text-align:center; vertical-align: middle;">${v.guiaremision_transportista}</td>
+                <td id="ingreso_${i}" style="text-align:center; vertical-align: middle;">${v.fecha_ingreso}</td>
+                <td id="tmh_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.pesto_tmh, 3)}</td>
+                <td id="h2o_${i}" style="text-align:right; vertical-align: middle;">${v.porc_h20 != null ? f_RedondearDecimales(v.porc_h20, 2) : ''}</td>
+                <td id="tms_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.peso_tms, 3)}</td>
+                <td id="ley_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.ley_oztc, 3)}</td>
+                <td id="rec_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.porc_rec, 0)}</td>
+                <td id="inter_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.precio_inter, 2)}</td>
+                <td id="descint_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.precio_inter_desc, 2)}</td>
+                <td id="maquila_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.maquila, 2)}</td>
+                <td id="react_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.precio_reac, 2)}</td>
+                <td id="factor_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.factor, 4)}</td>
+                <td id="ptn_${i}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(v.subtotal, 2)}</td>
+                <td id="incent_${i}" style="text-align:right; vertical-align: middle; display: none;">${v.incentivo ? f_RedondearDecimales(v.incentivo, 2) : ''}</td>
+                <td id="ptnf_${i}" style="text-align:right; vertical-align: middle; display: none;">${f_RedondearDecimales(v.subtotal_final, 2)}</td>
+                <td id="total_${i}" style="text-align:right; vertical-align: middle; font-weight:bold;">${total_str}</td>
+                <td class="text-center">
+                  <button id="btn_edit_${i}" type="button" class="btn btn-sm btn-warning me-1" onclick="${btn_editar}">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove(); f_RenumerarFilas();">
+                    <i class="bi bi-trash3-fill"></i>
+                  </button>
+                </td>
+              </tr>`;
+          });
+
+          $('#tbody_lotes_valorizacion').html(_html);
+        }
+      }
+
+      async function f_LoadListaCuentasBancarias(_id_registro) {
+        var _html = '<option value="" selected>[Seleccione una Cuenta Bancaria]</option>';
+
+        $("#valorizacion_cuentaproveedor").prop('disabled', true);
+        $("#valorizacion_cuentaproveedor").html(_html);
+
+        // Obteniendo datos
+          var id_moneda = 2;
+          var id_proveedor = $("#cmb_proveedor").val();
+
+          const data = await $.post("apis/backend.php", { accion: "get_ValorizacionCompra_ListaCuentasBancariasProveedor", id_moneda, id_proveedor, is_detraccion: 0 });
+
+          if (data.estado == 1) {
+            data.registros.forEach((v, i) => {
+              _html += `<option value="${v.Id}">${v.BANCO} (${v.MONEDA}) | N° Cuenta: ${v.nro_cuenta} | CCI: ${v.cci ? v.cci : "---"}</option>`;
+            });
+          }
+
+        // Agregando item de Nueva Cuenta Bancaria
+          _html += `<option disabled>-----------------------------------------------------------------------</option>`;
+          _html += `<option value="x">+ Agregar Nueva Cuenta Bancaria...</option>`;
+
+        // Seteando lista
+          $("#valorizacion_cuentaproveedor").prop('disabled', false);
+          $("#valorizacion_cuentaproveedor").html(_html);
+
+          if (id_proveedor.length > 0){
+            $("#valorizacion_cuentaproveedor").prop('disabled', false);
+          }
+
+        // Si viene de una nuevo registro
+          if (_id_registro != undefined){
+            $("#valorizacion_cuentaproveedor").val(_id_registro);
+          }
+      }
+
+      $('#valorizacion_cuentaproveedor').on('change', function () {
+        var id_cuenta = $(this).val();
+
+        if (id_cuenta == 'x'){
+          // Seteando objetos
+            $("#div_cuentacci").show();
+            $("#hd_iscuentadetraccion").val(0);
+
+            $("#cliente_banco_id_banco").prop('disabled', false);
+            $("#cliente_banco_id_moneda").prop('disabled', true);
+
+          // Setea Banco y Moneda
+            $("#cliente_banco_id_banco").val('');
+            $("#cliente_banco_id_moneda").val(2);
+            $("#cliente_banco_num_cuenta").val('');
+            $("#cliente_banco_cci").val('');
+
+          f_OpenModal('modal_AddCuentaBancaria');
+        }
+      });
+
+      async function f_LoadListaCuentaDetraccion(_id_registro) {
+        var _html = '<option value="" selected>[Seleccione una Cuenta de Detracción]</option>';
+
+        $("#valorizacion_cuentadetraccionproveedor").prop('disabled', true);
+        $("#valorizacion_cuentadetraccionproveedor").html(_html);
+
+        // Obteniendo datos
+          var id_moneda = 1;
+          var id_proveedor = $("#cmb_proveedor").val();
+
+          const data = await $.post("apis/backend.php", { accion: "get_ValorizacionCompra_ListaCuentasBancariasProveedor", id_moneda, id_proveedor, is_detraccion: 1 });
+
+          if (data.estado == 1) {
+            data.registros.forEach((v, i) => {
+              _html += `<option value="${v.Id}">${v.nro_cuenta}</option>`;
+            });
+          }
+
+        // Agregando item de Nueva Cuenta Bancaria
+          _html += `<option disabled>-----------------------------------------------------------------------</option>`;
+          _html += `<option value="x">+ Agregar Nueva Cuenta de Detracción...</option>`;
+
+        // Seteando lista
+          $("#valorizacion_cuentadetraccionproveedor").prop('disabled', false);
+          $("#valorizacion_cuentadetraccionproveedor").html(_html);
+
+          if (id_proveedor.length > 0){
+            $("#valorizacion_cuentadetraccionproveedor").prop('disabled', false);
+          }
+
+        // Si viene de una nuevo registro
+          if (_id_registro != undefined){
+            $("#valorizacion_cuentadetraccionproveedor").val(_id_registro);
+          }
+      }
+
+      $('#valorizacion_cuentadetraccionproveedor').on('change', function () {
+        var id_cuenta = $(this).val();
+
+        if (id_cuenta == 'x'){
+          // Seteando objetos
+            $("#div_cuentacci").hide();
+            $("#hd_iscuentadetraccion").val(1);
+
+            $("#cliente_banco_id_banco").prop('disabled', true);
+            $("#cliente_banco_id_moneda").prop('disabled', true);
+
+          // Setea Banco y Moneda
+            $("#cliente_banco_id_banco").val(3);
+            $("#cliente_banco_id_moneda").val(1);
+            $("#cliente_banco_num_cuenta").val('');
+            $("#cliente_banco_cci").val('');
+
+          f_OpenModal('modal_AddCuentaBancaria');
+        }
+      });
+
+      $('#modal_AddCuentaBancaria').on('hidden.bs.modal', function (e) {
+        if ($("#hd_iscuentadetraccion").val() == 0){
+          if ($("#valorizacion_cuentaproveedor").val() != 'x'){
+            return;
+          }
+
+          $("#valorizacion_cuentaproveedor").val('');
+        }
+        else{
+          if ($("#valorizacion_cuentadetraccionproveedor").val() != 'x'){
+            return;
+          }
+
+          $("#valorizacion_cuentadetraccionproveedor").val('');
+        }
+      });
+
+      function f_GetTotalValorizacion(){
+        let v = 0;
+        let total_valorizacion = 0;
+        let total = '';
+        let lote = '';
+        let gel = '';
+        let valor = '';
+        let valores = [];
+
+        // Eliminando previamente la fila de totales
+          $("#tr_TotalValorizacion").remove();
+
+        // Agregando fila de totales
+          let totalFilas = $("#tbody_lotes_valorizacion tr").length;
+
+          while (v < totalFilas){
+            // Obteniendo cadena con Lotes / Códigos GEL
+              // obtengo los textos de cada td
+                lote = $("#lote_" + v).html().trim();
+                gel  = $("#gel_" + v).html().trim();
+
+              // si gel está vacío uso lote, de lo contrario gel
+                valor = (gel !== "") ? gel : lote;
+
+              // si el valor existe y no está repetido, lo agrego al array
+                if (valor !== "" && !valores.includes(valor)) {
+                  valores.push(valor);
+                }
+
+            // Obteniendo el Total de la Valorización
+              total = $("#total_" + v).html().replace(/,/g, '');
+
+              total_valorizacion += parseFloat(total, 2);
+
+            v ++;
+          }
+
+          valores.join(" / ");
+
+          let _html = ` <tr id="tr_TotalValorizacion" style="font-size: 14px; background-color: #816951; color: #ffffff;">
+                          <td colspan="17" style="text-align:right; vertical-align: middle; font-weight:bold;">${valores.length == 0 ? 'TOTAL: ' : valores}</td>
+                          <td style="text-align:right; vertical-align: middle; font-weight:bold;">${f_RedondearDecimales(total_valorizacion, 2)}</td>
+                          <td></td>
+                        </tr>
+                      `;
+
+          $('#tbody_lotes_valorizacion').append(_html);
+      }
+
+      function f_GetTotalValorizacion_Resumen(){
+        let v = 0;
+        let total_valorizacion = 0;
+        let total = '';
+        let lote = '';
+        let gel = '';
+        let valor = '';
+        let valores = [];
+
+        // Eliminando previamente la fila de totales
+          $("#tr_TotalValorizacion_Resumen").remove();
+
+        // Agregando fila de totales
+          let totalFilas = $("#tbl_valorizacion_detalle tr").length;
+
+          while (v < totalFilas){
+            // Obteniendo cadena con Lotes / Códigos GEL
+              // obtengo los textos de cada td
+                lote = $("#lote_resumen_" + v).html().trim();
+                gel  = $("#gel_resumen_" + v).html().trim();
+
+              // si gel está vacío uso lote, de lo contrario gel
+                valor = (gel !== "") ? gel : lote;
+
+              // si el valor existe y no está repetido, lo agrego al array
+                if (valor !== "" && !valores.includes(valor)) {
+                  valores.push(valor);
+                }
+
+            // Obteniendo el Total de la Valorización
+              total = $("#total_resumen_" + v).html().replace(/,/g, '');
+
+              total_valorizacion += parseFloat(total, 2);
+
+            v ++;
+          }
+
+          valores.join(" / ");
+
+          let _html = ` <tr id="tr_TotalValorizacion_Resumen" style="font-size: 14px; background-color: #816951; color: #ffffff;">
+                          <td colspan="17" style="text-align:right; vertical-align: middle; font-weight:bold;">${valores.length == 0 ? 'TOTAL: ' : valores}</td>
+                          <td style="text-align:right; vertical-align: middle; font-weight:bold;">${f_RedondearDecimales(total_valorizacion, 2)}</td>
+                          <td></td>
+                        </tr>
+                      `;
+
+          $('#tbl_valorizacion_detalle').append(_html);
+      }
+    </script>
+
+    <!-- Funciones Secundarias -->
+    <script type="text/javascript">
+      let panelExpandido = false;
+
+      function f_TogglePanel() {
+        if (!panelExpandido) {
+          $("#div_valorizacion_lista").hide();
+          $("#div_valorizacion_detalle").removeClass("col-md-6").addClass("col-md-12");
+          $("#btn_toggle_panel i").removeClass("bi-arrows-angle-expand").addClass("bi-arrows-angle-contract");
+          panelExpandido = true;
+        } else {
+          $("#div_valorizacion_detalle").removeClass("col-md-12").addClass("col-md-6");
+          $("#btn_toggle_panel i").removeClass("bi-arrows-angle-contract").addClass("bi-arrows-angle-expand");
+
+          // Espera 300ms para que la animación termine antes de mostrar el panel izquierdo
+          setTimeout(function() {
+            $("#div_valorizacion_lista").show();
+          }, 300);
+
+          panelExpandido = false;
+        }
+      }
+
+      function f_RenumerarFilas() {
+        $('#tbody_lotes_valorizacion tr').each(function(i) {
+          // Actualiza el ID de cada TD
+          $(this).find('td').each(function(index, td) {
+            let id_actual = $(td).attr('id');
+            if (id_actual) {
+              let base = id_actual.split('_')[0]; // ejemplo: "lote_3" → "lote"
+              $(td).attr('id', base + '_' + i);
+            }
+          });
+
+          // Actualiza el botón de edición
+          let btn_editar = $(this).find('button.btn-warning');
+          if (btn_editar.length) {
+            let onclick_str = btn_editar.attr('onclick');
+
+            // Reemplaza la posición anterior por la nueva
+            let nuevo_onclick = onclick_str.replace(/f_AdminLotes\('E',\s*\d+/, `f_AdminLotes('E', ${i}`);
+            btn_editar.attr('onclick', nuevo_onclick);
+          }
+        });
+
+        // Setear Total de Valorización
+          f_GetTotalValorizacion();
+      }
+
+      function f_LoadingGrabarValorizacion(_is_show){
+        $("#wt_grabarvalorizacion").hide();
+
+        $(".wt_grabarvalorizacion_button").prop('disabled', false);
+
+        if (_is_show == 1){
+          $("#wt_grabarvalorizacion").show();
+
+          $(".wt_grabarvalorizacion_button").prop('disabled', true);
+        }
+      }
+    </script>
+
+    <!-- Funciones de Grabación -->
+    <script type="text/javascript">
+      function f_GrabarLoteValorizacion() {
+        let modo = $('#hd_modograbar_lote').val();
+        let idx  = $('#hd_fila_edicion').val(); // posición de fila
+
+        let elemento = '';
+        let lote     = '';
+        let proveedor_ruc = $("#cmb_proveedor option:selected").text().split(' - ')[0];
+
+        // Solo si es NUEVO, tomamos de los combos
+        if (modo !== 'E') {
+          elemento = $('#cmb_elemento option:selected').text();
+          lote     = $('#cmb_lotes option:selected').text().trim();
+
+          id_elemento = $('#cmb_elemento').val();
+          // id_lote     = $('#cmb_lotes').val();
+          id_lote     = $('#cmb_lotes option:selected').attr('data-idcodlote');
+        } else {
+          // Si es EDICIÓN, usamos los label visibles
+          elemento = $('#lbl_elemento_static').text().trim();
+          lote     = $('#lbl_lote_static').text().trim();
+
+          id_elemento = $("#hd_id_lote").val();
+          id_lote = $("#hd_id_elemento").val();
+        }
+
+        let total = parseFloat($('#txt_total').val()) || 0;
+
+        // Validación
+          if (id_lote == '') {
+            alert('Debe seleccionar un Lote.');
+            return;
+          }
+
+          if (id_elemento == '') {
+            alert('Debe seleccionar un Elemento.');
+            return;
+          }
+
+        // Solo validar duplicado si es nuevo
+        if (modo !== 'E') {
+          let duplicado = false;
+          $('#tbody_lotes_valorizacion tr').each(function () {
+            let val_elemento = $(this).attr('data-elemento');
+            let val_lote     = $(this).attr('data-lote');
+            if (val_elemento == id_elemento && val_lote == id_lote) {
+              duplicado = true;
+              return false;
+            }
+          });
+          if (duplicado) {
+            alert('Este lote ya fue agregado con el mismo elemento.');
+            return;
+          }
+        }
+
+        // Leer campos
+        let gel     = $('#txt_codigo_gel').val();
+        let grr     = $('#txt_grr').val();
+        let grt     = $('#txt_grt').val();
+        let ingreso = $('#txt_fecha_ingreso').val().split(' ')[0];
+        let tmh     = $('#txt_tmh').val();
+        let h2o     = $('#txt_h2o').val();
+        let tms     = $('#txt_tms').val();
+        let ley     = $('#txt_ley').val();
+        let rec     = $('#txt_recuperacion').val();
+        let inter   = $('#txt_inter').val();
+        let descint = $('#txt_desc_inter').val();
+        let maquila = $('#txt_maquila').val();
+        let react   = $('#txt_reactivo').val();
+        let factor  = $('#txt_factor').val();
+        let ptn     = $('#txt_precio_tn').val().replace(/,/g, '');
+        let incent  = $('#txt_incentivo').val();
+        let ptnf    = $('#txt_precio_tn_final').val().replace(/,/g, '');
+        let total_  = $('#txt_total').val().replace(/,/g, '');
+
+        // Seteando Maquila y React.
+          maquila = ((maquila.trim().length == 0) ? 0.00 : maquila);
+          react = ((react.trim().length == 0) ? 0.00 : react);
+
+        if (modo === 'E' && idx !== '') {
+          // Solo reemplazar valores por ID
+          $(`#elemento_${idx}`).html(elemento);
+          $(`#lote_${idx}`).html(lote);
+          $(`#gel_${idx}`).html(gel);
+          $(`#grr_${idx}`).html(grr);
+          $(`#grt_${idx}`).html(grt);
+          $(`#ingreso_${idx}`).html(ingreso);
+          $(`#tmh_${idx}`).html(f_RedondearDecimales(tmh, 3));
+          $(`#h2o_${idx}`).html(h2o ? f_RedondearDecimales(h2o, 2) : '');
+          $(`#tms_${idx}`).html(f_RedondearDecimales(tms, 3));
+          $(`#ley_${idx}`).html(f_RedondearDecimales(ley, 3));
+          $(`#rec_${idx}`).html(f_RedondearDecimales(rec, 0));
+          $(`#inter_${idx}`).html(f_RedondearDecimales(inter, 2));
+          $(`#descint_${idx}`).html(f_RedondearDecimales(descint, 2));
+          $(`#maquila_${idx}`).html(f_RedondearDecimales(maquila, 2));
+          $(`#react_${idx}`).html(f_RedondearDecimales(react, 2));
+          $(`#factor_${idx}`).html(f_RedondearDecimales(factor, 4));
+          $(`#ptn_${idx}`).html(f_RedondearDecimales(ptn, 2));
+          $(`#incent_${idx}`).html(incent ? f_RedondearDecimales(incent, 2) : '');
+          $(`#ptnf_${idx}`).html(f_RedondearDecimales(ptnf, 2));
+          $(`#total_${idx}`).html(`${f_RedondearDecimales(total_, 2)}`);
+
+          $(`#btn_edit_${idx}`).attr("onclick", `f_AdminLotes('E', ${idx}, '${id_lote}', '${id_elemento}', '${lote}', '${elemento}', '${inter}', '${descint}', '${maquila}', '${react}', '${rec}', '${incent}', '${proveedor_ruc}', ${ley})`);
+
+        } else {
+          // Eliminando fila de totales
+            $("#tr_TotalValorizacion").remove();
+
+          // Nuevo registro: obtener índice
+            let idx_new = $('#tbody_lotes_valorizacion tr').length
+
+            let fila = `
+              <tr data-elemento="${id_elemento}" data-lote="${id_lote}" style="font-size: 14px;">
+                <td id="elemento_${idx_new}" style="text-align:center; vertical-align: middle;">${elemento}</td>
+                <td id="lote_${idx_new}" style="text-align:center; vertical-align: middle; font-weight:bold;">${lote}</td>
+                <td id="gel_${idx_new}" style="text-align:center; vertical-align: middle;">${gel}</td>
+                <td id="grr_${idx_new}" style="text-align:center; vertical-align: middle;">${grr}</td>
+                <td id="grt_${idx_new}" style="text-align:center; vertical-align: middle;">${grt}</td>
+                <td id="ingreso_${idx_new}" style="text-align:center; vertical-align: middle;">${ingreso}</td>
+                <td id="tmh_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(tmh, 3)}</td>
+                <td id="h2o_${idx_new}" style="text-align:right; vertical-align: middle;">${h2o ? f_RedondearDecimales(h2o, 2) : ''}</td>
+                <td id="tms_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(tms, 3)}</td>
+                <td id="ley_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(ley, 3)}</td>
+                <td id="rec_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(rec, 0)}</td>
+                <td id="inter_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(inter, 2)}</td>
+                <td id="descint_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(descint, 2)}</td>
+                <td id="maquila_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(maquila, 2)}</td>
+                <td id="react_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(react, 2)}</td>
+                <td id="factor_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(factor, 4)}</td>
+                <td id="ptn_${idx_new}" style="text-align:right; vertical-align: middle;">${f_RedondearDecimales(ptn, 2)}</td>
+                <td id="incent_${idx_new}" style="text-align:right; vertical-align: middle; display: none;">${incent ? f_RedondearDecimales(incent, 2) : ''}</td>
+                <td id="ptnf_${idx_new}" style="text-align:right; vertical-align: middle; display: none;">${f_RedondearDecimales(ptnf, 2)}</td>
+                <td id="total_${idx_new}" style="text-align:right; vertical-align: middle; font-weight:bold;">${f_RedondearDecimales(total_, 2)}</td>
+                <td class="text-center">
+                  <button id="btn_edit_${idx_new}" class="btn btn-sm btn-warning me-1" type="button"
+                    onclick="f_AdminLotes('E', ${idx_new}, '${id_lote}', '${id_elemento}', '${lote}', '${elemento}', '${inter}', '${descint}', '${maquila}', '${react}', '${rec}', '${incent}', '${proveedor_ruc}', ${ley})">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove(); f_RenumerarFilas();"><i class="bi bi-trash3-fill"></i></button>
+                </td>
+              </tr>
+            `;
+
+            $('#tbody_lotes_valorizacion').append(fila);
+        }
+
+        // Setear Total de Valorización
+          f_GetTotalValorizacion();
+
+        // Cerrar modal
+        $('#modal_nuevolote').modal('hide');
+
+        // Deshabilitar combos generales
+        $('#cmb_proveedor').prop('disabled', true);
+        $('#cmb_concesion').prop('disabled', true);
+      }
+
+      function f_EditarLoteValorizacion(btn) {
+        // Obtener la fila
+        let tr = $(btn).closest('tr');
+        let index_fila = tr.index();
+        let proveedor_ruc = $("#cmb_proveedor option:selected").text().split(' - ')[0];
+
+        // Extraer valores desde las celdas
+        let elemento = tr.find('td').eq(0).text().trim();
+        let lote = tr.find('td').eq(1).text().trim();
+        let gel = tr.find('td').eq(2).text().trim();
+        let grr = tr.find('td').eq(3).text().trim();
+        let grt = tr.find('td').eq(4).text().trim();
+        let fecha_ingreso = tr.find('td').eq(5).text().trim();
+        let tmh = tr.find('td').eq(6).text().trim();
+        let h2o = tr.find('td').eq(7).text().trim();
+        let tms = tr.find('td').eq(8).text().trim();
+        let ley = tr.find('td').eq(9).text().trim();
+        let rec = tr.find('td').eq(10).text().trim();
+        let inter = tr.find('td').eq(11).text().replace(/,/g, '');
+        let desc_inter = tr.find('td').eq(12).text().replace(/,/g, '');
+        let maquila = tr.find('td').eq(13).text().replace(/,/g, '');
+        let reactivo = tr.find('td').eq(14).text().replace(/,/g, '');
+        let factor = tr.find('td').eq(15).text().replace(/,/g, '');
+        let precio_tn = tr.find('td').eq(16).text().trim();
+        let incentivo = tr.find('td').eq(17).text().replace(/,/g, '');
+        let precio_tn_final = tr.find('td').eq(18).text().trim();
+        let total = tr.find('td').eq(19).text().trim();
+
+        // Obtener valores ocultos de los atributos
+        let id_lote = tr.attr('data-lote');
+        let id_elemento = tr.attr('data-elemento');
+
+        let lote_txt = tr.find('td').eq(1).text().trim();
+        let elemento_txt = tr.find('td').eq(0).text().trim();
+
+        // Llamar a f_AdminLotes pasando los valores necesarios
+        f_AdminLotes('E', index_fila, id_lote, id_elemento, lote_txt, elemento_txt, inter, desc_inter, maquila, reactivo, rec, incentivo, proveedor_ruc, ley);
+      }
+
+      function f_GrabarValorizacion() {
+        let id_valorizacion = $("#hd_idvalorizacion").val();
+        let modo_grabar = $('#hd_modograbar_valorizacion').val();
+        let id_proveedor = $('#cmb_proveedor').val();
+        let id_concesion = $('#cmb_concesion').val();
+        let txt_concesion = $('#cmb_concesion option:selected').text();
+        let txt_codigo_unico = $('#txt_codigo_unico').val();
+        let txt_procedencia = $('#txt_procedencia').val();
+        let id_cuentabancaria = $('#valorizacion_cuentaproveedor').val();
+        let id_cuentadetraccion = $('#valorizacion_cuentadetraccionproveedor').val();
+        let info_cuentabancaria = $('#valorizacion_cuentaproveedor option:selected').text();
+        let info_cuentadetraccion = $('#valorizacion_cuentadetraccionproveedor option:selected').text();
+
+        // Validación general
+          if (id_proveedor == null){
+            alert('Debe seleccionar el Proveedor.');
+
+            return;
+          }
+          if (id_proveedor.length == 0){
+            alert('Debe seleccionar el Proveedor.');
+
+            return;
+          }
+
+          if (id_concesion == null){
+            alert('Debe seleccionar la Concesión.');
+
+            return;
+          }
+          if (id_concesion.length == 0){
+            alert('Debe seleccionar la Concesión.');
+
+            return;
+          }
+
+          if (id_cuentabancaria == null){
+            alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
+
+            return;
+          }
+          if (id_cuentabancaria.length == 0){
+            alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
+
+            return;
+          }
+
+          if (id_cuentadetraccion == null){
+            alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
+
+            return;
+          }
+          if (id_cuentadetraccion.length == 0){
+            alert('Debe seleccionar la Cuenta de Detracción del Proveedor.');
+
+            return;
+          }
+
+          if ($('#tbody_lotes_valorizacion tr').length - 1 == 0) {
+            alert('Debe agregar al menos un lote.');
+
+            return;
+          }
+
+        // Obteniendo detalle
+          f_LoadingGrabarValorizacion(1);
+
+          let detalle = [];
+
+          $('#tbody_lotes_valorizacion tr').each(function (idx, tr) {
+            if ($(tr).attr("id") === "tr_TotalValorizacion") {
+              return;
+            }
+
+            let fila = $(tr);
+            let id_elemento = fila.attr('data-elemento');
+            let id_lote = fila.attr('data-lote');
+
+            detalle.push({
+              id_elemento,
+              cod_lote: $(`#lote_${idx}`).text().trim(),
+              cod_gel: $(`#gel_${idx}`).text().trim(),
+              grr: $(`#grr_${idx}`).text().trim(),
+              grt: $(`#grt_${idx}`).text().trim(),
+              fecha_ingreso: $(`#ingreso_${idx}`).text().trim(),
+              tmh: $(`#tmh_${idx}`).text().trim().replace(/,/g, ''),
+              h2o: $(`#h2o_${idx}`).text().trim().replace(/,/g, ''),
+              tms: $(`#tms_${idx}`).text().trim().replace(/,/g, ''),
+              ley: $(`#ley_${idx}`).text().trim().replace(/,/g, ''),
+              rec: $(`#rec_${idx}`).text().trim().replace(/,/g, ''),
+              inter: $(`#inter_${idx}`).text().trim().replace(/,/g, ''),
+              descint: $(`#descint_${idx}`).text().trim().replace(/,/g, ''),
+              maquila: $(`#maquila_${idx}`).text().trim().replace(/,/g, ''),
+              react: $(`#react_${idx}`).text().trim().replace(/,/g, ''),
+              factor: $(`#factor_${idx}`).text().trim().replace(/,/g, ''),
+              ptn: $(`#ptn_${idx}`).text().trim().replace(/,/g, ''),
+              incent: $(`#incent_${idx}`).text().trim().replace(/,/g, ''),
+              ptnf: $(`#ptnf_${idx}`).text().trim().replace(/,/g, ''),
+              total: $(`#total_${idx}`).text().replace(/[^0-9.-]/g, '').replace(/,/g, '')
+            });
+          });
+
+        $.post('apis/backend.php', {
+          accion: 'grabar_ValorizacionCompra',
+          id_valorizacion,
+          id_proveedor,
+          id_concesion,
+          concesion: txt_concesion,
+          codigo_unico: txt_codigo_unico,
+          procedencia: txt_procedencia,
+          id_cuentabancaria,
+          info_cuentabancaria,
+          id_cuentadetraccion,
+          info_cuentadetraccion,
+          modo_grabar: modo_grabar,
+          arr_detalle: JSON.stringify(detalle)
+        }, function (data) {
+          if (data.estado == 1) {
+            if (modo_grabar == 'N'){
+              f_LoadValorizaciones();
+            }
+            else{
+              // Llama a la carga de detalles de la valorización seleccionada
+                const rows = [...document.querySelectorAll('#tbl_valorizaciones tr')];
+                const yellow = rows.find(tr => {
+                  const c = getComputedStyle(tr).backgroundColor;
+                  return c === 'rgb(255, 245, 135)'        // #FFF587 (tu selección actual)
+                      || c === 'rgb(255, 244, 229)';       // #FFF4E5 (amarillo suave de grupo, ej.)
+                });
+                if (yellow) f_SelectValorizacion(yellow);
+                else if (rows[0]) f_SelectValorizacion(rows[0]);
+            }
+
+            f_cerrarModal('modal_valorizacion');
+          }
+          else {
+            alert('Error al grabar: ' + data.mensaje);
+          }
+
+          f_LoadingGrabarValorizacion(0);
+
+        }, 'json');
+      }
+
+      function f_EliminarRegistro(_id_registro){
+        if(confirm("¿Está seguro de Eliminar el registro seleccionado?")){
+          $.post( "apis/backend.php", { accion: "eliminar_ValorizacionDetalle", id_registro: _id_registro }, 
+            function( data ) {
+              if(data.estado == 1){
+                f_LoadDetalleValorizacion(id_valorizacion_Selected);
+              }
+              else{
+                alert("Ocurrió un error al momento de eliminar el registro de Valorización.");
+              }
+
+            }, "json");
+        }
+      }
+
+      function f_CambiarEstadoValorizacion(_id, _modo){
+        let _accion = (_modo == 'I') ? 'Inactivar' : 'Activar';
+
+        if (confirm("¿Está seguro de " + _accion + " la Valorización seleccionada?")){
+          $.post("apis/backend.php", {
+            accion: "eliminar_Valorizacion",
+            modo: _modo,
+            id_registro: _id
+          }, function(data){
+            if (data.estado == 1){
+              f_LoadValorizaciones();
+            }
+            else{
+              alert("Ocurrió un error al momento de cambiar el estado.");
+            }
+          }, "json");
+        }
+      }
+
+      function f_EliminarValorizacion(_id){
+        if (confirm("¿Está seguro de Eliminar la Valorización seleccionada?\n\nEsta acción no se puede deshacer.")){
+          $.post("apis/backend.php", {
+            accion: "eliminar_Valorizacion",
+            modo: "X",
+            id_registro: _id
+          }, function(data){
+            if (data.estado == 1){
+              f_LoadValorizaciones();
+            }
+            else{
+              alert("Ocurrió un error al momento de eliminar el Estándar.");
+            }
+          }, "json");
+        }
+      }
+
+      function f_GrabarCuentaBancaria(){
+        var _id_cliente = $("#cmb_proveedor").val();
+        var _id_banco = $("#cliente_banco_id_banco").val();
+        var _id_moneda = $("#cliente_banco_id_moneda").val();
+        var _nro_cuenta = $("#cliente_banco_num_cuenta").val();
+        var _cci = $("#cliente_banco_cci").val();
+        var _is_detraccion = $("#hd_iscuentadetraccion").val();
+
+        // Validaciones básicas
+          if (_id_banco == "") {
+            alert("Debe seleccionar el banco.");
+            return;
+          }
+
+          if (_id_moneda == "") {
+            alert("Debe seleccionar la moneda.");
+            return;
+          }
+
+          if (_nro_cuenta.trim() == "") {
+            alert("Debe ingresar el número de cuenta.");
+            return;
+          }
+
+        // Envío al backend
+          $.post("apis/backend.php", { accion: "grabar_ClienteBanco", modo_grabar: 'N', id_cliente: _id_cliente, id_banco: _id_banco, id_moneda: _id_moneda, nro_cuenta: _nro_cuenta, cci: _cci, is_detraccion: _is_detraccion },
+            function(data){
+              if (data.estado == 1){
+                if ($("#hd_iscuentadetraccion").val() == 0){
+                  f_LoadListaCuentasBancarias(data.id_registro);
+                }
+                else{
+                  f_LoadListaCuentaDetraccion(data.id_registro);
+                }
+
+                f_cerrarModal('modal_AddCuentaBancaria');
+              }
+              else {
+                if (data.estado == 2){
+                  alert("La cuenta ingresada para este cliente ya fue ingresada anteriormente.\nPor favor verificar.");
+
+                  return;
+                }
+                else{
+                  alert("Ocurrió un error al grabar la cuenta bancaria.");
+                }
+              }
+            }, "json");
+      }
+
+      function f_NuevaVersion(_id_registro, _num_valorizacion){
+        // Validando datos
+          if (!confirm("¿Está seguro de Copiar la valorización N° " + _num_valorizacion + "?")){
+            return;
+          }
+
+        // Creando copia
+          $.post("apis/backend.php", { accion: "grabar_ValorizacionCompra_NuevaVersion", id_registro: _id_registro, num_valorizacion: _num_valorizacion },
+            function(data){
+              if (data.estado == 1){
+                f_LoadValorizaciones();
+              }
+              else {
+                alert("Ocurrió un error al generar la copia.");
+              }
+            }, "json");
+      }
+
+      function f_AprobarValorizacion(_id_registro, _num_valorizacion, _version){
+        // Validando datos
+          if (!confirm("¿Está seguro de Aprobar la valorización N° " + _num_valorizacion + " - Versión " + _version + " ?")){
+            return;
+          }
+
+        // Aprobando Valorización
+          $.post("apis/backend.php", { accion: "grabar_ValorizacionCompra_Aprobacion", id_registro: _id_registro, num_valorizacion: _num_valorizacion, version: _version, is_aprobado: 1 },
+            function(data){
+              if (data.estado == 1){
+                f_LoadValorizaciones();
+              }
+              else {
+                alert("Ocurrió un error al generar la copia.");
+              }
+            }, "json");
+      }
+    </script>
+  </body>
+</html>
