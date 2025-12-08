@@ -3102,7 +3102,7 @@
 					}
 				}
 
-			echo json_encode(array('estado' => $estado, 'sexo' => $_SESSION["sexo_usuario"], 'nom_usuario' => $_SESSION["nom_usuario"], 'show_dashboard' => $_SESSION["show_dashboard"]));
+			echo json_encode(array('estado' => $estado, 'sexo' => $_SESSION["sexo_usuario"], 'nom_usuario' => $_SESSION["nom_usuario"], 'show_dashboard' => (isset($_SESSION["show_dashboard"])) ? $_SESSION["show_dashboard"] : ""));
 
 			break;
 
@@ -3246,7 +3246,7 @@
 			WHERE cod_rol = '".$cod_rol."'
 			AND estado = 'A'";
 
-			if ($_SESSION["modo_auditoria_ison"] == 1){
+			if (isset($_SESSION["modo_auditoria_ison"]) && $_SESSION["modo_auditoria_ison"] == 1){
 				$q_menus .= "   AND modo_auditoria = 1";
 			}
 
@@ -53030,6 +53030,220 @@ echo 'xxx';
 
       echo json_encode($res);
       break;
+
+	case 'getAnticiposAndProviders':
+        $response = [
+            "cantidad_anticipos" => 0,
+            "anticipos_con_saldo" => 0,
+            "anticipos_sin_saldo" => 0,
+            "proveedores" => [],
+            "proveedores_con_anticipos" => []
+        ];
+
+        // 1. Obtener la lista de proveedores APTOs para Select2 (cod_clientecondicion = 1)
+        $sql_aptos = "
+            SELECT
+                pr.Id as id_proveedor,
+                pr.documento,
+                pr.razon_social
+            FROM
+                tb_clientes pr
+            WHERE pr.cod_clientecondicion = 1
+			ORDER BY pr.razon_social ASC;
+        ";
+        $res_aptos = mysqli_query($enlace, $sql_aptos);
+		while ($p = mysqli_fetch_assoc($res_aptos)) {
+			$response['proveedores'][] = $p;
+		}
+
+        // 2. Obtener TODAS las transacciones para mapearlas fácilmente (Query 3)
+        $sql_transacciones = "
+            SELECT
+                tr.id AS id_transaccion,
+                tr.id_proveedor_anticipo AS id_anticipo,
+                tr.saldo_actual,
+                tr.monto_retirado,
+                tr.saldo_restante,
+                val.codigo_unico,
+                val.procedencia,
+                val.concesion,
+                tr.created_at AS fecha_registro
+            FROM
+                proveedor_anticipo_transaccion AS tr
+            INNER JOIN valorizacion_compramineral AS val
+            ON
+                tr.id_valorizacion_compramineral = val.Id
+            ORDER BY fecha_registro DESC;
+        ";
+        $res_transacciones = mysqli_query($enlace, $sql_transacciones);
+		$transacciones_map = [];
+		while ($t = mysqli_fetch_assoc($res_transacciones)) {
+			$transacciones_map[$t['id_anticipo']][] = $t;
+		}
+        // Liberar el resultado
+        mysqli_free_result($res_transacciones);
+
+        // 3. Obtener TODOS los anticipos (Query 2)
+        $sql_anticipos = "
+            SELECT
+                ant.id as id_anticipo,
+                ant.id_proveedor,
+                ant.serie_factura,
+                ant.numero_factura,
+                ant.saldo_inicial,
+                ant.saldo_actual,
+                ant.cantidad_transacciones,
+                DATE_FORMAT(ant.created_at, '%d/%m/%Y') as fecha_registro_formateada,
+                ant.estado
+            FROM
+                proveedor_anticipo ant;
+        ";
+		$res_anticipos = mysqli_query($enlace, $sql_anticipos);
+		$anticipos_raw = [];
+		while ($a = mysqli_fetch_assoc($res_anticipos)) {
+			$anticipos_raw[] = $a;
+		}
+        // Liberar el resultado
+        mysqli_free_result($res_anticipos);
+
+        // 4. Obtener proveedores con anticipos (Query 1)
+        $sql_proveedores_con_anticipos = "
+            SELECT DISTINCT
+                pr.Id AS id_proveedor,
+                pr.documento,
+                pr.razon_social
+            FROM
+                tb_clientes pr
+            INNER JOIN proveedor_anticipo ant ON ant.id_proveedor = pr.Id;
+        ";
+		$res_proveedores_con_anticipos = mysqli_query($enlace, $sql_proveedores_con_anticipos);
+		$proveedores_con_anticipos_map = [];
+
+		// Inicializar el mapa de proveedores con anticipos
+		while ($p = mysqli_fetch_assoc($res_proveedores_con_anticipos)) {
+			$proveedores_con_anticipos_map[$p['id_proveedor']] = [
+				"id_proveedor" => $p['id_proveedor'],
+				"documento" => $p['documento'],
+				"razon_social" => $p['razon_social'],
+				"cantidad_anticipos" => 0,
+				"anticipos_con_saldo" => 0,
+				"anticipos_sin_saldo" => 0,
+				"anticipos" => []
+			];
+		}
+        // Liberar el resultado
+        mysqli_free_result($res_proveedores_con_anticipos);
+
+		// 5. Mapear anticipos a proveedores y sumar totales
+		foreach ($anticipos_raw as $ant) {
+			$id_proveedor = $ant['id_proveedor'];
+			$id_anticipo = $ant['id_anticipo'];
+
+			// Asignar transacciones al anticipo
+			$ant['transacciones'] = $transacciones_map[$id_anticipo] ?? [];
+			$ant['fecha_registro'] = $ant['fecha_registro_formateada']; // Usar el campo con formato DD/MM/YYYY
+			unset($ant['fecha_registro_formateada']); // Limpieza
+
+			if (isset($proveedores_con_anticipos_map[$id_proveedor])) {
+				$proveedores_con_anticipos_map[$id_proveedor]['anticipos'][] = $ant;
+				$proveedores_con_anticipos_map[$id_proveedor]['cantidad_anticipos']++;
+				$response['cantidad_anticipos']++;
+
+				if ($ant['estado'] === 'A') { // Asumo 'A' para CON SALDO
+				$proveedores_con_anticipos_map[$id_proveedor]['anticipos_con_saldo']++;
+				$response['anticipos_con_saldo']++;
+				} else { // Asumo 'B' para SALDO AGOTADO / SIN SALDO
+				$proveedores_con_anticipos_map[$id_proveedor]['anticipos_sin_saldo']++;
+				$response['anticipos_sin_saldo']++;
+				}
+			}
+		}
+
+		// Convertir el mapa de proveedores a una lista para el JSON final
+		$response['proveedores_con_anticipos'] = array_values($proveedores_con_anticipos_map);
+
+		// Ordenar la lista de proveedores por Razon Social
+		usort($response['proveedores_con_anticipos'], function($a, $b) {
+		return strcmp($a['razon_social'], $b['razon_social']);
+		});
+
+		// Retornar la respuesta
+		header('Content-Type: application/json');
+		echo json_encode(['estado' => 1, 'data' => $response]);
+		break;
+
+	case 'registerNewAnticipo':
+		// Validaciones (simples)
+		$id_proveedor = intval($_POST['id_proveedor'] ?? 0);
+		$serie = trim($_POST['serie_factura'] ?? '');
+		$numero = trim($_POST['numero_factura'] ?? '');
+		$saldo_inicial = floatval($_POST['saldo_inicial'] ?? 0);
+
+		if (!$id_proveedor || empty($serie) || empty($numero) || $saldo_inicial <= 0) {
+			header('Content-Type: application/json');
+			echo json_encode(['estado' => 0, 'msg' => 'Faltan datos requeridos (Proveedor, Factura o Saldo inicial válido).']);
+			exit;
+		}
+
+		// Asumo id_moneda = 2 para Dólares
+		$id_moneda = 2;
+		$estado = 'A'; // Estado inicial: CON SALDO
+			
+		// La fecha de registro se establecerá automáticamente en la DB,
+		// pero la incluimos por si la tabla no lo hace (aunque no es estrictamente necesario)
+		$f_registro = date("Y-m-d H:i:s");
+
+		// Lógica de inserción con Prepared Statement (seguridad mejorada)
+		$sql = "INSERT INTO proveedor_anticipo (id_proveedor, id_moneda, serie_factura, numero_factura, saldo_inicial, saldo_actual, estado, created_at) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+		
+		$stmt = mysqli_prepare($enlace, $sql);
+
+		if ($stmt) {
+			/* * Bind Parameters:
+			* 'isssddss' -> i: integer, s: string, d: double (float)
+			* (i) id_proveedor, (i) id_moneda, (s) serie, (s) numero, 
+			* (d) saldo_inicial, (d) saldo_actual, (s) estado, (s) created_at
+			*/
+			mysqli_stmt_bind_param($stmt, 'iisssdss', 
+				$id_proveedor, 
+				$id_moneda, 
+				$serie, 
+				$numero, 
+				$saldo_inicial, 
+				$saldo_inicial, 
+				$estado,
+				$f_registro
+			);
+			if (mysqli_stmt_execute($stmt)) {
+				$new_id = mysqli_insert_id($enlace); // Obtiene el ID generado
+				mysqli_stmt_close($stmt);
+				// Prepara la data del nuevo anticipo para el front
+				$new_anticipo_data = [
+				"id_anticipo" => (int)$new_id,
+				"id_proveedor" => (int)$id_proveedor,
+				"serie_factura" => $serie,
+				"numero_factura" => $numero,
+				"saldo_inicial" => number_format($saldo_inicial, 2, '.', ''),
+				"saldo_actual" => number_format($saldo_inicial, 2, '.', ''),
+				"cantidad_transacciones" => 0,
+				"fecha_registro" => date('d/m/Y'),
+				"estado" => $estado,
+				"transacciones" => []
+				];
+
+				header('Content-Type: application/json');
+				echo json_encode(['estado' => 1, 'msg' => 'Anticipo registrado con éxito.', 'id_anticipo' => $new_id, 'new_data' => $new_anticipo_data]);
+			} else {
+				mysqli_stmt_close($stmt);
+				header('Content-Type: application/json');
+				echo json_encode(['estado' => 0, 'msg' => 'Error al ejecutar la consulta de inserción: ' . mysqli_error($enlace)]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			echo json_encode(['estado' => 0, 'msg' => 'Error al preparar la consulta: ' . mysqli_error($enlace)]);
+		}
+		break;
 
 	default:
 
