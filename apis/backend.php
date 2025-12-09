@@ -30232,6 +30232,8 @@ switch ($_POST["accion"]) {
 
         // Grabando datos
         $is_nuevo = 0;
+        $pesoinicial_observacion = "";
+        $pesofinal_observacion = "";
 
         if ($is_pesoinicial == 1) {
             $q_save = "UPDATE catalogolotes SET ";
@@ -68777,7 +68779,7 @@ switch ($_POST["accion"]) {
         );
         $fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"]);
         $_estado = mysqli_real_escape_string($enlace, $_POST["estado"]);
-        $filtro_lote = $_POST["filtro_lote"];
+        $filtro_lote = isset($_POST["filtro_lote"]) ? $_POST["filtro_lote"] : "";
 
         // Setea Filtro de Lotes
         $l = 0;
@@ -68849,7 +68851,7 @@ switch ($_POST["accion"]) {
 
         // Recupera parámetros
         $cod_lote = $_POST["cod_lote"];
-        $array_id_grupo_analitoabv = $_POST["array_id_grupo_analitoabv"];
+        $array_id_grupo_analitoabv = isset($_POST["array_id_grupo_analitoabv"]) ? $_POST["array_id_grupo_analitoabv"] : [];
 
         foreach ($array_id_grupo_analitoabv as $arr_ga) {
             $array_ga = explode("|", str_replace('"', "", $arr_ga));
@@ -74020,7 +74022,7 @@ switch ($_POST["accion"]) {
         $res = ["estado" => 0];
 
         $modo_grabar = $_POST["modo_grabar"];
-        $id_cliente_banco = intval($_POST["id_cliente_banco"]);
+        $id_cliente_banco = (isset($_POST["id_cliente_banco"])) ? intval($_POST["id_cliente_banco"]) : 0;
         $id_cliente = mysqli_real_escape_string($enlace, $_POST["id_cliente"]);
         $id_banco = intval($_POST["id_banco"]);
         $nro_cuenta = mysqli_real_escape_string($enlace, $_POST["nro_cuenta"]);
@@ -74878,6 +74880,7 @@ switch ($_POST["accion"]) {
             INNER JOIN valorizacion_compramineral AS val
             ON
                 tr.id_valorizacion_compramineral = val.Id
+            WHERE tr.estado = 'A'
             ORDER BY fecha_registro DESC;
         ";
         $res_transacciones = mysqli_query($enlace, $sql_transacciones);
@@ -75093,6 +75096,49 @@ switch ($_POST["accion"]) {
                     "Error al preparar la consulta: " . mysqli_error($enlace),
             ]);
         }
+        break;
+
+    case "getAnticiposByProveedor":
+        $id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+
+        if ($id_proveedor == 0) {
+            header("Content-Type: application/json");
+            echo json_encode(["estado" => 0, "msg" => "ID de proveedor inválido.", "data" => []]);
+            exit();
+        }
+
+        // Obtener la lista de anticipos por proveedor
+        $sql_query = "
+                    SELECT
+                        ant.id AS id_anticipo,
+                        CONCAT(
+                            ant.serie_factura,
+                            '-',
+                            ant.numero_factura
+                        ) AS factura,
+                        ant.saldo_actual,
+                        ant.created_at AS fecha_registro
+                    FROM
+                        proveedor_anticipo ant
+                    WHERE
+                        ant.id_proveedor = '$id_proveedor' AND ant.estado = 'A' AND ant.saldo_actual > 0
+                    ORDER BY
+                        ant.created_at ASC;
+                ";
+        $response_query = mysqli_query($enlace, $sql_query);
+        
+        $anticipos = [];
+        while ($row = mysqli_fetch_assoc($response_query)) {
+            $row['saldo_actual'] = floatval($row['saldo_actual']);
+            $anticipos[] = $row;
+        }
+
+        // Liberar el resultado
+        mysqli_free_result($response_query);
+
+        // Retornar la respuesta
+        header("Content-Type: application/json");
+        echo json_encode(["estado" => 1, "data" => $anticipos]);
         break;
 
     default:
