@@ -75319,7 +75319,8 @@ switch ($_POST["accion"]) {
                 DATE_FORMAT(ant.created_at, '%d/%m/%Y') as fecha_registro_formateada,
                 ant.estado
             FROM
-                proveedor_anticipo ant;
+                proveedor_anticipo ant
+            WHERE ant.estado != 'X';
         ";
         $res_anticipos = mysqli_query($enlace, $sql_anticipos);
         $anticipos_raw = [];
@@ -75599,6 +75600,149 @@ switch ($_POST["accion"]) {
         header("Content-Type: application/json");
         echo json_encode(["estado" => 1, "data" => $transacciones]);
         break;
+
+case "eliminarAnticipo":
+    $id_anticipo = intval($_POST["id_anticipo"] ?? 0);
+    
+    if (!$id_anticipo) {
+        header("Content-Type: application/json");
+        echo json_encode([
+            "estado" => 0,
+            "msg" => "Anticipo inválido."
+        ]);
+        exit();
+    }
+    
+    // Verificar si el anticipo existe y obtener sus datos
+    $sql_check = "SELECT * FROM proveedor_anticipo WHERE id = ?";
+    $stmt_check = mysqli_prepare($enlace, $sql_check);
+    mysqli_stmt_bind_param($stmt_check, "i", $id_anticipo);
+    mysqli_stmt_execute($stmt_check);
+    $result_check = mysqli_stmt_get_result($stmt_check);
+    $anticipo_data = mysqli_fetch_assoc($result_check);
+    mysqli_stmt_close($stmt_check);
+    
+    if (!$anticipo_data) {
+        header("Content-Type: application/json");
+        echo json_encode([
+            "estado" => 0,
+            "msg" => "Anticipo no encontrado."
+        ]);
+        exit();
+    }
+    
+    // Verificar si tiene transacciones CONFIRMADAS (estado 'A')
+    $sql_transacciones_aprobadas = "
+        SELECT COUNT(*) as count 
+        FROM proveedor_anticipo_transaccion 
+        WHERE id_proveedor_anticipo = ? 
+        AND estado = 'A'
+    ";
+    $stmt_aprobadas = mysqli_prepare($enlace, $sql_transacciones_aprobadas);
+    mysqli_stmt_bind_param($stmt_aprobadas, "i", $id_anticipo);
+    mysqli_stmt_execute($stmt_aprobadas);
+    $result_aprobadas = mysqli_stmt_get_result($stmt_aprobadas);
+    $row_aprobadas = mysqli_fetch_assoc($result_aprobadas);
+    mysqli_stmt_close($stmt_aprobadas);
+    
+    if ($row_aprobadas['count'] > 0) {
+        header("Content-Type: application/json");
+        echo json_encode([
+            "estado" => 0,
+            "msg" => "No se puede eliminar el anticipo porque tiene valorizaciones CONFIRMADAS asociadas."
+        ]);
+        exit();
+    }
+    
+    // Contadores para respuesta
+    $transacciones_eliminadas = 0;
+    $valorizaciones_anuladas = 0;
+    
+    // Iniciar transacción
+    mysqli_begin_transaction($enlace);
+    
+    try {
+        // 1. Obtener todas las transacciones POR CONFIRMAR (estado 'B')
+        $sql_get_transacciones = "
+            SELECT id, id_valorizacion_compramineral 
+            FROM proveedor_anticipo_transaccion 
+            WHERE id_proveedor_anticipo = ? 
+            AND estado = 'B'
+        ";
+        $stmt_get = mysqli_prepare($enlace, $sql_get_transacciones);
+        mysqli_stmt_bind_param($stmt_get, "i", $id_anticipo);
+        mysqli_stmt_execute($stmt_get);
+        $result_get = mysqli_stmt_get_result($stmt_get);
+        $transacciones_por_confirmar = [];
+        
+        while ($row = mysqli_fetch_assoc($result_get)) {
+            $transacciones_por_confirmar[] = $row;
+        }
+        mysqli_stmt_close($stmt_get);
+        
+        // 2. Para cada transacción por confirmar:
+        //    a. Cambiar estado a 'C' (Cancelada)
+        //    b. Cambiar estado de la valorización a 'R' (Anulado por eliminación de anticipo)
+        foreach ($transacciones_por_confirmar as $transaccion) {
+            // Actualizar estado de transacción a 'C'
+            $sql_update_trans = "
+                UPDATE proveedor_anticipo_transaccion 
+                SET estado = 'C', updated_at = NOW() 
+                WHERE id = ?
+            ";
+            $stmt_upd_trans = mysqli_prepare($enlace, $sql_update_trans);
+            mysqli_stmt_bind_param($stmt_upd_trans, "i", $transaccion['id']);
+            mysqli_stmt_execute($stmt_upd_trans);
+            mysqli_stmt_close($stmt_upd_trans);
+            $transacciones_eliminadas++;
+            
+            // Actualizar estado de la valorización a 'R'
+            $sql_update_val = "
+                UPDATE valorizacion_compramineral 
+                SET estado = 'R' 
+                WHERE Id = ?
+            ";
+            $stmt_upd_val = mysqli_prepare($enlace, $sql_update_val);
+            mysqli_stmt_bind_param($stmt_upd_val, "i", $transaccion['id_valorizacion_compramineral']);
+            mysqli_stmt_execute($stmt_upd_val);
+            mysqli_stmt_close($stmt_upd_val);
+            $valorizaciones_anuladas++;
+        }
+        
+        // 3. Cambiar estado del anticipo a 'X' (Anulado)
+        $sql_update_anticipo = "
+            UPDATE proveedor_anticipo 
+            SET estado = 'X', updated_at = NOW() 
+            WHERE id = ?
+        ";
+        $stmt_upd_anticipo = mysqli_prepare($enlace, $sql_update_anticipo);
+        mysqli_stmt_bind_param($stmt_upd_anticipo, "i", $id_anticipo);
+        mysqli_stmt_execute($stmt_upd_anticipo);
+        mysqli_stmt_close($stmt_upd_anticipo);
+        
+        // Confirmar transacción
+        mysqli_commit($enlace);
+        
+        header("Content-Type: application/json");
+        echo json_encode([
+            "estado" => 1,
+            "msg" => "Anticipo eliminado exitosamente.",
+            "transacciones_eliminadas" => $transacciones_eliminadas,
+            "valorizaciones_anuladas" => $valorizaciones_anuladas,
+            "id_anticipo" => $id_anticipo
+        ]);
+        
+    } catch (Exception $e) {
+        // Revertir transacción en caso de error
+        mysqli_rollback($enlace);
+        
+        header("Content-Type: application/json");
+        echo json_encode([
+            "estado" => 0,
+            "msg" => "Error al eliminar anticipo: " . $e->getMessage()
+        ]);
+    }
+    break;
 
     default:
         # code...

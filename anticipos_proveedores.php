@@ -371,27 +371,43 @@ $backendUrl = 'apis/backend.php';
 
 
         anticiposOrdenados.forEach(a => {
-          // Asumo 'A' es CON SALDO y 'B' es SIN SALDO
-          const estadoText = a.estado === 'A' ? 'Con saldo' : 'Sin saldo';
-          const estadoClass = a.estado === 'A' ? 'text-success' : 'text-danger';
+          // Asumo 'A' es CON SALDO, 'B' es SIN SALDO y 'X' es anulado
+          const estadoText = a.estado === 'A' ? 'Con saldo' : a.estado == 'B' ? 'Sin saldo' : 'Anulado';
+          const estadoClass = a.estado === 'A' ? 'text-success' : a.estado == 'B' ? 'text-danger' : '';
+
+          let html_botonEliminar = "";
+
+          if (a.estado != "X") {
+            html_botonEliminar = `
+                      <button class="btn btn-sm btn-danger btn-eliminar-anticipo"
+                              data-id-anticipo="${a.id_anticipo}"
+                              data-id-proveedor="${proveedor.id_proveedor}"
+                              data-factura="${a.serie_factura}-${a.numero_factura}"
+                              data-cantidad-transacciones="${a.cantidad_transacciones}"
+                              title="Eliminar Anticipo">
+                          <i class="bi bi-trash"></i>
+                      </button>
+            `;
+          }
 
           html += `
-            <tr>
-              <td>${a.serie_factura}-${a.numero_factura}</td>
-              <td class="text-end">${formatCurrency(a.saldo_inicial)}</td>
-              <td class="text-end">${formatCurrency(a.saldo_actual)}</td>
-              <td class="text-center">${a.cantidad_transacciones}</td>
-              <td class="text-center">${a.fecha_registro}</td>
-              <td class="text-center ${estadoClass}"><strong>${estadoText}</strong></td>
-              <td class="text-center">
-                <button class="btn btn-sm btn-info text-white btn-view-transacciones"
-                        data-id-anticipo="${a.id_anticipo}"
-                        data-id-proveedor="${proveedor.id_proveedor}"
-                        title="Ver Transacciones">
-                  <i class="bi bi-receipt"></i>
-                </button>
-              </td>
-            </tr>`;
+              <tr>
+                  <td>${a.serie_factura}-${a.numero_factura}</td>
+                  <td class="text-end">${formatCurrency(a.saldo_inicial)}</td>
+                  <td class="text-end">${formatCurrency(a.saldo_actual)}</td>
+                  <td class="text-center">${a.cantidad_transacciones}</td>
+                  <td class="text-center">${a.fecha_registro}</td>
+                  <td class="text-center ${estadoClass}"><strong>${estadoText}</strong></td>
+                  <td class="text-center">
+                      <button class="btn btn-sm btn-info text-white btn-view-transacciones"
+                              data-id-anticipo="${a.id_anticipo}"
+                              data-id-proveedor="${proveedor.id_proveedor}"
+                              title="Ver Transacciones">
+                          <i class="bi bi-receipt"></i>
+                      </button>
+                      ${html_botonEliminar}
+                  </td>
+              </tr>`;
         });
 
         $("#tbl_anticipos_proveedor").html(html);
@@ -605,6 +621,101 @@ $backendUrl = 'apis/backend.php';
           });
       });
 
+
+      // Evento: Eliminar Anticipo
+      $("#tbl_anticipos_proveedor").on("click", ".btn-eliminar-anticipo", function() {
+        const idAnticipo = $(this).data('id-anticipo');
+        const idProveedor = $(this).data('id-proveedor');
+        const factura = $(this).data('factura');
+        const cantidadTransacciones = $(this).data('cantidad-transacciones');
+
+        // Confirmar eliminación
+        if (!confirm(`¿Está seguro de eliminar el anticipo ${factura}?\n\nSe eliminarán todas las transacciones asociadas.\n\nEsta acción no se puede deshacer.`)) {
+          return;
+        }
+
+        // Obtener el proveedor actual
+        const proveedorActual = findProveedorById(idProveedor);
+        if (!proveedorActual) {
+          alert("Error: Proveedor no encontrado.");
+          return;
+        }
+
+        // Obtener el anticipo específico
+        const anticipoAEliminar = findAnticipoById(proveedorActual, idAnticipo);
+        if (!anticipoAEliminar) {
+          alert("Error: Anticipo no encontrado.");
+          return;
+        }
+
+        // Verificar si tiene transacciones aprobadas
+        if (anticipoAEliminar.transacciones && anticipoAEliminar.transacciones.length > 0) {
+          const tieneAprobadas = anticipoAEliminar.transacciones.some(t => t.estado === 'A');
+          if (tieneAprobadas) {
+            alert("No se puede eliminar este anticipo porque tiene transacciones APROBADAS asociadas.");
+            return;
+          }
+        }
+
+        // Proceder con la eliminación
+        eliminarAnticipoBackend(idAnticipo, anticipoAEliminar, proveedorActual);
+      });
+
+      // Función para llamar al backend de eliminación
+      function eliminarAnticipoBackend(idAnticipo, anticipo, proveedor) {
+        f_callBackend('eliminarAnticipo', {
+            id_anticipo: idAnticipo
+          })
+          .done(function(r) {
+            if (r.estado === 1) {
+              alert(`Anticipo eliminado exitosamente.\n\nTransacciones eliminadas: ${r.transacciones_eliminadas || 0}\nValorizaciones anuladas: ${r.valorizaciones_anuladas || 0}`);
+
+              // Actualizar la lista local
+              // 1. Remover el anticipo de la lista del proveedor
+              const index = proveedor.anticipos.findIndex(a => String(a.id_anticipo) === String(idAnticipo));
+              if (index !== -1) {
+                proveedor.anticipos.splice(index, 1);
+                proveedor.cantidad_anticipos--;
+
+                // Actualizar contadores según estado
+                if (anticipo.estado === 'A') {
+                  proveedor.anticipos_con_saldo--;
+                  anticipos_con_saldo--;
+                } else {
+                  proveedor.anticipos_sin_saldo--;
+                  anticipos_sin_saldo--;
+                }
+                cantidad_anticipos--;
+
+                // 2. Si el proveedor ya no tiene anticipos, removerlo de la lista
+                if (proveedor.anticipos.length === 0) {
+                  const provIndex = proveedores_con_anticipos.findIndex(p => String(p.id_proveedor) === String(proveedor.id_proveedor));
+                  if (provIndex !== -1) {
+                    proveedores_con_anticipos.splice(provIndex, 1);
+                  }
+                }
+
+                // 3. Actualizar la UI
+                renderGeneralSummary();
+                renderProveedores();
+
+                // Si el proveedor sigue existiendo, mostrar sus anticipos
+                if (proveedor.anticipos.length > 0) {
+                  proveedor_seleccionado = proveedor;
+                  renderAnticipos(proveedor_seleccionado);
+                } else {
+                  proveedor_seleccionado = null;
+                  renderAnticipos(null);
+                }
+              }
+            } else {
+              alert("Error al eliminar anticipo: " + (r.msg || "Error desconocido."));
+            }
+          })
+          .fail(function() {
+            alert("Error de conexión al intentar eliminar el anticipo.");
+          });
+      }
 
       // -------------------------
       // Start
