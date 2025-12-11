@@ -389,29 +389,54 @@ if (!isset($_SESSION["Id"])) {
                     </div>
                   </div>
 
+                  <!-- En la sección de Información Bancaria, alrededor de la línea ~178 en tu archivo -->
                   <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: 5px;">
                     <div class="row mt-3">
                       <div class="col-md-12">
                         <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
-                          Información Bancaria
+                          Información del Pago
                         </div>
                       </div>
                     </div>
 
                     <div class="row mb-2 mt-2" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 0px; padding: 10px; margin-top: 2px !important;">
-                      <div class="col-md-9">
-                        <label class="form-label" style="font-size: 14px;">Cuenta Bancaria:</label>
 
-                        <select id="valorizacion_cuentaproveedor" class="form-select" style="width: 100%; font-size: 14px;">
-                        </select>
+                      <!-- Checkbox para usar anticipos -->
+                      <div class="col-md-12 mb-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="chk_usar_anticipo" onchange="f_ToggleTipoPago();">
+                          <label class="form-check-label" for="chk_usar_anticipo" style="font-size: 14px;">
+                            <strong>Usar anticipos</strong>
+                          </label>
+                        </div>
                       </div>
 
-                      <div class="col-md-3">
-                        <label class="form-label" style="font-size: 14px;">Cuenta Detracción:</label>
+                      <!-- Sección para cuentas bancarias (se muestra cuando NO usa anticipos) -->
+                      <div id="div_cuentas_bancarias">
+                        <div class="col-md-9">
+                          <label class="form-label" style="font-size: 14px;">Cuenta Bancaria:</label>
+                          <select id="valorizacion_cuentaproveedor" class="form-select" style="width: 100%; font-size: 14px;">
+                          </select>
+                        </div>
 
-                        <select id="valorizacion_cuentadetraccionproveedor" class="form-select" style="width: 100%; font-size: 14px;">
-                        </select>
+                        <div class="col-md-3">
+                          <label class="form-label" style="font-size: 14px;">Cuenta Detracción:</label>
+                          <select id="valorizacion_cuentadetraccionproveedor" class="form-select" style="width: 100%; font-size: 14px;">
+                          </select>
+                        </div>
                       </div>
+
+                      <!-- Sección para mostrar anticipos seleccionados (se muestra cuando SÍ usa anticipos) -->
+                      <div id="div_anticipos_seleccionados" class="col-md-12" style="display: none;">
+                        <label class="form-label" style="font-size: 14px;">Anticipos seleccionados:</label>
+                        <div id="txt_anticipos_seleccionados" class="form-control" style="height: auto; min-height: 35px; background-color: #e9ecef; font-size: 13px; padding: 5px;" readonly>
+                          Ningún anticipo seleccionado
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="f_AbrirModalSeleccionAnticipos();" style="font-size: 13px;">
+                          <i class="bi bi-wallet2"></i> Seleccionar anticipos
+                        </button>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -818,6 +843,87 @@ if (!isset($_SESSION["Id"])) {
           </div>
         </div>
       </div>
+
+
+      <!-- MODAL: SELECCIÓN DE ANTICIPOS -->
+      <div class="modal fade" id="modal_seleccion_anticipos" tabindex="-1" aria-labelledby="modal_seleccion_anticiposLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content" style="border: solid; border-width: 1px; border-color: #816951;">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modal_seleccion_anticiposLabel">
+                <i class="bi bi-wallet2 me-2"></i>Seleccionar Anticipos
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <div class="alert alert-info" style="font-size: 13px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Instrucciones:</strong> Seleccione los anticipos en orden, comenzando por el más antiguo.
+                  </div>
+                </div>
+                <div class="col-md-6 text-end">
+                  <div class="badge bg-primary fs-6">
+                    Monto a cubrir: <span id="lbl_monto_a_cubrir" class="fw-bold">0.00</span>
+                  </div>
+                  <div class="badge bg-success fs-6 mt-1">
+                    Total seleccionado: <span id="lbl_total_seleccionado" class="fw-bold">0.00</span>
+                  </div>
+                  <div class="badge bg-warning fs-6 mt-1">
+                    Restante: <span id="lbl_monto_restante" class="fw-bold" style="color: #25476a !important;">0.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-sm" style="font-size: 13px;">
+                      <thead class="table-dark">
+                        <tr>
+                          <th width="50" class="text-center">#</th>
+                          <th width="100" class="text-center">Seleccionar</th>
+                          <th>Factura</th>
+                          <th width="120" class="text-center">Saldo Inicial</th>
+                          <th width="120" class="text-center">Saldo Actual</th>
+                          <th width="120" class="text-center">Fecha Registro</th>
+                          <th width="150" class="text-center">Monto a Usar</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tbl_anticipos_disponibles">
+                        <tr>
+                          <td colspan="7" class="text-center">Cargando anticipos...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="alert alert-warning" style="font-size: 12px;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Nota:</strong> Solo se habilitan los anticipos necesarios para cubrir el monto total.
+                    Debe seleccionarlos en orden (del más antiguo al más nuevo).
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" class="btn btn-primary" onclick="f_ConfirmarSeleccionAnticipos();">
+                <i class="bi bi-check-circle me-1"></i>Confirmar selección
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
     </div>
   </div>
 
@@ -869,6 +975,428 @@ if (!isset($_SESSION["Id"])) {
 
   <!-- Funciones Principales -->
   <script type="text/javascript">
+    // Variables globales para anticipos
+    let anticiposDisponibles = [];
+    let anticiposSeleccionados = [];
+    let montoTotalValorizacion = 0;
+
+    // Función para alternar entre cuentas bancarias y anticipos
+    function f_ToggleTipoPago() {
+      const usarAnticipo = $('#chk_usar_anticipo').is(':checked');
+
+      if (usarAnticipo) {
+        $('#div_cuentas_bancarias').hide();
+        $('#div_anticipos_seleccionados').show();
+
+        // Deshabilitar combos de cuentas bancarias
+        $('#valorizacion_cuentaproveedor').prop('disabled', true);
+        $('#valorizacion_cuentadetraccionproveedor').prop('disabled', true);
+
+        // Limpiar selección de anticipos previa
+        anticiposSeleccionados = [];
+        $('#txt_anticipos_seleccionados').html('Ningún anticipo seleccionado');
+      } else {
+        $('#div_cuentas_bancarias').show();
+        $('#div_anticipos_seleccionados').hide();
+
+        // Habilitar combos de cuentas bancarias
+        $('#valorizacion_cuentaproveedor').prop('disabled', false);
+        $('#valorizacion_cuentadetraccionproveedor').prop('disabled', false);
+
+        // Limpiar anticipos
+        anticiposSeleccionados = [];
+      }
+    }
+
+    // Función para abrir el modal de selección de anticipos
+    function f_AbrirModalSeleccionAnticipos() {
+      // Validar que haya un proveedor seleccionado
+      const idProveedor = $('#cmb_proveedor').val();
+      if (!idProveedor) {
+        alert('Debe seleccionar un proveedor primero.');
+        return;
+      }
+
+      // Obtener el monto total de la valorización
+      montoTotalValorizacion = getMontoTotalValorizacion();
+
+      if (montoTotalValorizacion <= 0) {
+        alert('Debe agregar al menos un lote con valor mayor a cero.');
+        return;
+      }
+
+      // Actualizar labels en el modal
+      $('#lbl_monto_a_cubrir').text(montoTotalValorizacion);
+
+      // Limpiar selección previa si el monto ha cambiado significativamente
+      const totalSeleccionadoPrev = f_CalcularTotalSeleccionado();
+      if (Math.abs(totalSeleccionadoPrev - montoTotalValorizacion) > 100) {
+        // Si hay una diferencia grande, recalcular automáticamente
+        anticiposSeleccionados = [];
+      }
+
+      f_ActualizarTotalesModal();
+
+      // Cargar anticipos disponibles
+      f_CargarAnticiposDisponibles(idProveedor, montoTotalValorizacion);
+
+      // Abrir el modal
+      f_OpenModal('modal_seleccion_anticipos');
+    }
+
+    // Función para cargar anticipos disponibles
+    function f_CargarAnticiposDisponibles(idProveedor, montoValorizacion) {
+      $('#tbl_anticipos_disponibles').html('<tr><td colspan="7" class="text-center">Cargando anticipos...</td></tr>');
+
+      $.post('apis/backend.php', {
+        accion: 'getAnticiposByProveedor',
+        id_proveedor: idProveedor,
+        monto_valorizacion: montoValorizacion,
+        es_para_seleccion: true
+      }, function(data) {
+        console.log('Datos de anticipos recibidos:', data); // Para debug
+
+        if (data.estado == 1) {
+          anticiposDisponibles = data.data || [];
+          console.log('Anticipos disponibles:', anticiposDisponibles); // Para debug
+
+          // Inicializar sin selección automática
+          anticiposSeleccionados = [];
+
+          // Renderizar tabla
+          f_RenderizarTablaAnticipos();
+
+          // Habilitar solo el primer checkbox inicialmente
+          f_ActualizarHabilitacionCheckboxes();
+        } else {
+          $('#tbl_anticipos_disponibles').html(`<tr><td colspan="7" class="text-center text-danger">${data.msg || 'Error al cargar anticipos'}</td></tr>`);
+        }
+      }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
+        console.error('Error en la solicitud AJAX:', textStatus, errorThrown);
+        $('#tbl_anticipos_disponibles').html('<tr><td colspan="7" class="text-center text-danger">Error de conexión al cargar anticipos</td></tr>');
+      });
+    }
+
+    // Función para renderizar la tabla de anticipos
+    function f_RenderizarTablaAnticipos() {
+      let html = '';
+
+      if (anticiposDisponibles.length === 0) {
+        html = '<tr><td colspan="7" class="text-center">No hay anticipos disponibles para este proveedor.</td></tr>';
+      } else {
+        anticiposDisponibles.forEach((anticipo, index) => {
+          // Usar propiedades seguras con valores por defecto
+          const idAnticipo = anticipo.id_anticipo || anticipo.Id || 0;
+          const factura = anticipo.factura || anticipo.num_factura || 'Sin factura';
+          const saldoInicial = parseFloat(anticipo.saldo_inicial || anticipo.monto_inicial || 0);
+          const saldoActual = parseFloat(anticipo.saldo_actual || anticipo.saldo || 0);
+          const fechaRegistro = anticipo.fecha_registro || anticipo.fecha || '';
+
+          // Determinar si está seleccionado
+          const isSeleccionado = anticiposSeleccionados.some(a =>
+            a.id_anticipo == idAnticipo || a.Id == idAnticipo
+          );
+
+          // Obtener monto seleccionado
+          let montoSeleccionado = 0;
+          if (isSeleccionado) {
+            const anticipoSeleccionado = anticiposSeleccionados.find(a =>
+              a.id_anticipo == idAnticipo || a.Id == idAnticipo
+            );
+            montoSeleccionado = anticipoSeleccionado ?
+              parseFloat(anticipoSeleccionado.monto_a_usar || anticipoSeleccionado.monto || 0) : 0;
+          }
+
+          // Determinar si este checkbox debe estar habilitado
+          const estaHabilitado = f_EstaCheckboxHabilitado(index);
+
+          // El input de monto está habilitado solo si el checkbox está seleccionado
+          const inputHabilitado = isSeleccionado;
+
+          html += `
+                <tr id="tr_anticipo_${idAnticipo}" class="${isSeleccionado ? 'table-success' : ''}">
+                    <td class="text-center">${index + 1}</td>
+                    <td class="text-center">
+                        <input type="checkbox" 
+                               id="chk_anticipo_${idAnticipo}" 
+                               ${isSeleccionado ? 'checked' : ''}
+                               ${estaHabilitado ? '' : 'disabled'}
+                               onchange="f_ToggleAnticipo(${idAnticipo}, ${saldoActual});">
+                    </td>
+                    <td>${factura}</td>
+                    <td class="text-end">${f_RedondearDecimales(saldoInicial, 2)}</td>
+                    <td class="text-end">${f_RedondearDecimales(saldoActual, 2)}</td>
+                    <td class="text-center">${fechaRegistro.split(' ')[0] || fechaRegistro}</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">S/</span>
+                            <input type="number" 
+                                   id="txt_monto_${idAnticipo}" 
+                                   class="form-control form-control-sm text-end" 
+                                   value="${f_RedondearDecimales(montoSeleccionado, 2)}"
+                                   min="0" 
+                                   max="${saldoActual}"
+                                   step="0.01"
+                                   ${inputHabilitado ? '' : 'disabled readonly'}
+                                   onchange="f_ActualizarMontoAnticipo(${idAnticipo}, this.value);">
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+      }
+
+      $('#tbl_anticipos_disponibles').html(html);
+      f_ActualizarTotalesModal();
+    }
+
+    // Nueva función para actualizar el monto de un anticipo manualmente
+    function f_ActualizarMontoAnticipo(idAnticipo, monto) {
+      const montoNum = parseFloat(monto) || 0;
+
+      // Buscar el anticipo en la lista de seleccionados
+      const index = anticiposSeleccionados.findIndex(a =>
+        a.id_anticipo == idAnticipo || a.Id == idAnticipo
+      );
+
+      if (index !== -1) {
+        // Actualizar el monto
+        anticiposSeleccionados[index].monto_a_usar = montoNum;
+        f_ActualizarTotalesModal();
+      }
+    }
+
+    // Asegurarse de que f_EstaCheckboxHabilitado existe y funciona correctamente
+    function f_EstaCheckboxHabilitado(index) {
+      // Lógica básica: el primero siempre habilitado, los demás si el anterior está seleccionado
+      if (index === 0) return true;
+
+      const anteriorAnticipo = anticiposDisponibles[index - 1];
+      const idAnteriorAnticipo = anteriorAnticipo.id_anticipo || anteriorAnticipo.Id;
+      const checkboxAnterior = $(`#chk_anticipo_${idAnteriorAnticipo}`);
+
+      return checkboxAnterior.length > 0 ? checkboxAnterior.is(':checked') : false;
+    }
+
+    function getMontoTotalValorizacionNumerico() {
+      let total = 0;
+      $('#tbody_lotes_valorizacion tr').each(function(i) {
+        if ($(this).attr('id') === 'tr_TotalValorizacion') return;
+        const text = $('#total_' + i).text();
+        total += parseFloat(text.replace(/,/g, '')) || 0;
+      });
+      return total;
+    }
+
+    function f_AsignarMontosAutomaticamente() {
+      const montoTotal = getMontoTotalValorizacionNumerico();
+      let montoRestante = montoTotal;
+
+      anticiposSeleccionados = [];
+
+      anticiposDisponibles.forEach((anticipo, index) => {
+        if (montoRestante <= 0) return;
+
+        const montoDisponible = anticipo.saldo_actual;
+        const montoAUsar = Math.min(montoDisponible, montoRestante);
+
+        if (montoAUsar > 0) {
+          anticiposSeleccionados.push({
+            id_anticipo: anticipo.id_anticipo,
+            factura: anticipo.factura,
+            saldo_actual: anticipo.saldo_actual,
+            monto_a_usar: montoAUsar
+          });
+
+          montoRestante -= montoAUsar;
+        }
+      });
+
+      // Actualizar UI
+      f_ActualizarMontosEnUI();
+      f_ActualizarTotalesModal();
+    }
+
+    // Reemplazar f_CalcularTotalSeleccionado() por:
+    function f_CalcularTotalSeleccionadoNumerico() {
+      return anticiposSeleccionados.reduce((total, anticipo) =>
+        total + (parseFloat(anticipo.monto_a_usar) || 0), 0);
+    }
+
+    // Función para seleccionar/deseleccionar un anticipo
+    function f_ToggleAnticipo(idAnticipo, saldoActual) {
+      const montoTotal = getMontoTotalValorizacionNumerico();
+      const totalSeleccionado = f_CalcularTotalSeleccionadoNumerico();
+      const restante = montoTotal - totalSeleccionado;
+
+      const checkbox = $(`#chk_anticipo_${idAnticipo}`);
+      const inputMonto = $(`#txt_monto_${idAnticipo}`);
+
+      if (checkbox.is(':checked')) {
+        // Calcular cuánto asignar
+        const montoAsignar = Math.min(saldoActual, restante);
+
+        anticiposSeleccionados.push({
+          id_anticipo: idAnticipo,
+          factura: anticiposDisponibles.find(a => a.id_anticipo == idAnticipo)?.factura || '',
+          saldo_actual: saldoActual,
+          monto_a_usar: montoAsignar
+        });
+
+        inputMonto.val(montoAsignar.toFixed(2));
+        inputMonto.prop('readonly', true); // ¡Importante! No editable manualmente
+      } else {
+        // Remover
+        anticiposSeleccionados = anticiposSeleccionados.filter(a => a.id_anticipo != idAnticipo);
+        inputMonto.val('0.00');
+        inputMonto.prop('readonly', true);
+      }
+
+      // Recalcular automáticamente todos los montos
+      f_ReasignarMontosAutomaticamente();
+      f_ActualizarHabilitacionCheckboxes();
+    }
+
+    function f_ReasignarMontosAutomaticamente() {
+      const montoTotal = getMontoTotalValorizacionNumerico();
+      let montoAsignado = 0;
+
+      // Ordenar anticipos seleccionados por fecha (más antiguo primero)
+      const seleccionadosOrdenados = [...anticiposSeleccionados].sort((a, b) => {
+        const aIndex = anticiposDisponibles.findIndex(x => x.id_anticipo == a.id_anticipo);
+        const bIndex = anticiposDisponibles.findIndex(x => x.id_anticipo == b.id_anticipo);
+        return aIndex - bIndex;
+      });
+
+      // Redistribuir montos
+      seleccionadosOrdenados.forEach((anticipo, idx) => {
+        const disponible = anticipo.saldo_actual;
+        const restantePorAsignar = montoTotal - montoAsignado;
+
+        const montoAsignar = Math.min(disponible, restantePorAsignar);
+
+        anticipo.monto_a_usar = montoAsignar;
+        montoAsignado += montoAsignar;
+
+        // Actualizar input
+        $(`#txt_monto_${anticipo.id_anticipo}`).val(montoAsignar.toFixed(2));
+      });
+
+      f_ActualizarTotalesModal();
+    }
+
+
+    // Nueva función para actualizar habilitación de checkboxes
+    function f_ActualizarHabilitacionCheckboxes() {
+      const totalSeleccionado = f_CalcularTotalSeleccionado();
+      const restanteValorizacion = getMontoTotalValorizacionNumerico() - totalSeleccionado;
+      // console.log("montoTotalValorizacion: ", montoTotalValorizacion);
+      // console.log("totalSeleccionado: ", totalSeleccionado);
+      // console.log("restanteValorizacion: ", restanteValorizacion);
+      // Si ya se cubrió el monto total, deshabilitar todos los no seleccionados
+      if (restanteValorizacion <= 0) {
+        anticiposDisponibles.forEach((anticipo, index) => {
+          const checkbox = $(`#chk_anticipo_${anticipo.id_anticipo}`);
+          if (!checkbox.is(':checked')) {
+            checkbox.prop('disabled', true);
+          }
+        });
+        return;
+      }
+
+      // Habilitar checkboxes en orden
+      anticiposDisponibles.forEach((anticipo, index) => {
+        const checkbox = $(`#chk_anticipo_${anticipo.id_anticipo}`);
+
+        if (index === 0) {
+          // El primero siempre habilitado
+          checkbox.prop('disabled', false);
+        } else {
+          // Los demás se habilitan si el anterior está seleccionado
+          const anteriorAnticipo = anticiposDisponibles[index - 1];
+          const checkboxAnterior = $(`#chk_anticipo_${anteriorAnticipo.id_anticipo}`);
+
+          if (checkboxAnterior.is(':checked')) {
+            checkbox.prop('disabled', false);
+          } else {
+            checkbox.prop('disabled', true);
+          }
+        }
+      });
+    }
+
+
+    // Función para calcular el total seleccionado
+    function f_CalcularTotalSeleccionado() {
+      return anticiposSeleccionados.reduce((total, anticipo) => total + parseFloat(anticipo.monto_a_usar || 0), 0);
+    }
+
+    // Función para actualizar los totales en el modal
+    function f_ActualizarTotalesModal() {
+      const totalSeleccionado = f_CalcularTotalSeleccionado();
+      let floatMontoTotal = parseFloat(getMontoTotalValorizacion().replace(",", ""));
+      const restante = floatMontoTotal - totalSeleccionado;
+
+      $('#lbl_total_seleccionado').text(f_RedondearDecimales(totalSeleccionado, 2));
+      $('#lbl_monto_restante').text(f_RedondearDecimales(restante, 2));
+
+      // Cambiar color según el restante
+      const lblRestante = $('#lbl_monto_restante');
+      if (restante <= 0) {
+        lblRestante.removeClass('text-warning').addClass('text-success');
+      } else {
+        lblRestante.removeClass('text-success').addClass('text-warning');
+      }
+    }
+
+    // Función para confirmar la selección de anticipos
+    function f_ConfirmarSeleccionAnticipos() {
+      const totalSeleccionado = f_CalcularTotalSeleccionado();
+
+      // Validar que se haya cubierto el monto total
+      if (Math.abs(totalSeleccionado - montoTotalValorizacion) > 0.01) {
+        const restante = montoTotalValorizacion - totalSeleccionado;
+        if (!confirm(`El total seleccionado (${f_RedondearDecimales(totalSeleccionado, 2)}) no cubre el monto total (${f_RedondearDecimales(montoTotalValorizacion, 2)}).\nFalta: ${f_RedondearDecimales(restante, 2)}\n\n¿Desea continuar de todas formas?`)) {
+          return;
+        }
+      }
+
+      // Validar que al menos un anticipo tenga monto > 0
+      const anticiposConMonto = anticiposSeleccionados.filter(a => a.monto_a_usar > 0);
+      if (anticiposConMonto.length === 0) {
+        alert('Debe asignar montos mayores a cero a los anticipos seleccionados.');
+        return;
+      }
+
+      // Actualizar el campo de anticipos seleccionados
+      let html = '';
+      if (anticiposSeleccionados.length > 0) {
+        anticiposSeleccionados.forEach(anticipo => {
+          if (anticipo.monto_a_usar > 0) {
+            html += `<div class="mb-1">
+                    <span class="badge bg-primary me-2">${anticipo.factura}</span>
+                    <span>Monto: $ ${f_RedondearDecimales(anticipo.monto_a_usar, 2)}</span>
+                </div>`;
+          }
+        });
+        html += `<div class="mt-2 fw-bold">Total: $ ${f_RedondearDecimales(totalSeleccionado, 2)}</div>`;
+      } else {
+        html = 'Ningún anticipo seleccionado';
+      }
+
+      $('#txt_anticipos_seleccionados').html(html);
+
+      // Cerrar el modal
+      f_cerrarModal('modal_seleccion_anticipos');
+    }
+
+    // Función para limpiar la selección de anticipos
+    function f_LimpiarSeleccionAnticipos() {
+      anticiposSeleccionados = [];
+      $('#txt_anticipos_seleccionados').html('Ningún anticipo seleccionado');
+      f_ActualizarTotalesModal();
+    }
+
     function f_LoadValorizaciones() {
       $('#tbl_valorizaciones').html('');
       $('#wt_valorizaciones').show();
@@ -886,7 +1414,7 @@ if (!isset($_SESSION["Id"])) {
             counts[key] = (counts[key] || 0) + 1;
           });
 
-          // 2) Paleta por grupo (ajústala si deseas)
+          // 2) Paleta por grupo
           const PALETTE = [{
               border: '#2563eb',
               bg: '#e8f0ff',
@@ -1184,7 +1712,45 @@ if (!isset($_SESSION["Id"])) {
 
         // Recarga detalle de lotes
         await f_CargarDetalleValorizacion_Editar(_id_valorizacion);
+
+        // Cargar anticipos si la valorización usa anticipos
+        // (Necesitarás un endpoint en el backend para esto)
+        $.post('apis/backend.php', {
+          accion: 'getAnticiposByValorizacion',
+          id_valorizacion: _id_valorizacion
+        }, function(data) {
+          if (data.estado == 1 && data.data.length > 0) {
+            // Marcar que usa anticipos
+            $('#chk_usar_anticipo').prop('checked', true);
+            f_ToggleTipoPago();
+
+            // Cargar anticipos seleccionados
+            anticiposSeleccionados = data.data.map(trans => ({
+              id_anticipo: trans.id_proveedor_anticipo,
+              factura: trans.factura,
+              saldo_actual: trans.saldo_actual,
+              monto_a_usar: trans.monto_retirado
+            }));
+
+            // Mostrar en el campo de anticipos seleccionados
+            let html = '';
+            anticiposSeleccionados.forEach(anticipo => {
+              html += `<div class="mb-1">
+                    <span class="badge bg-primary me-2">${anticipo.factura}</span>
+                    <span>Monto: S/ ${f_RedondearDecimales(anticipo.monto_a_usar, 2)}</span>
+                </div>`;
+            });
+            const total = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
+            html += `<div class="mt-2 fw-bold">Total: S/ ${f_RedondearDecimales(total, 2)}</div>`;
+            $('#txt_anticipos_seleccionados').html(html);
+          }
+        }, 'json');
+
       } else {
+        // Resetear anticipos para nueva valorización
+        anticiposSeleccionados = [];
+        $('#chk_usar_anticipo').prop('checked', false);
+        f_ToggleTipoPago();
         $("#hd_id_valorizacion").val(0);
         $("#txt_nro_oficio").val('');
         $("#cmb_proveedor").val('').trigger('change');
@@ -1212,25 +1778,6 @@ if (!isset($_SESSION["Id"])) {
         }
       }, "json");
     }
-
-    // function f_CargarConcesionesPorProveedor() {
-    //   let id_proveedor = $("#cmb_proveedor").val();
-    //   $("#cmb_concesion").html('<option value="">[Seleccione concesión]</option>');
-    //   $("#txt_codigo_unico").val('');
-    //   $("#txt_procedencia").val('');
-
-    //   if (id_proveedor == '') return;
-
-    //   $.post("apis/backend.php", { accion: "get_ValorizacionCompra_ListaConcesiones", id_proveedor: id_proveedor }, function(data) {
-    //     if (data.estado == 1) {
-    //       let _html = '<option value="">[Seleccione concesión]</option>';
-    //       $.each(data.registros, function(i, v) {
-    //         _html += `<option value="${v.Id}" data-codigo="${v.codigo_unico}" data-procedencia="${v.procedencia}">${v.descripcion}</option>`;
-    //       });
-    //       $("#cmb_concesion").html(_html);
-    //     }
-    //   }, "json");
-    // }
 
     async function f_CargarConcesionesPorProveedor(_id_concesion) {
       return new Promise((resolve) => {
@@ -1296,14 +1843,16 @@ if (!isset($_SESSION["Id"])) {
           return;
         }
 
-        if (id_cuentabancaria.length == 0) {
-          alert("Antes de agregar un Lote debe seleccionar la Cuenta Bancaria del Proveedor.");
-          return;
-        }
+        if (!$('#chk_usar_anticipo').is(':checked')) {
+          if (id_cuentabancaria.length == 0) {
+            alert("Antes de agregar un Lote debe seleccionar la Cuenta Bancaria del Proveedor.");
+            return;
+          }
 
-        if (id_cuentadetraccion.length == 0) {
-          alert("Antes de agregar un Lote debe seleccionar la Cuenta de Detracción del Proveedor.");
-          return;
+          if (id_cuentadetraccion.length == 0) {
+            alert("Antes de agregar un Lote debe seleccionar la Cuenta de Detracción del Proveedor.");
+            return;
+          }
         }
       }
 
@@ -1984,6 +2533,32 @@ if (!isset($_SESSION["Id"])) {
   <script type="text/javascript">
     let panelExpandido = false;
 
+    function getMontoTotalValorizacion() {
+      let totalFilas = $("#tbody_lotes_valorizacion tr").length;
+      let total = '';
+      let total_valorizacion = 0;
+      let v = 0;
+
+      // console.log("TotalFilas: ", totalFilas);
+      while (v < totalFilas) {
+        // Obteniendo el Total de la Valorización
+        const valorcito = $("#total_" + v).html();
+        // console.log("Valorcito: ", valorcito);
+        // console.log("V: ", v);
+        if (valorcito == undefined) {
+          break;
+        }
+        total = $("#total_" + v).html().replace(/,/g, '');
+
+        total_valorizacion += parseFloat(total, 2);
+
+        v++;
+      }
+
+      return f_RedondearDecimales(total_valorizacion, 2);
+    }
+
+
     function f_TogglePanel() {
       if (!panelExpandido) {
         $("#div_valorizacion_lista").hide();
@@ -2252,55 +2827,58 @@ if (!isset($_SESSION["Id"])) {
       let id_cuentadetraccion = $('#valorizacion_cuentadetraccionproveedor').val();
       let info_cuentabancaria = $('#valorizacion_cuentaproveedor option:selected').text();
       let info_cuentadetraccion = $('#valorizacion_cuentadetraccionproveedor option:selected').text();
+      let usa_anticipo = $('#chk_usar_anticipo').is(':checked');
+      let monto_total_valorizacion = getMontoTotalValorizacionNumerico();
 
-      // Validación general
-      if (id_proveedor == null) {
+      // Validación según tipo de pago
+      if (usa_anticipo) {
+        // Validaciones para anticipos
+        if (anticiposSeleccionados.length === 0) {
+          alert('Debe seleccionar al menos un anticipo.');
+          return;
+        }
+
+        // Verificar que la suma de anticipos sea suficiente
+        const totalAnticipos = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
+        if (totalAnticipos <= 0) {
+          alert('Debe asignar montos mayores a cero a los anticipos seleccionados.');
+          return;
+        }
+
+        // Las cuentas bancarias no son obligatorias cuando se usan anticipos
+        info_cuentabancaria = '';
+        info_cuentadetraccion = '';
+      } else {
+        // Validaciones para cuentas bancarias
+        if (id_cuentabancaria == null || id_cuentabancaria.length == 0) {
+          alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
+          return;
+        }
+
+        if (id_cuentadetraccion == null || id_cuentadetraccion.length == 0) {
+          alert('Debe seleccionar la Cuenta de Detracción del Proveedor.');
+          return;
+        }
+      }
+
+      // Validaciones comunes
+      if (id_proveedor == null || id_proveedor.length == 0) {
         alert('Debe seleccionar el Proveedor.');
-
-        return;
-      }
-      if (id_proveedor.length == 0) {
-        alert('Debe seleccionar el Proveedor.');
-
         return;
       }
 
-      if (id_concesion == null) {
+      if (id_concesion == null || id_concesion.length == 0) {
         alert('Debe seleccionar la Concesión.');
-
-        return;
-      }
-      if (id_concesion.length == 0) {
-        alert('Debe seleccionar la Concesión.');
-
-        return;
-      }
-
-      if (id_cuentabancaria == null) {
-        alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
-
-        return;
-      }
-      if (id_cuentabancaria.length == 0) {
-        alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
-
-        return;
-      }
-
-      if (id_cuentadetraccion == null) {
-        alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
-
-        return;
-      }
-      if (id_cuentadetraccion.length == 0) {
-        alert('Debe seleccionar la Cuenta de Detracción del Proveedor.');
-
         return;
       }
 
       if ($('#tbody_lotes_valorizacion tr').length - 1 == 0) {
         alert('Debe agregar al menos un lote.');
+        return;
+      }
 
+      if (monto_total_valorizacion <= 0) {
+        alert('El monto total de la valorización debe ser mayor a cero.');
         return;
       }
 
@@ -2342,7 +2920,8 @@ if (!isset($_SESSION["Id"])) {
         });
       });
 
-      $.post('apis/backend.php', {
+      // Preparar datos para enviar al backend
+      const datosEnvio = {
         accion: 'grabar_ValorizacionCompra',
         id_valorizacion,
         id_proveedor,
@@ -2350,14 +2929,28 @@ if (!isset($_SESSION["Id"])) {
         concesion: txt_concesion,
         codigo_unico: txt_codigo_unico,
         procedencia: txt_procedencia,
-        id_cuentabancaria,
-        info_cuentabancaria,
-        id_cuentadetraccion,
-        info_cuentadetraccion,
+        id_cuentabancaria: usa_anticipo ? null : id_cuentabancaria,
+        info_cuentabancaria: usa_anticipo ? '' : info_cuentabancaria,
+        id_cuentadetraccion: usa_anticipo ? null : id_cuentadetraccion,
+        info_cuentadetraccion: usa_anticipo ? '' : info_cuentadetraccion,
         modo_grabar: modo_grabar,
-        arr_detalle: JSON.stringify(detalle)
-      }, function(data) {
+        arr_detalle: JSON.stringify(detalle),
+        usa_anticipo: usa_anticipo,
+        monto_total_valorizacion: monto_total_valorizacion
+      };
+
+      // Agregar anticipos seleccionados si corresponde
+      if (usa_anticipo) {
+        datosEnvio.anticipos_seleccionados = JSON.stringify(anticiposSeleccionados);
+      }
+
+      $.post('apis/backend.php', datosEnvio, function(data) {
         if (data.estado == 1) {
+          // Limpiar selección de anticipos
+          anticiposSeleccionados = [];
+          $('#chk_usar_anticipo').prop('checked', false);
+          f_ToggleTipoPago();
+
           if (modo_grabar == 'N') {
             f_LoadValorizaciones();
           } else {
@@ -2375,7 +2968,7 @@ if (!isset($_SESSION["Id"])) {
 
           f_cerrarModal('modal_valorizacion');
         } else {
-          alert('Error al grabar: ' + data.mensaje);
+          alert('Error al grabar: ' + (data.msg || 'Error desconocido'));
         }
 
         f_LoadingGrabarValorizacion(0);
@@ -2425,9 +3018,14 @@ if (!isset($_SESSION["Id"])) {
           modo: "X",
           id_registro: _id
         }, function(data) {
+          console.log("Data: ", data);
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
+            if (data.msg) {
+              alert(data.msg);
+              return;
+            }
             alert("Ocurrió un error al momento de eliminar el Estándar.");
           }
         }, "json");
