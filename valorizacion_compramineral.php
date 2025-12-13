@@ -1874,8 +1874,8 @@ if (!isset($_SESSION["Id"])) {
 
       // Setea objetos
       $("#tbody_lotes_valorizacion").html('');
-      $("#valorizacion_cuentaproveedor").html('');
-      $("#valorizacion_cuentadetraccionproveedor").html('');
+      // $("#valorizacion_cuentaproveedor").html('');
+      // $("#valorizacion_cuentadetraccionproveedor").html('');
       $("#cmb_proveedor").prop('disabled', false);
       $("#cmb_concesion").prop('disabled', false);
 
@@ -3100,68 +3100,79 @@ if (!isset($_SESSION["Id"])) {
       let info_cuentadetraccion = $('#valorizacion_cuentadetraccionproveedor option:selected').text();
       let monto_total_valorizacion = getMontoTotalValorizacionNumerico();
 
-      // Obtener tipo de pago seleccionado
-      const tipoPago = $('input[name="tipo_pago"]:checked').val();
-      console.log("tipoPago", tipoPago);
-      const usa_anticipo = (tipoPago === 'anticipo' || tipoPago === 'mixto');
-      console.log("tipoPago", tipoPago);
-      const es_pago_mixto = (tipoPago === 'mixto');
-      console.log("es_pago_mixto", es_pago_mixto);
+      // ===== DETECCIÓN AUTOMÁTICA DEL TIPO DE PAGO =====
+      // Basado en datos reales, no en radio buttons
+      const tiene_anticipos = anticiposSeleccionados && anticiposSeleccionados.length > 0;
+      const tiene_cuenta_bancaria = id_cuentabancaria && id_cuentabancaria.length > 0;
 
-      // Obtener monto de transferencia para pago mixto
-      let monto_transferencia = 0;
-      if (es_pago_mixto) {
-        monto_transferencia = parseFloat($('#txt_monto_transferencia').val()) || 0;
+      let total_anticipos = 0;
+      if (tiene_anticipos) {
+        total_anticipos = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
       }
 
-      // Validaciones según tipo de pago
-      if (tipoPago === 'transferencia' || tipoPago === 'mixto') {
-        // Validaciones para cuentas bancarias
-        if (id_cuentabancaria == null || id_cuentabancaria.length == 0 || id_cuentabancaria == '') {
+      // Determinar tipo de pago automáticamente
+      let tipo_pago_detectado = '';
+      let usa_anticipo = false;
+      let es_pago_mixto = false;
+      let monto_transferencia = 0;
+
+      if (tiene_anticipos && total_anticipos >= monto_total_valorizacion) {
+        // Solo anticipos (cubren el total o más)
+        tipo_pago_detectado = 'anticipo';
+        usa_anticipo = true;
+        es_pago_mixto = false;
+        monto_transferencia = 0;
+      } else if (tiene_anticipos && total_anticipos > 0 && tiene_cuenta_bancaria) {
+        // Pago mixto (anticipos parciales + transferencia)
+        tipo_pago_detectado = 'mixto';
+        usa_anticipo = true;
+        es_pago_mixto = true;
+        monto_transferencia = monto_total_valorizacion - total_anticipos;
+      } else if (tiene_cuenta_bancaria) {
+        // Solo transferencia bancaria
+        tipo_pago_detectado = 'transferencia';
+        usa_anticipo = false;
+        es_pago_mixto = false;
+        monto_transferencia = monto_total_valorizacion;
+      } else {
+        // Sin método de pago válido
+        tipo_pago_detectado = 'ninguno';
+      }
+
+      // Validaciones según tipo de pago detectado
+      if (tipo_pago_detectado === 'ninguno') {
+        alert('Debe seleccionar al menos un método de pago: anticipos y/o cuenta bancaria.');
+        return;
+      }
+
+      if (tipo_pago_detectado === 'anticipo') {
+        // Solo anticipos - deben cubrir el total
+        if (Math.abs(total_anticipos - monto_total_valorizacion) > 0.01) {
+          const diferencia = monto_total_valorizacion - total_anticipos;
+          alert(`Los anticipos seleccionados (${f_RedondearDecimales(total_anticipos, 2)}) no cubren el monto total (${f_RedondearDecimales(monto_total_valorizacion, 2)}).\n\nFalta: ${f_RedondearDecimales(diferencia, 2)}\n\nDebe agregar más anticipos o seleccionar una cuenta bancaria para pago mixto.`);
+          return;
+        }
+      }
+
+      if (tipo_pago_detectado === 'transferencia' || tipo_pago_detectado === 'mixto') {
+        // Validar cuentas bancarias
+        if (!id_cuentabancaria || id_cuentabancaria.length == 0) {
           alert('Debe seleccionar la Cuenta Bancaria del Proveedor.');
           return;
         }
 
-        if (id_cuentadetraccion == null || id_cuentadetraccion.length == 0 || id_cuentadetraccion == '') {
+        if (!id_cuentadetraccion || id_cuentadetraccion.length == 0) {
           alert('Debe seleccionar la Cuenta de Detracción del Proveedor.');
           return;
         }
       }
 
-      if (usa_anticipo) {
-        // Validaciones para anticipos
-        if (anticiposSeleccionados.length === 0) {
-          alert('Debe seleccionar al menos un anticipo.');
+      if (tipo_pago_detectado === 'mixto') {
+        // Validar que la suma sea correcta
+        const suma_total = total_anticipos + monto_transferencia;
+        if (Math.abs(suma_total - monto_total_valorizacion) > 0.01) {
+          alert(`Error en cálculo de pago mixto:\n\nAnticipos: ${f_RedondearDecimales(total_anticipos, 2)}\nTransferencia: ${f_RedondearDecimales(monto_transferencia, 2)}\nTotal: ${f_RedondearDecimales(suma_total, 2)}\n\nDebe ser: ${f_RedondearDecimales(monto_total_valorizacion, 2)}`);
           return;
-        }
-
-        // Verificar que la suma de anticipos sea suficiente
-        const totalAnticipos = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
-        if (totalAnticipos <= 0) {
-          alert('Debe asignar montos mayores a cero a los anticipos seleccionados.');
-          return;
-        }
-
-        // Para pago mixto, validar que la suma sea correcta
-        if (es_pago_mixto) {
-          const sumaTotal = totalAnticipos + monto_transferencia;
-
-          if (Math.abs(sumaTotal - monto_total_valorizacion) > 0.01) {
-            alert(`La suma de anticipos (${f_RedondearDecimales(totalAnticipos, 2)}) y transferencia (${f_RedondearDecimales(monto_transferencia, 2)}) no coincide con el total de la valorización (${f_RedondearDecimales(monto_total_valorizacion, 2)}).`);
-            return;
-          }
-        }
-        // Para solo anticipos, deben cubrir el total
-        else if (Math.abs(totalAnticipos - monto_total_valorizacion) > 0.01) {
-          const restante = monto_total_valorizacion - totalAnticipos;
-          alert(`Los anticipos seleccionados (${f_RedondearDecimales(totalAnticipos, 2)}) no cubren el monto total (${f_RedondearDecimales(monto_total_valorizacion, 2)}).\n\nFalta: ${f_RedondearDecimales(restante, 2)}\n\n¿Desea cambiar a pago mixto?`);
-          return;
-        }
-
-        // Si es solo anticipos, las cuentas bancarias no son obligatorias
-        if (!es_pago_mixto) {
-          info_cuentabancaria = '';
-          info_cuentadetraccion = '';
         }
       }
 
@@ -3242,13 +3253,39 @@ if (!isset($_SESSION["Id"])) {
         usa_anticipo: usa_anticipo,
         es_pago_mixto: es_pago_mixto,
         monto_total_valorizacion: monto_total_valorizacion,
-        monto_transferencia: monto_transferencia
+        monto_transferencia: monto_transferencia,
+        // Siempre enviar anticipos (aunque sea array vacío)
+        anticipos_seleccionados: JSON.stringify(anticiposSeleccionados || [])
       };
 
-      // Agregar anticipos seleccionados si corresponde
-      if (usa_anticipo) {
-        datosEnvio.anticipos_seleccionados = JSON.stringify(anticiposSeleccionados);
+      // ===== LOGGING PARA DEBUG =====
+      console.log('╔═══════════════════════════════════════════════════════════════');
+      console.log('║ DATOS DE ENVÍO - grabar_ValorizacionCompra');
+      console.log('╠═══════════════════════════════════════════════════════════════');
+      console.log('║ Tipo de Pago DETECTADO:', tipo_pago_detectado);
+      console.log('║ usa_anticipo:', usa_anticipo);
+      console.log('║ es_pago_mixto:', es_pago_mixto);
+      console.log('║ Monto Total Valorización:', monto_total_valorizacion);
+      console.log('║ Monto Transferencia:', monto_transferencia);
+      console.log('╠═══════════════════════════════════════════════════════════════');
+      console.log('║ ANTICIPOS SELECCIONADOS:');
+      console.log('║ Cantidad:', anticiposSeleccionados ? anticiposSeleccionados.length : 0);
+      if (anticiposSeleccionados && anticiposSeleccionados.length > 0) {
+        anticiposSeleccionados.forEach((ant, idx) => {
+          console.log(`║ [${idx + 1}] ID: ${ant.id_anticipo}, Factura: ${ant.factura}, Monto a usar: ${ant.monto_a_usar}`);
+        });
+        const totalAnticipos = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
+        console.log('║ Total de Anticipos:', totalAnticipos);
+      } else {
+        console.log('║ (Ninguno seleccionado)');
       }
+      console.log('╠═══════════════════════════════════════════════════════════════');
+      console.log('║ Cuenta Bancaria ID:', id_cuentabancaria);
+      console.log('║ Cuenta Detracción ID:', id_cuentadetraccion);
+      console.log('╠═══════════════════════════════════════════════════════════════');
+      console.log('║ Datos completos enviados:', datosEnvio);
+      console.log('╚═══════════════════════════════════════════════════════════════');
+      // ===== FIN LOGGING =====
 
       $.post(url_api, datosEnvio, function(data) {
         if (data.estado == 1) {

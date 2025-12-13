@@ -503,7 +503,7 @@
 
 	// f_CheckClientesCredito();
 	// f_CheckVisitas();
-	f_CheckModoAuditoria();
+	// f_CheckModoAuditoria();
 	f_DetectarDispositivo();
 </script>
 

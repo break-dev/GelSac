@@ -638,36 +638,44 @@ switch ($_POST["accion"]) {
         mysqli_begin_transaction($enlace);
 
         try {
-            // DETERMINAR AUTOMÁTICAMENTE EL TIPO DE PAGO
-            // Igual que en frontend: según anticipos y cuenta bancaria
+            // ===== DETECCIÓN AUTOMÁTICA DEL TIPO DE PAGO =====
+            // Procesar basándose en los datos recibidos, no en flags
             $total_anticipos = 0;
             if (!empty($anticipos_seleccionados)) {
                 foreach ($anticipos_seleccionados as $anticipo) {
-                    $total_anticipos += floatval($anticipo['monto_a_usar']);
+                    $total_anticipos += floatval($anticipo['monto_a_usar'] ?? 0);
                 }
             }
 
-            // Detección automática del tipo de pago
-            if ($total_anticipos == 0) {
-                // Solo transferencia bancaria
-                $usa_anticipo = false;
-                $es_pago_mixto = false;
-                $id_mediopago = 2;
-            } elseif ($total_anticipos >= $monto_total_valorizacion && $total_anticipos > 0) {
-                // Solo anticipos (cubren el total)
+            $tiene_anticipos = $total_anticipos > 0;
+            $tiene_cuenta_bancaria = !empty($id_cuentabancaria);
+
+            // Detectar tipo de pago según datos reales
+            if ($tiene_anticipos && $total_anticipos >= $monto_total_valorizacion) {
+                // Solo anticipos
                 $usa_anticipo = true;
                 $es_pago_mixto = false;
                 $id_mediopago = 10;
-            } else {
-                // Pago mixto (anticipos parciales)
+                error_log("Tipo de pago detectado: SOLO ANTICIPOS");
+            } elseif ($tiene_anticipos && $total_anticipos > 0 && $tiene_cuenta_bancaria) {
+                // Pago mixto
                 $usa_anticipo = true;
                 $es_pago_mixto = true;
                 $id_mediopago = 11;
+                error_log("Tipo de pago detectado: MIXTO (Anticipos + Transferencia)");
+            } elseif ($tiene_cuenta_bancaria) {
+                // Solo transferencia
+                $usa_anticipo = false;
+                $es_pago_mixto = false;
+                $id_mediopago = 2;
+                error_log("Tipo de pago detectado: SOLO TRANSFERENCIA");
+            } else {
+                throw new Exception("No se especificó ningún método de pago válido.");
             }
 
-            // VALIDACIONES SEGÚN TIPO DE PAGO DETECTADO
+            // ===== VALIDACIONES SEGÚN TIPO DE PAGO =====
             if ($usa_anticipo && !$es_pago_mixto) {
-                // 1. SOLO ANTICIPOS - Deben cubrir el total
+                // Solo anticipos - validar que cubran el total
                 if (empty($anticipos_seleccionados)) {
                     throw new Exception("Debe seleccionar al menos un anticipo.");
                 }
@@ -676,26 +684,35 @@ switch ($_POST["accion"]) {
                     throw new Exception("Los anticipos seleccionados ($$total_anticipos) no cubren el monto total ($$monto_total_valorizacion).");
                 }
             } elseif ($es_pago_mixto) {
-                // 2. PAGO MIXTO - Anticipos + Transferencia
+                // Pago mixto - validar anticipos + cuenta bancaria
                 if (empty($anticipos_seleccionados)) {
-                    throw new Exception("Para pago mixto debe seleccionar anticipos.");
+                    throw new Exception("Debe seleccionar al menos un anticipo.");
                 }
 
-                if (empty($id_cuentabancaria)) {
-                    throw new Exception("Para pago mixto debe seleccionar una cuenta bancaria.");
-                }
-
-                // La suma debe coincidir con el total
-                if (abs(($total_anticipos + $monto_transferencia) - $monto_total_valorizacion) > 0.01) {
-                    throw new Exception("En pago mixto, la suma de anticipos ($$total_anticipos) y transferencia ($$monto_transferencia) debe ser igual al total ($$monto_total_valorizacion).");
-                }
-            } else {
-                // 3. SOLO TRANSFERENCIA BANCARIA
                 if (empty($id_cuentabancaria)) {
                     throw new Exception("Debe seleccionar una cuenta bancaria.");
                 }
 
-                // El monto de transferencia debe ser el total
+                if (empty($id_cuentadetraccion)) {
+                    throw new Exception("Debe seleccionar una cuenta de detracción.");
+                }
+
+                // Validar que la suma sea correcta
+                $suma_esperada = $total_anticipos + $monto_transferencia;
+                if (abs($suma_esperada - $monto_total_valorizacion) > 0.01) {
+                    throw new Exception("La suma de anticipos ($$total_anticipos) y transferencia ($$monto_transferencia) debe ser igual al total ($$monto_total_valorizacion).");
+                }
+            } else {
+                // Solo transferencia - validar cuenta bancaria
+                if (empty($id_cuentabancaria)) {
+                    throw new Exception("Debe seleccionar una cuenta bancaria.");
+                }
+
+                if (empty($id_cuentadetraccion)) {
+                    throw new Exception("Debe seleccionar una cuenta de detracción.");
+                }
+
+                // Asegurar que monto de transferencia sea el total
                 if ($monto_transferencia == 0) {
                     $monto_transferencia = $monto_total_valorizacion;
                 }
@@ -836,9 +853,35 @@ switch ($_POST["accion"]) {
 
             // Registrar transacciones de anticipos si se usan
             if ($usa_anticipo && !empty($anticipos_seleccionados)) {
-                foreach ($anticipos_seleccionados as $anticipo) {
+                error_log("Procesando " . count($anticipos_seleccionados) . " anticipos...");
+
+                foreach ($anticipos_seleccionados as $idx => $anticipo) {
+                    // Validar que existan los campos necesarios
+                    if (!isset($anticipo['id_anticipo']) || empty($anticipo['id_anticipo'])) {
+                        error_log("ERROR: Anticipo[$idx] no tiene id_anticipo. Datos: " . print_r($anticipo, true));
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": Falta el ID del anticipo.");
+                    }
+
+                    if (!isset($anticipo['monto_a_usar'])) {
+                        error_log("ERROR: Anticipo[$idx] no tiene monto_a_usar. Datos: " . print_r($anticipo, true));
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": Falta el monto a usar.");
+                    }
+
                     $id_anticipo = intval($anticipo['id_anticipo']);
                     $monto_a_usar = floatval($anticipo['monto_a_usar']);
+
+                    // Validar que los valores sean válidos
+                    if ($id_anticipo <= 0) {
+                        error_log("ERROR: Anticipo[$idx] tiene id_anticipo inválido: $id_anticipo");
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": ID de anticipo inválido.");
+                    }
+
+                    if ($monto_a_usar <= 0) {
+                        error_log("ERROR: Anticipo[$idx] tiene monto_a_usar inválido: $monto_a_usar");
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": Monto a usar debe ser mayor a cero.");
+                    }
+
+                    error_log("Insertando transacción: id_anticipo=$id_anticipo, monto=$monto_a_usar");
 
                     $q_insert_transaccion = "INSERT INTO proveedor_anticipo_transaccion (
                         id_proveedor_anticipo, id_valorizacion_compramineral, monto_retirado, 
@@ -851,8 +894,18 @@ switch ($_POST["accion"]) {
                         '$g_fecha'
                     )";
 
-                    mysqli_query($enlace, $q_insert_transaccion);
+                    if (!mysqli_query($enlace, $q_insert_transaccion)) {
+                        $mysql_error = mysqli_error($enlace);
+                        error_log("ERROR SQL al insertar transacción de anticipo: $mysql_error");
+                        throw new Exception("Error al registrar transacción de anticipo #" . ($idx + 1) . ": $mysql_error");
+                    }
+
+                    error_log("Transacción de anticipo insertada exitosamente (ID: $id_anticipo)");
                 }
+
+                error_log("Todas las transacciones de anticipos se procesaron correctamente.");
+            } elseif ($usa_anticipo && empty($anticipos_seleccionados)) {
+                error_log("WARNING: usa_anticipo=true pero anticipos_seleccionados está vacío");
             }
 
             // Generando Correlativo de Valorización
@@ -939,7 +992,6 @@ switch ($_POST["accion"]) {
                 throw new Exception("No se puede eliminar una valorización aprobada. Solo se puede inactivar.");
             }
 
-            // Si usa anticipos y está aprobada, hay que revertir las transacciones
             // Si usa anticipos y está aprobada, hay que revertir las transacciones
             if ($usa_anticipo && $is_aprobado == 1) {
                 // Obtener transacciones confirmadas para revertir
