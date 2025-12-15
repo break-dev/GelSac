@@ -8,8 +8,8 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";

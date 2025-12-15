@@ -9,8 +9,8 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -359,6 +359,9 @@ switch ($_POST["accion"]) {
             FROM proveedor_anticipo_transaccion trans
             INNER JOIN proveedor_anticipo ant ON ant.id = trans.id_proveedor_anticipo
             WHERE trans.id_valorizacion_compramineral = '$id_valorizacion'
+            AND(
+                trans.estado = 'A' OR trans.estado = 'B'
+            )
             ORDER BY trans.created_at ASC;
         ";
 
@@ -532,7 +535,7 @@ switch ($_POST["accion"]) {
 	  									FROM valorizacion_compramineral_detalle CMD
 		           						 INNER JOIN valorizacion_compramineral CM ON CMD.id_valorizacion = CM.Id
 		           			 WHERE CMD.cod_lote = '$cod_lote'
-		           				 AND CM.estado <> 'X'";
+		           				 AND CM.estado <> 'X' AND CM.estado <> 'R'";
 
         if ($res_datos = mysqli_query($enlace, $q_datos)) {
             if (mysqli_num_rows($res_datos) > 0) {
@@ -1553,7 +1556,67 @@ switch ($_POST["accion"]) {
         echo json_encode(["estado" => $estado, "msg" => $msg]);
         break;
 
+    case "getTipoPagoValorizacion":
+        $estado = 0;
+        $tipo_pago = "";
+        $mensaje = "Error desconocido.";
 
+        // Sanitizar el parámetro 'id'
+        if (!isset($_POST["id_valorizacion"])) {
+            $mensaje = "Parámetro 'id_valorizacion' no recibido.";
+        } else {
+            $id_valorizacion = mysqli_real_escape_string($enlace, $_POST["id_valorizacion"]);
+
+            $q_tipo_pago = "
+                SELECT
+                    vc.usa_anticipo,
+                    vc.id_cuentabancaria
+                FROM
+                    valorizacion_compramineral vc
+                WHERE
+                    vc.id = $id_valorizacion;
+            ";
+
+            $res_tipo_pago = mysqli_query($enlace, $q_tipo_pago);
+
+            if ($res_tipo_pago && mysqli_num_rows($res_tipo_pago) > 0) {
+                $row = mysqli_fetch_assoc($res_tipo_pago);
+
+                $usa_anticipo = (int)$row['usa_anticipo'];
+                $id_cuentabancaria = $row['id_cuentabancaria'];
+                $usa_cuenta_bancaria = !empty($id_cuentabancaria);
+
+                if ($usa_anticipo === 1 && $usa_cuenta_bancaria) {
+                    $tipo_pago = "mixto";
+                } elseif ($usa_anticipo === 1 && !$usa_cuenta_bancaria) {
+                    $tipo_pago = "anticipo";
+                } elseif ($usa_anticipo === 0 && $usa_cuenta_bancaria) {
+                    $tipo_pago = "banco";
+                } else {
+                    // no habra posibilidad de que usa_anticipo y id_cuentabancaria sean nulos, pero por si acaso xd
+                    $tipo_pago = "pago no definido/invalido";
+                    $mensaje = "Combinación de pago inválida (No anticipo y No cuenta bancaria).";
+                    goto end_response;
+                }
+
+                $estado = 1;
+                $mensaje = "Tipo de pago obtenido correctamente.";
+            } else if ($res_tipo_pago && mysqli_num_rows($res_tipo_pago) === 0) {
+                $mensaje = "No se encontró registro para el ID proporcionado.";
+            } else {
+                $mensaje = "Error en la consulta a la base de datos: " . mysqli_error($enlace);
+            }
+        }
+
+        end_response:
+
+        echo json_encode([
+            "estado" => $estado,
+            "msg" => $mensaje,
+            "tipo_pago" => $tipo_pago,
+            "id_valorizacion" => $id_valorizacion ?? null
+        ]);
+        break;
 
     default:
         # code...

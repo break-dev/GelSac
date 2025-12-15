@@ -421,7 +421,7 @@ if (!isset($_SESSION["Id"])) {
                           </div>
 
                           <div id="div_monto_transferencia" class="row mb-3" style="display: none;">
-                            <div class="col-md-12">
+                            <div class="col-md-12" style="margin-top: 12px;">
                               <label class="form-label" style="font-size: 14px;">Monto a Transferir:</label>
                               <div class="input-group">
                                 <span class="input-group-text">$</span>
@@ -445,24 +445,21 @@ if (!isset($_SESSION["Id"])) {
                               Ningún anticipo seleccionado
                             </div>
 
-                            <div class="mt-4 d-flex justify-content-between">
+                            <div class="mt-4 d-flex justify-content-between" style="margin-bottom: 12px;">
                               <button type="button" class="btn btn-sm btn-outline-primary" onclick="f_AbrirModalSeleccionAnticipos();" style="font-size: 13px;">
                                 <i class="bi bi-wallet2"></i> Seleccionar anticipos
                               </button>
 
                               <div class="d-flex align-items-center">
-                                <span class="me-2" style="font-size: 13px;">
-                                  Total anticipos: <strong id="lbl_total_anticipos_seleccionados" class="text-success">S/ 0.00</strong>
-                                </span>
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="f_LimpiarSeleccionAnticipos();" style="font-size: 13px;">
                                   <i class="bi bi-trash"></i> Limpiar
                                 </button>
                               </div>
                             </div>
 
-                            <div id="div_saldo_restante" class="alert alert-warning mt-2" style="font-size: 12px; display: none;">
+                            <div id="div_saldo_restante" class="alert alert-warning mt-2" style="font-size: 12px; display: none; margin-bottom: 4px;">
                               <i class="bi bi-exclamation-triangle me-1"></i>
-                              <strong>Saldo restante:</strong> <span id="lbl_saldo_restante">S/ 0.00</span> - Este monto se cubrirá con transferencia bancaria.
+                              <strong>Saldo restante:</strong> <span id="lbl_saldo_restante">$ 0.00</span> - Este monto se cubrirá con transferencia bancaria.
                             </div>
                           </div>
                         </div>
@@ -933,16 +930,6 @@ if (!isset($_SESSION["Id"])) {
                   </div>
                 </div>
               </div>
-
-              <div class="row">
-                <div class="col-md-12">
-                  <div class="alert alert-warning" style="font-size: 12px;">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    <strong>Nota:</strong> Solo se habilitan los anticipos necesarios para cubrir el monto total.
-                    Debe seleccionarlos en orden (del más antiguo al más nuevo).
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div class="modal-footer">
@@ -1017,7 +1004,6 @@ if (!isset($_SESSION["Id"])) {
       const totalValorizacion = getMontoTotalValorizacionNumerico();
       const totalAnticipos = f_CalcularTotalSeleccionadoNumerico();
       const tieneLotes = $('#tbody_lotes_valorizacion tr').not('#tr_TotalValorizacion').length > 0;
-      const tieneCuentaBancaria = $('#valorizacion_cuentaproveedor').val() !== '';
 
       // Deshabilitar botón de anticipos si no hay lotes
       const btnAnticipos = $('button[onclick*="f_AbrirModalSeleccionAnticipos"]');
@@ -1038,7 +1024,7 @@ if (!isset($_SESSION["Id"])) {
       let iconoTipo = 'bank';
       let habilitarBanco = true;
 
-      if (totalAnticipos === 0) {
+      if (totalAnticipos == 0) {
         // Solo transferencia bancaria
         tipoPago = 'transferencia';
         textoTipoPago = 'Transferencia Bancaria';
@@ -1073,8 +1059,17 @@ if (!isset($_SESSION["Id"])) {
       $('#div_gestion_anticipos').show();
 
       // Habilitar/Deshabilitar cuentas bancarias
-      $('#valorizacion_cuentaproveedor').prop('disabled', !habilitarBanco);
-      $('#valorizacion_cuentadetraccionproveedor').prop('disabled', !habilitarBanco);
+      if (habilitarBanco) {
+        console.log('Habilitando cuentas bancarias');
+        $('#valorizacion_cuentaproveedor').prop('disabled', false);
+        $('#valorizacion_cuentadetraccionproveedor').prop('disabled', false);
+      } else {
+        console.log('Deshabilitando cuentas bancarias');
+        $("#valorizacion_cuentaproveedor").val('[Seleccione una Cuenta Bancaria]');
+        $("#valorizacion_cuentadetraccionproveedor").val('[Seleccione una Cuenta de Detracción]');
+        $('#valorizacion_cuentaproveedor').prop('disabled', true);
+        $('#valorizacion_cuentadetraccionproveedor').prop('disabled', true);
+      }
 
       // Actualizar información de saldo restante y monto de transferencia
       if (tipoPago === 'mixto') {
@@ -1268,12 +1263,12 @@ if (!isset($_SESSION["Id"])) {
                                onchange="f_ToggleAnticipo(${idAnticipo}, ${saldoActual});">
                     </td>
                     <td>${factura}</td>
-                    <td class="text-end">${f_RedondearDecimales(saldoInicial, 2)}</td>
-                    <td class="text-end">${f_RedondearDecimales(saldoActual, 2)}</td>
+                    <td class="text-end">$ ${f_RedondearDecimales(saldoInicial, 2)}</td>
+                    <td class="text-end">$ ${f_RedondearDecimales(saldoActual, 2)}</td>
                     <td class="text-center">${fechaRegistro.split(' ')[0] || fechaRegistro}</td>
                     <td>
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text">S/</span>
+                            <span class="input-group-text">$</span>
                             <input type="number" 
                                    id="txt_monto_${idAnticipo}" 
                                    class="form-control form-control-sm text-end" 
@@ -1528,7 +1523,6 @@ if (!isset($_SESSION["Id"])) {
       }
 
       $('#txt_anticipos_seleccionados').html(html);
-      $('#lbl_total_anticipos_seleccionados').text(f_RedondearDecimales(totalSeleccionado, 2));
 
       // Actualizar tipo de pago automáticamente
       f_ActualizarTipoPago();
@@ -1541,7 +1535,6 @@ if (!isset($_SESSION["Id"])) {
     function f_LimpiarSeleccionAnticipos() {
       anticiposSeleccionados = [];
       $('#txt_anticipos_seleccionados').html('Ningún anticipo seleccionado');
-      $('#lbl_total_anticipos_seleccionados').text('0.00');
       f_ActualizarTotalesModal();
       f_ActualizarTipoPago(); // Actualizar tipo de pago automáticamente
     }
@@ -1612,6 +1605,9 @@ if (!isset($_SESSION["Id"])) {
             } else if (row.estado == 'I') {
               estado_txt = 'Inactivo';
               estado_color = '#e0a800';
+            } else if (row.estado == 'R') {
+              estado_txt = 'Eliminado por anticipo';
+              estado_color = '#dc3545';
             } else {
               estado_txt = 'Eliminado';
               estado_color = '#dc3545';
@@ -1629,12 +1625,12 @@ if (!isset($_SESSION["Id"])) {
 
             // Estilos por grupo
             const groupStyles = `
-    --group-border:${pal.border};
-    --group-bg:${pal.bg};
-    --group-ink:${pal.ink};
-    border-left:3px solid var(--group-border);
-    background-color:var(--group-bg);
-  `;
+              --group-border:${pal.border};
+              --group-bg:${pal.bg};
+              --group-ink:${pal.ink};
+              border-left:3px solid var(--group-border);
+              background-color:var(--group-bg);
+            `;
 
             // Indicadores
             const totalVersions = counts[corrKey] || 1;
@@ -1703,6 +1699,17 @@ if (!isset($_SESSION["Id"])) {
                       onclick="event.stopPropagation(); f_ReabrirValorizacion(${row.Id});">
                       <i class="bi bi-arrow-counterclockwise"></i> Reabrir
                     </button>
+                `;
+            }
+            // si esta eliminado por anticipos, solo permitir eliminar
+            else if (row.estado == "R") {
+              _html += `
+                <div class="d-flex justify-content-center align-items-center">
+                  <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
+                    onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
                 `;
             } else {
               // Si NO está aprobada, mostrar los 4 botones normales
@@ -1863,6 +1870,8 @@ if (!isset($_SESSION["Id"])) {
       } else {
         tipo = "N";
         titulo = "Nueva Valorización";
+        // limpiamos los anticipos previamente seleccionados
+        f_LimpiarSeleccionAnticipos();
       }
 
       // Seteando variables hidden
@@ -1878,7 +1887,6 @@ if (!isset($_SESSION["Id"])) {
       // $("#valorizacion_cuentadetraccionproveedor").html('');
       $("#cmb_proveedor").prop('disabled', false);
       $("#cmb_concesion").prop('disabled', false);
-
       // Abre modal
       f_OpenModal('modal_valorizacion');
 
@@ -1905,7 +1913,6 @@ if (!isset($_SESSION["Id"])) {
         await f_CargarDetalleValorizacion_Editar(_id_valorizacion);
 
         // Cargar anticipos si la valorización usa anticipos
-        // (Necesitarás un endpoint en el backend para esto)
         $.post(url_api, {
           accion: 'getAnticiposByValorizacion',
           id_valorizacion: _id_valorizacion
@@ -1913,7 +1920,6 @@ if (!isset($_SESSION["Id"])) {
           if (data.estado == 1 && data.data.length > 0) {
             // Marcar que usa anticipos
             $('#chk_usar_anticipo').prop('checked', true);
-            f_ToggleTipoPago();
 
             // Cargar anticipos seleccionados
             anticiposSeleccionados = data.data.map(trans => ({
@@ -1928,36 +1934,35 @@ if (!isset($_SESSION["Id"])) {
             anticiposSeleccionados.forEach(anticipo => {
               html += `<div class="mb-1">
                     <span class="badge bg-primary me-2">${anticipo.factura}</span>
-                    <span>Monto: S/ ${f_RedondearDecimales(anticipo.monto_a_usar, 2)}</span>
+                    <span>Monto: $ ${f_RedondearDecimales(anticipo.monto_a_usar, 2)}</span>
                 </div>`;
             });
             const total = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
-            html += `<div class="mt-2 fw-bold">Total: S/ ${f_RedondearDecimales(total, 2)}</div>`;
+            html += `<div class="mt-2 fw-bold">Total: $ ${f_RedondearDecimales(total, 2)}</div>`;
             $('#txt_anticipos_seleccionados').html(html);
           }
         }, 'json');
-
         $.post(url_api, {
           accion: 'getTipoPagoValorizacion',
           id_valorizacion: _id_valorizacion
         }, function(data) {
           if (data.estado == 1) {
-            // Establecer tipo de pago según los datos
-            if (data.tipo_pago === 'anticipo') {
-              $('#tipo_pago_anticipo').prop('checked', true).trigger('change');
-            } else if (data.tipo_pago === 'mixto') {
-              $('#tipo_pago_mixto').prop('checked', true).trigger('change');
-            } else {
-              $('#tipo_pago_transferencia').prop('checked', true).trigger('change');
+            // Si la valorizacion solo ha usado anticipos, vaciar y deshabilitar 
+            // las cuentas de banco
+            if (data.tipo_pago == 'anticipo') {
+              $("#valorizacion_cuentaproveedor").val('');
+              $("#valorizacion_cuentadetraccionproveedor").val('');
+              $("#valorizacion_cuentaproveedor").prop('disabled', true);
+              $("#valorizacion_cuentadetraccionproveedor").prop('disabled', true);
             }
           }
         }, 'json');
+
 
       } else {
         // Resetear anticipos para nueva valorización
         anticiposSeleccionados = [];
         $('#chk_usar_anticipo').prop('checked', false);
-        f_ToggleTipoPago();
         $("#hd_id_valorizacion").val(0);
         $("#txt_nro_oficio").val('');
         $("#cmb_proveedor").val('').trigger('change');
@@ -1969,6 +1974,7 @@ if (!isset($_SESSION["Id"])) {
 
       // Setear Total de Valorización
       f_GetTotalValorizacion();
+      f_ActualizarTipoPago();
     }
 
     function f_LoadProveedoresValorizacion() {
@@ -2556,43 +2562,60 @@ if (!isset($_SESSION["Id"])) {
 
 
     async function f_LoadListaCuentasBancarias(_id_registro) {
-      var _html = '<option value="" selected>[Seleccione una Cuenta Bancaria]</option>';
+      let _html = '<option value="" selected>[Seleccione una Cuenta Bancaria]</option>';
+      const $select = $("#valorizacion_cuentaproveedor");
+      const id_proveedor = $("#cmb_proveedor").val();
 
-      $("#valorizacion_cuentaproveedor").prop('disabled', true);
-      $("#valorizacion_cuentaproveedor").html(_html);
+      $select.prop('disabled', true).html(_html);
 
-      // Obteniendo datos
-      var id_moneda = 2;
-      var id_proveedor = $("#cmb_proveedor").val();
+      const id_moneda = 2;
 
-      const data = await $.post(url_api, {
-        accion: "get_ValorizacionCompra_ListaCuentasBancariasProveedor",
-        id_moneda,
-        id_proveedor,
-        is_detraccion: 0
-      });
-
-      if (data.estado == 1) {
-        data.registros.forEach((v, i) => {
-          _html += `<option value="${v.Id}">${v.BANCO} (${v.MONEDA}) | N° Cuenta: ${v.nro_cuenta} | CCI: ${v.cci ? v.cci : "---"}</option>`;
+      try {
+        const response = await fetch(url_api, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            accion: "get_ValorizacionCompra_ListaCuentasBancariasProveedor",
+            id_moneda: id_moneda,
+            id_proveedor: id_proveedor,
+            is_detraccion: 0
+          })
         });
-      }
 
-      // Agregando item de Nueva Cuenta Bancaria
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.estado === 1) {
+          data.registros.forEach((v) => {
+            _html += `<option value="${v.Id}">${v.BANCO} (${v.MONEDA}) | N° Cuenta: ${v.nro_cuenta} | CCI: ${v.cci || "---"}</option>`;
+          });
+        }
+
+      } catch (error) {
+        console.error("Error al cargar cuentas bancarias:", error);
+      }
       _html += `<option disabled>-----------------------------------------------------------------------</option>`;
       _html += `<option value="x">+ Agregar Nueva Cuenta Bancaria...</option>`;
 
-      // Seteando lista
-      $("#valorizacion_cuentaproveedor").prop('disabled', false);
-      $("#valorizacion_cuentaproveedor").html(_html);
-
+      // Habilitando el select si hay un proveedor seleccionado
       if (id_proveedor.length > 0) {
-        $("#valorizacion_cuentaproveedor").prop('disabled', false);
+        $select.prop('disabled', false);
+      } else {
+        // Si no hay proveedor, se mantiene deshabilitado.
+        $select.prop('disabled', true);
       }
 
-      // Si viene de una nuevo registro
-      if (_id_registro != undefined) {
-        $("#valorizacion_cuentaproveedor").val(_id_registro);
+      // Seteando lista
+      $select.html(_html);
+
+      // Si viene de un registro
+      if (_id_registro !== undefined) {
+        $select.val(_id_registro);
       }
     }
 
@@ -2618,43 +2641,59 @@ if (!isset($_SESSION["Id"])) {
     });
 
     async function f_LoadListaCuentaDetraccion(_id_registro) {
-      var _html = '<option value="" selected>[Seleccione una Cuenta de Detracción]</option>';
+      let _html = '<option value="" selected>[Seleccione una Cuenta de Detracción]</option>';
+      const $select = $("#valorizacion_cuentadetraccionproveedor");
+      const id_proveedor = $("#cmb_proveedor").val();
+      $select.prop('disabled', true).html(_html);
 
-      $("#valorizacion_cuentadetraccionproveedor").prop('disabled', true);
-      $("#valorizacion_cuentadetraccionproveedor").html(_html);
+      // Parámetros de la API
+      const id_moneda = 1; // Moneda: Soles (generalmente para detracciones)
 
-      // Obteniendo datos
-      var id_moneda = 1;
-      var id_proveedor = $("#cmb_proveedor").val();
-
-      const data = await $.post(url_api, {
-        accion: "get_ValorizacionCompra_ListaCuentasBancariasProveedor",
-        id_moneda,
-        id_proveedor,
-        is_detraccion: 1
-      });
-
-      if (data.estado == 1) {
-        data.registros.forEach((v, i) => {
-          _html += `<option value="${v.Id}">${v.nro_cuenta}</option>`;
-        });
+      if (!id_proveedor) {
+        return; // Salir si no hay proveedor seleccionado, manteniendo el select deshabilitado
       }
 
-      // Agregando item de Nueva Cuenta Bancaria
+      try {
+        const response = await fetch(url_api, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            accion: "get_ValorizacionCompra_ListaCuentasBancariasProveedor",
+            id_moneda,
+            id_proveedor,
+            is_detraccion: 1 // Clave para obtener solo cuentas de detracción
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Procesando la respuesta
+        if (data.estado === 1) {
+          data.registros.forEach((v) => {
+            _html += `<option value="${v.Id}">${v.nro_cuenta}</option>`;
+          });
+        }
+
+      } catch (error) {
+        console.error("Error al cargar cuentas de detracción:", error);
+      }
+
+      // Agregando opción para nueva cuenta
       _html += `<option disabled>-----------------------------------------------------------------------</option>`;
       _html += `<option value="x">+ Agregar Nueva Cuenta de Detracción...</option>`;
 
-      // Seteando lista
-      $("#valorizacion_cuentadetraccionproveedor").prop('disabled', false);
-      $("#valorizacion_cuentadetraccionproveedor").html(_html);
+      // Seteando lista y habilitando
+      $select.html(_html).prop('disabled', false);
 
-      if (id_proveedor.length > 0) {
-        $("#valorizacion_cuentadetraccionproveedor").prop('disabled', false);
-      }
-
-      // Si viene de una nuevo registro
-      if (_id_registro != undefined) {
-        $("#valorizacion_cuentadetraccionproveedor").val(_id_registro);
+      // Si se pasa un ID, seleccionar el valor
+      if (_id_registro !== undefined) {
+        $select.val(_id_registro);
       }
     }
 
@@ -3259,17 +3298,17 @@ if (!isset($_SESSION["Id"])) {
       };
 
       // ===== LOGGING PARA DEBUG =====
-      console.log('╔═══════════════════════════════════════════════════════════════');
-      console.log('║ DATOS DE ENVÍO - grabar_ValorizacionCompra');
-      console.log('╠═══════════════════════════════════════════════════════════════');
-      console.log('║ Tipo de Pago DETECTADO:', tipo_pago_detectado);
-      console.log('║ usa_anticipo:', usa_anticipo);
-      console.log('║ es_pago_mixto:', es_pago_mixto);
-      console.log('║ Monto Total Valorización:', monto_total_valorizacion);
-      console.log('║ Monto Transferencia:', monto_transferencia);
-      console.log('╠═══════════════════════════════════════════════════════════════');
-      console.log('║ ANTICIPOS SELECCIONADOS:');
-      console.log('║ Cantidad:', anticiposSeleccionados ? anticiposSeleccionados.length : 0);
+      // console.log('╔═══════════════════════════════════════════════════════════════');
+      // console.log('║ DATOS DE ENVÍO - grabar_ValorizacionCompra');
+      // console.log('╠═══════════════════════════════════════════════════════════════');
+      // console.log('║ Tipo de Pago DETECTADO:', tipo_pago_detectado);
+      // console.log('║ usa_anticipo:', usa_anticipo);
+      // console.log('║ es_pago_mixto:', es_pago_mixto);
+      // console.log('║ Monto Total Valorización:', monto_total_valorizacion);
+      // console.log('║ Monto Transferencia:', monto_transferencia);
+      // console.log('╠═══════════════════════════════════════════════════════════════');
+      // console.log('║ ANTICIPOS SELECCIONADOS:');
+      // console.log('║ Cantidad:', anticiposSeleccionados ? anticiposSeleccionados.length : 0);
       if (anticiposSeleccionados && anticiposSeleccionados.length > 0) {
         anticiposSeleccionados.forEach((ant, idx) => {
           console.log(`║ [${idx + 1}] ID: ${ant.id_anticipo}, Factura: ${ant.factura}, Monto a usar: ${ant.monto_a_usar}`);
@@ -3277,14 +3316,11 @@ if (!isset($_SESSION["Id"])) {
         const totalAnticipos = anticiposSeleccionados.reduce((sum, a) => sum + parseFloat(a.monto_a_usar || 0), 0);
         console.log('║ Total de Anticipos:', totalAnticipos);
       } else {
-        console.log('║ (Ninguno seleccionado)');
+        console.log('║ Ningún anticipo seleccionado');
       }
-      console.log('╠═══════════════════════════════════════════════════════════════');
-      console.log('║ Cuenta Bancaria ID:', id_cuentabancaria);
-      console.log('║ Cuenta Detracción ID:', id_cuentadetraccion);
-      console.log('╠═══════════════════════════════════════════════════════════════');
-      console.log('║ Datos completos enviados:', datosEnvio);
-      console.log('╚═══════════════════════════════════════════════════════════════');
+      // console.log('║ Cuenta Bancaria ID:', id_cuentabancaria);
+      // console.log('║ Cuenta Detracción ID:', id_cuentadetraccion);
+      // console.log('║ Datos completos enviados:', datosEnvio);
       // ===== FIN LOGGING =====
 
       $.post(url_api, datosEnvio, function(data) {
@@ -3295,7 +3331,6 @@ if (!isset($_SESSION["Id"])) {
 
           // Limpiar campos
           $('#txt_anticipos_seleccionados').html('Ningún anticipo seleccionado');
-          $('#lbl_total_anticipos_seleccionados').text('S/ 0.00');
           $('#txt_monto_transferencia').val('');
           $('#div_saldo_restante').hide();
 
