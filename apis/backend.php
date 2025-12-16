@@ -72726,21 +72726,21 @@ switch ($_POST["accion"]) {
         );
         $id_proveedor = mysqli_real_escape_string(
             $enlace,
-            $_POST["id_proveedor"]
+            (isset($_POST["id_proveedor"])) ? $_POST["id_proveedor"] : 0
         );
-        $filtro_lote = $_POST["filtro_lote"];
-        $filtro_lote_gel = $_POST["filtro_lote_gel"];
+        $filtro_lote = (isset($_POST["filtro_lote"])) ? $_POST["filtro_lote"] : '';
+        $filtro_lote_gel = (isset($_POST["filtro_lote_gel"])) ? $_POST["filtro_lote_gel"] : '';
         $ismodulo_administracioncomercial = mysqli_real_escape_string(
             $enlace,
-            $_POST["is_administracioncomercial"]
+            (isset($_POST["is_administracioncomercial"])) ? $_POST["is_administracioncomercial"] : ''
         );
         $ismodulo_contabilidad = mysqli_real_escape_string(
             $enlace,
-            $_POST["is_contabilidad"]
+            (isset($_POST["is_contabilidad"])) ? $_POST["is_contabilidad"] : ''
         );
         $ismodulo_gerencia = mysqli_real_escape_string(
             $enlace,
-            $_POST["is_gerencia"]
+            (isset($_POST["is_gerencia"])) ? $_POST["is_gerencia"] : ''
         );
 
         // Setea Filtro de Lotes
@@ -72795,7 +72795,7 @@ switch ($_POST["accion"]) {
 							                P.Id AS PROVEEDOR_ID,
                               P.documento AS PROVEEDOR_RUC,
                               P.razon_social AS PROVEEDOR_RAZON_SOCIAL,
-                              /*V.correlativo AS COD_VALORIZACION,*/
+                              V.correlativo AS COD_VALORIZACION,
                               V.is_aprobado_fechahoraregistro,
                               V.is_aprobado_usuarioregistro,
 
@@ -73077,7 +73077,7 @@ switch ($_POST["accion"]) {
                             ($_SESSION[
                                 "is_compramineral_aprobacionescomercial"
                             ] == 1
-                                ? "hidden"
+                                ? ""
                                 : "") .
                             ">";
                         $html .= '      <i class="bi bi-credit-card"></i>';
@@ -73911,7 +73911,7 @@ switch ($_POST["accion"]) {
         $usuario_registro = $_SESSION["usu_usuario"];
         $pago_adjunto = mysqli_real_escape_string(
             $enlace,
-            $_POST["pago_adjunto"]
+            (isset($_POST["pago_adjunto"])) ? $_POST["pago_adjunto"] : ''
         );
 
         if ($modo == "N") {
@@ -74137,9 +74137,9 @@ switch ($_POST["accion"]) {
                     $row["MONEDA_ORIGEN"] .
                     ")</label><br>N° Cuenta: " .
                     $row["c1_nro_cuenta"] .
-                    (strlen($row["CCI_ORIGEN"]) == 0
-                        ? ""
-                        : "<br>CCI: " . $row["CCI_ORIGEN"]) .
+                    // (strlen($row["CCI_ORIGEN"]) == 0
+                    //     ? ""
+                    //     : "<br>CCI: " . $row["CCI_ORIGEN"]) .
                     '</td>
               <td style="vertical-align: middle;"><label style="font-weight: bold;">' .
                     $row["BANCO_DESTINO"] .
@@ -75878,8 +75878,75 @@ case "eliminarAnticipo":
         }
         
         echo json_encode(["estado" => $estado, "msg" => $msg]);
-        break;    
-
+        break;     
+    case "get_info_cuenta_banco_valorizacion":
+        $estado = 0;
+        $data = []; // Usaremos 'data' en lugar de 'msg' para los resultados
+        
+        // Obtener y validar el ID del Comprobante de Pago
+        $id_comprobante = isset($_POST["id_comprobante_pago"]) ? intval($_POST["id_comprobante_pago"]) : 0;
+        
+        if ($id_comprobante == 0) {
+            // Devolver error si el ID no es válido
+            echo json_encode(["estado" => 0, "msg" => "ID de Comprobante de Pago inválido."]);
+            exit();
+        }
+        
+        // La consulta SQL solicitada
+        $q_data_pago = "
+            SELECT
+                ban.id AS id_banco,
+                cli.Id as id_proveedor,
+                ban.descripcion AS nombre_banco,
+                vc.id_cuentabancaria,
+                clb.nro_cuenta,
+                clb.cci,
+                mon.Id AS id_moneda,
+                clb.is_detraccion,
+                mon.abv AS simbolo_moneda
+            FROM
+                comprobante_pago cp
+            INNER JOIN valorizacion_compramineral_detalle vcd ON
+                vcd.Id = cp.id_valorizacion_detalle
+            INNER JOIN valorizacion_compramineral vc ON
+                vc.Id = vcd.id_valorizacion
+            INNER JOIN tb_clientes cli ON
+                cli.Id = vc.id_proveedor
+            INNER JOIN tb_clientes_bancos clb ON
+                clb.id_cliente = cli.Id AND clb.cci = vc.infopago_cci
+            INNER JOIN tbconfig_monedas mon ON
+                clb.id_moneda = mon.Id
+            INNER JOIN tb_bancos ban ON
+                ban.id = clb.id_banco
+            WHERE
+                cp.Id = $id_comprobante;
+        "; // Se agrega LIMIT 1 ya que se espera una cuenta bancaria única por comprobante
+        
+        $res_data_pago = mysqli_query($enlace, $q_data_pago);
+        
+        if ($res_data_pago === false) {
+            // Manejo de error de consulta SQL
+            $msg = "Error al ejecutar la consulta: " . mysqli_error($enlace);
+            echo json_encode(["estado" => 0, "msg" => $msg]);
+            exit();
+        }
+        
+        if (mysqli_num_rows($res_data_pago) > 0) {
+            // Si se encuentra información, se lee la primera fila
+            $row = mysqli_fetch_assoc($res_data_pago);
+            $data = $row; // La información se almacena en el array $data
+            $estado = 1;
+            $msg = "Datos de pago obtenidos correctamente.";
+        } else {
+            // Si no se encuentra información
+            $msg = "No se encontraron datos bancarios asociados al Comprobante de Pago ID $id_comprobante.";
+        }
+        echo json_encode([
+            "estado" => $estado, 
+            "msg" => $msg ?? "", // Asegura que 'msg' exista
+            "data" => $data
+        ]);
+        break;
     default:
         # code...
 
