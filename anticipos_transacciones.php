@@ -26,7 +26,7 @@ $backendUrl = 'apis/backend.php';
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="<?php echo $favicon; ?>" type="image/png" />
 
-  <title><?php echo $nom_app; ?> | Anticipos a proveedores</title>
+  <title><?php echo $nom_app; ?> | Transacciones de Anticipos</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
@@ -37,33 +37,186 @@ $backendUrl = 'apis/backend.php';
   <link rel="stylesheet" href="<?php echo $url_lims; ?>/global/styles.css">
 
   <style>
-    /* Estilos de cabecera para las tablas */
-    .header-bg-proveedor {
-      background-color: #2980b9 !important;
-      /* Azul claro */
-      color: #fff;
+    /* Colores basados en el Excel */
+    :root {
+      --color-primary: #2c3e50;
+      --color-secondary: #3498db;
+      --color-success: #27ae60;
+      --color-warning: #f39c12;
+      --color-danger: #e74c3c;
+      --color-info: #17a2b8;
+      --color-light-gray: #f8f9fa;
+      --color-border: #dee2e6;
+    }
+
+    .header-bg-primary {
+      background-color: var(--color-primary) !important;
+      color: white;
       font-weight: 600;
       vertical-align: middle;
     }
 
-    .header-bg-anticipo {
-      background-color: #e67e22 !important;
-      /* Naranja */
-      color: #fff;
+    .header-bg-secondary {
+      background-color: var(--color-secondary) !important;
+      color: white;
       font-weight: 600;
       vertical-align: middle;
     }
 
-    /* Estilo para las filas seleccionables de proveedor */
-    .proveedor-row:hover {
-      background-color: #e0f7fa;
-      cursor: pointer;
+    .header-bg-success {
+      background-color: var(--color-success) !important;
+      color: white;
+      font-weight: 600;
+      vertical-align: middle;
     }
 
-    .proveedor-row.selected {
-      background-color: #b3e5fc;
-      /* Azul más claro para seleccionado */
+    .header-bg-warning {
+      background-color: var(--color-warning) !important;
+      color: white;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+
+    .header-bg-danger {
+      background-color: var(--color-danger) !important;
+      color: white;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+
+    .table-custom {
+      font-size: 13px;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .table-custom th {
+      border-bottom: 2px solid var(--color-border);
+      padding: 10px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .table-custom td {
+      padding: 8px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .table-custom tbody tr:hover {
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    .table-custom tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .highlight-yellow {
+      background-color: #fffacd !important;
       font-weight: bold;
+    }
+
+    .highlight-green {
+      background-color: #d4edda !important;
+    }
+
+    .highlight-blue {
+      background-color: #d1ecf1 !important;
+    }
+
+    .summary-card {
+      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      color: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-item {
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      margin-bottom: 5px;
+    }
+
+    .filter-card {
+      background-color: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--color-border);
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-pendiente {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .status-aprobado {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status-anulado {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .currency-cell {
+      text-align: right;
+      font-family: 'Courier New', monospace;
+      font-weight: 500;
+    }
+
+    .positive {
+      color: var(--color-success);
+      font-weight: bold;
+    }
+
+    .negative {
+      color: var(--color-danger);
+      font-weight: bold;
+    }
+
+    .action-cell {
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .btn-custom-sm {
+      padding: 3px 8px;
+      font-size: 12px;
+    }
+
+    .modal-xl-custom {
+      max-width: 95%;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .table-responsive {
+        font-size: 12px;
+      }
+
+      .table-custom th,
+      .table-custom td {
+        padding: 6px 4px;
+      }
     }
   </style>
 </head>
@@ -89,152 +242,219 @@ $backendUrl = 'apis/backend.php';
         </div>
       </div>
 
+      <!-- Contenido Principal -->
       <div class="col-md-12 col-sm-12 col-xs-12" style="padding-top: 10px; padding-left: 15px; padding-right: 15px;">
-        <div class="d-flex row">
 
-          <div class="row bg-white shadow-sm p-3 mb-3 rounded">
-            <h5><i class="bi bi-bank"></i> Resumen General de Anticipos</h5>
-            <hr style="border-color: #D9D9D9; margin-top: 2px;" />
-            <div class="d-flex mb-2" style="font-size: 16px;">
-              <span class="me-4">
-                Total Anticipos: <strong id="total_anticipos" class="text-primary">0</strong>
-              </span>
-              <span class="me-4 border-start ps-3">
-                Con Saldo: <strong id="anticipos_con_saldo" class="text-success">0</strong>
-              </span>
-              <span class="me-4 border-start ps-3">
-                Sin Saldo: <strong id="anticipos_sin_saldo" class="text-danger">0</strong>
-              </span>
-              <button class="btn btn-success btn-sm ms-auto" id="btn_open_new_anticipo_modal">
-                <i class="bi bi-plus-circle me-1"></i> Registrar Nuevo Anticipo
-              </button>
-            </div>
+        <!-- Resumen General -->
+        <div class="summary-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-clipboard-data"></i> Transacciones de Anticipos</h4>
+            <span class="badge bg-light text-dark fs-6">Fecha: <?php echo date('d/m/Y'); ?></span>
           </div>
 
-          <div class="col-md-5">
-            <div class="bg-white shadow-sm p-3 rounded">
-              <h5 class="d-inline-block"><i class="bi bi-people"></i> Proveedores con Anticipos</h5>
-              <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
-
-              <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-striped">
-                  <thead>
-                    <tr style="font-size: 13px;">
-                      <th class="header-bg-proveedor text-center" rowspan="2">Razón Social</th>
-                      <th class="header-bg-proveedor text-center" rowspan="2">Documento</th>
-                      <th class="header-bg-anticipo text-center" colspan="3">Anticipos</th>
-                      <th class="header-bg-proveedor text-center" rowspan="2">Acciones</th>
-                    </tr>
-                    <tr style="font-size: 12px;">
-                      <th class="header-bg-anticipo text-center">Total</th>
-                      <th class="header-bg-anticipo text-center">Con Saldo</th>
-                      <th class="header-bg-anticipo text-center">Sin Saldo</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbl_proveedores_con_anticipos" style="font-size: 13px;">
-                    <tr>
-                      <td colspan="6" class="text-center">Cargando proveedores...</td>
-                    </tr>
-                  </tbody>
-                </table>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="summary-item">
+                <div class="d-flex justify-content-between">
+                  <span>Total Facturas:</span>
+                  <strong id="total-facturas">0</strong>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="summary-item">
+                <div class="d-flex justify-content-between">
+                  <span>Monto Total USD:</span>
+                  <strong id="monto-total">$ 0.00</strong>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="summary-item">
+                <div class="d-flex justify-content-between">
+                  <span>Anticipos Aplicados:</span>
+                  <strong id="anticipos-aplicados">0</strong>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="summary-item">
+                <div class="d-flex justify-content-between">
+                  <span>Saldo Pendiente:</span>
+                  <strong id="saldo-pendiente" class="text-warning">$ 0.00</strong>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="col-md-7">
-            <div class="bg-white shadow-sm p-3 rounded">
-              <h5 class="d-inline-block"><i class="bi bi-wallet"></i> Anticipos del Proveedor: <span id="proveedor_seleccionado_rs" class="text-primary">---</span></h5>
-              <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
-
-              <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-striped">
-                  <thead>
-                    <tr style="font-size: 13px;">
-                      <th class="header-bg-anticipo text-center">Factura</th>
-                      <th class="header-bg-anticipo text-center">Saldo Inicial</th>
-                      <th class="header-bg-anticipo text-center">Saldo Actual</th>
-                      <th class="header-bg-anticipo text-center">Transacciones</th>
-                      <th class="header-bg-anticipo text-center">Fecha Registro</th>
-                      <th class="header-bg-anticipo text-center">Estado</th>
-                      <th class="header-bg-anticipo text-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbl_anticipos_proveedor" style="font-size: 13px;">
-                    <tr>
-                      <td colspan="7" class="text-center" id="msg_anticipos_proveedor">Seleccione un proveedor en el panel izquierdo.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
         </div>
+
+        <!-- Filtros -->
+        <div class="filter-card">
+          <h5 class="mb-3"><i class="bi bi-funnel"></i> Filtros de Búsqueda</h5>
+
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">N° Factura Venta</label>
+              <input type="text" class="form-control" id="filter-factura" placeholder="Ej: E001-42">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">N° Factura Amortiza</label>
+              <input type="text" class="form-control" id="filter-factura-amortiza" placeholder="Ej: E001-42">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Fecha Desde</label>
+              <input type="date" class="form-control" id="filter-fecha-desde">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Fecha Hasta</label>
+              <input type="date" class="form-control" id="filter-fecha-hasta">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Estado</label>
+              <select class="form-select" id="filter-estado">
+                <option value="">Todos</option>
+                <option value="pendiente">Comprobante Pendiente</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="anulado">Anulado</option>
+              </select>
+            </div>
+
+            <div class="col-md-12 mt-3">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <button class="btn btn-secondary btn-sm" id="btn-limpiar-filtros">
+                    <i class="bi bi-eraser"></i> Limpiar Filtros
+                  </button>
+                </div>
+                <div>
+                  <button class="btn btn-primary btn-sm me-2" id="btn-aplicar-filtros">
+                    <i class="bi bi-search"></i> Aplicar Filtros
+                  </button>
+                  <button class="btn btn-success btn-sm" id="btn-exportar-excel">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Transacciones -->
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-custom table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th class="header-bg-primary" colspan="2">Acción de Anticipo</th>
+                    <th class="header-bg-secondary">Factura de Venta</th>
+                    <th class="header-bg-secondary">N° Factura Amortiza</th>
+                    <th class="header-bg-secondary">Fecha</th>
+                    <th class="header-bg-success">Importe Factura USD $</th>
+                    <th class="header-bg-success">Importe Amortiza Adelanto USD $</th>
+                    <th class="header-bg-warning">Saldo Factura Amortiza</th>
+                    <th class="header-bg-warning">Saldo Neto Factura Amortiza</th>
+                    <th class="header-bg-success">Importe USD $</th>
+                    <th class="header-bg-danger">Saldo Deuda</th>
+                    <th class="header-bg-info">Estado</th>
+                    <th class="header-bg-primary">N° Valorización</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-transacciones">
+                  <!-- Los datos se cargarán dinámicamente -->
+                  <tr>
+                    <td colspan="13" class="text-center py-5">
+                      <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                      </div>
+                      <p class="mt-2 text-muted">Cargando transacciones...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 
-  <div class="modal fade" id="modal_nuevo_anticipo" tabindex="-1" aria-labelledby="modal_nuevo_anticipo_Label" aria-hidden="true">
-    <div class="modal-dialog" style="position: fixed; top: 30%; left: 50%; transform: translate(-50%, -55%);">
+  <!-- Modal para Detalles -->
+  <div class="modal fade" id="modalDetalles" tabindex="-1" aria-labelledby="modalDetallesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl-custom">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="modal_nuevo_anticipo_Label"><i class="bi bi-cash-coin"></i> Registrar Nuevo Anticipo</h5>
+        <div class="modal-header header-bg-primary text-white">
+          <h5 class="modal-title" id="modalDetallesLabel">
+            <i class="bi bi-info-circle"></i> Detalles de Transacción
+          </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="reg_proveedor" class="form-label">Proveedor (Minero)</label>
-            <select id="reg_proveedor" class="form-select" data-bs-theme="bootstrap-5"></select>
-          </div>
-
-          <div class="row mb-3">
-            <label for="factura" class="form-label">Factura</label>
-            <div class="input-group" id="factura-group">
-              <input type="text" class="form-control text-uppercase col-3" id="reg_serie_factura" placeholder="FA01">
-              <span class="input-group-text">-</span>
-              <input type="text" class="form-control" id="reg_numero_factura" placeholder="00001234">
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <h6>Información Principal</h6>
+              <table class="table table-sm table-borderless">
+                <tr>
+                  <td width="40%"><strong>Factura Venta:</strong></td>
+                  <td id="detalle-factura-venta">---</td>
+                </tr>
+                <tr>
+                  <td><strong>Factura Amortiza:</strong></td>
+                  <td id="detalle-factura-amortiza">---</td>
+                </tr>
+                <tr>
+                  <td><strong>Fecha:</strong></td>
+                  <td id="detalle-fecha">---</td>
+                </tr>
+                <tr>
+                  <td><strong>N° Valorización:</strong></td>
+                  <td id="detalle-valorizacion">---</td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <h6>Montos</h6>
+              <table class="table table-sm table-borderless">
+                <tr>
+                  <td width="50%"><strong>Importe Factura:</strong></td>
+                  <td class="currency-cell" id="detalle-importe-factura">---</td>
+                </tr>
+                <tr>
+                  <td><strong>Importe Amortiza:</strong></td>
+                  <td class="currency-cell" id="detalle-importe-amortiza">---</td>
+                </tr>
+                <tr>
+                  <td><strong>Saldo Deuda:</strong></td>
+                  <td class="currency-cell" id="detalle-saldo-deuda">---</td>
+                </tr>
+                <tr>
+                  <td><strong>Estado:</strong></td>
+                  <td id="detalle-estado">---</td>
+                </tr>
+              </table>
             </div>
           </div>
 
-          <div class="mb-3">
-            <label for="reg_saldo_inicial" class="form-label">Saldo Inicial (USD)</label>
-            <input type="number" step="0.01" class="form-control" id="reg_saldo_inicial" placeholder="Ej. 10000.00">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i> Cancelar</button>
-          <button type="button" class="btn btn-success" id="btn_guardar_anticipo"><i class="bi bi-save"></i> Grabar Anticipo</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" id="modal_ver_transacciones" tabindex="-1" aria-labelledby="modal_ver_transacciones_Label" aria-hidden="true">
-    <div class="modal-dialog modal-xl" style="position: fixed; top: 30%; left: 50%; transform: translate(-50%, -55%);">
-      <div class="modal-content">
-        <div class="modal-header header-bg-anticipo text-white">
-          <h5 class="modal-title" id="modal_ver_transacciones_Label"><i class="bi bi-clipboard-data"></i> Transacciones del Anticipo: <span id="modal_anticipo_factura"></span></h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-3">Saldo Inicial: <strong id="modal_transaccion_saldo_inicial" class="text-primary">---</strong> | Saldo Actual: <strong id="modal_transaccion_saldo_actual" class="text-success">---</strong></p>
+          <h6>Lotes Asociados</h6>
           <div class="table-responsive">
-            <table class="table table-bordered table-striped table-hover">
-              <thead>
-                <tr style="font-size: 13px;">
-                  <th class="header-bg-proveedor text-center">Nro</th>
-                  <th class="header-bg-proveedor text-center">Código Valorización</th>
-                  <th class="header-bg-proveedor text-center">Procedencia</th>
-                  <th class="header-bg-proveedor text-center">Concesión</th>
-                  <th class="header-bg-anticipo text-center">Saldo Anterior (USD)</th>
-                  <th class="header-bg-anticipo text-center" style="font-weight: 600; font-size: 15px;">Monto Retirado (USD)</th>
-                  <th class="header-bg-anticipo text-center">Saldo Restante (USD)</th>
-                  <th class="header-bg-proveedor text-center">Fecha Registro</th>
+            <table class="table table-sm table-bordered" id="tbl-lotes-detalle">
+              <thead class="table-light">
+                <tr>
+                  <th>Código Lote</th>
+                  <th>Descripción</th>
+                  <th>Peso (kg)</th>
+                  <th>Ley (g/T)</th>
+                  <th>Valor (USD)</th>
                 </tr>
               </thead>
-              <tbody id="tbl_transacciones" style="font-size: 13px;">
+              <tbody>
                 <tr>
-                  <td colspan="8" class="text-center">No hay transacciones registradas para este anticipo.</td>
+                  <td colspan="5" class="text-center">No hay lotes registrados</td>
                 </tr>
               </tbody>
             </table>
@@ -242,6 +462,9 @@ $backendUrl = 'apis/backend.php';
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" id="btn-imprimir-comprobante">
+            <i class="bi bi-printer"></i> Imprimir Comprobante
+          </button>
         </div>
       </div>
     </div>
@@ -252,35 +475,19 @@ $backendUrl = 'apis/backend.php';
   <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
-
 
   <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function() {
 
-      // -------------------------
-      // Variables Globales
-      // -------------------------
+      // Variables globales
+      let transaccionesData = [];
+      let currentPage = 1;
+      const itemsPerPage = 15;
+      const backendUrl = '<?php echo $backendUrl; ?>';
+      const detallesModal = new bootstrap.Modal(document.getElementById('modalDetalles'));
+      let selectedTransaccion = null;
 
-      let allData = {};
-      let cantidad_anticipos = 0;
-      let anticipos_con_saldo = 0;
-      let anticipos_sin_saldo = 0;
-      let proveedores_aptos = [];
-      let proveedores_con_anticipos = [];
-
-      let proveedor_seleccionado = null;
-      let anticipo_seleccionado = null;
-
-      const backendUrl = '<?php echo $backendUrl; ?>'; // Endpoint de PHP
-      const nuevoAnticipoModal = new bootstrap.Modal(document.getElementById("modal_nuevo_anticipo"));
-      const transaccionesModal = new bootstrap.Modal(document.getElementById("modal_ver_transacciones"));
-
-
-      // -------------------------
-      // Funciones Auxiliares de Datos
-      // -------------------------
-
+      // Función para llamar al backend
       function f_callBackend(accion, data) {
         return $.post(backendUrl, {
           accion: accion,
@@ -288,448 +495,313 @@ $backendUrl = 'apis/backend.php';
         }, 'json');
       }
 
-      function formatCurrency(amount) {
-        // Formato simple de moneda (asumo USD por la tabla)
-        return 'USD ' + parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      // Formato de moneda
+      function formatCurrency(amount, showSymbol = true) {
+        if (amount === null || amount === undefined) return '---';
+        const num = parseFloat(amount);
+        if (isNaN(num)) return '---';
+
+        const formatted = num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return showSymbol ? `$ ${formatted}` : formatted;
       }
 
-      function findProveedorById(id) {
-        return proveedores_con_anticipos.find(p => String(p.id_proveedor) === String(id));
+      // Formato de fecha
+      function formatDate(dateString) {
+        if (!dateString) return '---';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        return date.toLocaleDateString('es-ES');
       }
 
-      function findAnticipoById(proveedor, id) {
-        if (!proveedor || !proveedor.anticipos) return null;
-        return proveedor.anticipos.find(a => String(a.id_anticipo) === String(id));
-      }
+      // Renderizar tabla
+      function renderTable(data) {
+        const tbody = $('#tbl-transacciones');
 
-      // -------------------------
-      // Lógica de Renderizado
-      // -------------------------
-
-      function renderGeneralSummary() {
-        $("#total_anticipos").text(cantidad_anticipos);
-        $("#anticipos_con_saldo").text(anticipos_con_saldo);
-        $("#anticipos_sin_saldo").text(anticipos_sin_saldo);
-      }
-
-      function renderProveedores() {
-        let html = '';
-        if (proveedores_con_anticipos.length === 0) {
-          html = '<tr><td colspan="6" class="text-center">No hay proveedores con anticipos registrados.</td></tr>';
+        if (data.length === 0) {
+          tbody.html(`
+            <tr>
+              <td colspan="13" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size: 48px;"></i>
+                <p class="mt-2">No se encontraron transacciones</p>
+              </td>
+            </tr>
+          `);
+          return;
         }
 
-        // Ordenar por razón social para mejor usabilidad
-        proveedores_con_anticipos.sort((a, b) => a.razon_social.localeCompare(b.razon_social));
+        let html = '';
 
-        proveedores_con_anticipos.forEach(p => {
+        data.forEach((item, index) => {
+          // Determinar clase de resaltado según el tipo
+          let rowClass = '';
+          if (item.porcentaje_aplicado === '100%') {
+            rowClass = 'highlight-green';
+          } else if (parseFloat(item.porcentaje_aplicado) < 100 && parseFloat(item.porcentaje_aplicado) > 0) {
+            rowClass = 'highlight-blue';
+          } else if (item.accion_anticipo && item.accion_anticipo.includes('E001')) {
+            rowClass = 'highlight-yellow';
+          }
+
+          // Determinar clase para Saldo Deuda
+          const saldoDeudaClass = parseFloat(item.saldo_deuda) > 0 ? 'negative' :
+            parseFloat(item.saldo_deuda) < 0 ? 'positive' : '';
+
+          // Determinar badge de estado
+          let estadoBadge = '';
+          if (item.estado === 'Comprobante Pendiente') {
+            estadoBadge = '<span class="status-badge status-pendiente">PENDIENTE</span>';
+          } else if (item.estado === 'Aprobado') {
+            estadoBadge = '<span class="status-badge status-aprobado">APROBADO</span>';
+          } else if (item.estado === 'Anulado') {
+            estadoBadge = '<span class="status-badge status-anulado">ANULADO</span>';
+          } else {
+            estadoBadge = `<span class="status-badge">${item.estado}</span>`;
+          }
+
           html += `
-            <tr class="proveedor-row" data-id-proveedor="${p.id_proveedor}" id="prov_row_${p.id_proveedor}">
-              <td>${p.razon_social}</td>
-              <td>${p.documento}</td>
-              <td class="text-center">${p.cantidad_anticipos}</td>
-              <td class="text-center text-success">${p.anticipos_con_saldo}</td>
-              <td class="text-center text-danger">${p.anticipos_sin_saldo}</td>
-              <td class="text-center">
-                <button class="btn btn-sm btn-primary btn-view-anticipos" data-id-proveedor="${p.id_proveedor}" title="Ver Anticipos">
+            <tr class="${rowClass}">
+              <td class="text-center" width="40">
+                <button class="btn btn-sm btn-outline-primary btn-custom-sm btn-view-details" 
+                        data-index="${index}"
+                        title="Ver detalles">
                   <i class="bi bi-eye"></i>
                 </button>
               </td>
-            </tr>`;
+              <td class="${item.accion_anticipo ? 'fw-bold' : ''}">
+                ${item.porcentaje_aplicado || ''}
+                ${item.monto_aplicado ? `<br><small>${formatCurrency(item.monto_aplicado)}</small>` : ''}
+                ${item.lote ? `<br><small class="text-muted">${item.lote}</small>` : ''}
+              </td>
+              <td>${item.accion_anticipo || '---'}</td>
+              <td>${item.factura_amortiza || '---'}</td>
+              <td>${formatDate(item.fecha)}</td>
+              <td class="currency-cell">${formatCurrency(item.importe_factura)}</td>
+              <td class="currency-cell">${formatCurrency(item.importe_amortiza)}</td>
+              <td class="currency-cell">${formatCurrency(item.saldo_factura_amortiza)}</td>
+              <td class="currency-cell">${formatCurrency(item.saldo_neto_factura_amortiza)}</td>
+              <td class="currency-cell">${formatCurrency(item.importe_usd)}</td>
+              <td class="currency-cell ${saldoDeudaClass}">${formatCurrency(item.saldo_deuda)}</td>
+              <td class="text-center">${estadoBadge}</td>
+              <td class="text-center">${item.numero_valorizacion || '---'}</td>
+            </tr>
+          `;
         });
 
-        $("#tbl_proveedores_con_anticipos").html(html);
+        tbody.html(html);
       }
 
-      function renderAnticipos(proveedor) {
-        // Limpiar la selección anterior en la UI
-        $(".proveedor-row").removeClass('selected');
+      // Actualizar resumen
+      function updateSummary(data) {
+        const totalFacturas = data.length;
+        const montoTotal = data.reduce((sum, item) => sum + parseFloat(item.importe_factura || 0), 0);
+        const anticiposAplicados = data.filter(item => item.porcentaje_aplicado && item.porcentaje_aplicado !== '0%').length;
+        const saldoPendiente = data.reduce((sum, item) => sum + Math.max(0, parseFloat(item.saldo_deuda || 0)), 0);
 
-        if (!proveedor) {
-          $("#proveedor_seleccionado_rs").text('---');
-          $("#tbl_anticipos_proveedor").html(`<tr><td colspan="7" class="text-center" id="msg_anticipos_proveedor">Seleccione un proveedor en el panel izquierdo.</td></tr>`);
-          return;
-        }
-
-        // Resaltar la fila seleccionada
-        $(`#prov_row_${proveedor.id_proveedor}`).addClass('selected');
-
-        // Mostrar el nombre del proveedor
-        $("#proveedor_seleccionado_rs").text(proveedor.razon_social);
-
-        let html = '';
-
-        if (proveedor.anticipos.length === 0) {
-          html = '<tr><td colspan="7" class="text-center">Este proveedor no tiene anticipos.</td></tr>';
-        }
-
-        // Ordenar anticipos por fecha de registro (más reciente primero)
-        const anticiposOrdenados = [...proveedor.anticipos].sort((a, b) => {
-          const dateA = a.id_anticipo;
-          const dateB = b.id_anticipo;
-          return dateB - dateA;
-        });
-
-
-        anticiposOrdenados.forEach(a => {
-          // Asumo 'A' es CON SALDO, 'B' es SIN SALDO y 'X' es anulado
-          const estadoText = a.estado === 'A' ? 'Con saldo' : a.estado == 'B' ? 'Sin saldo' : 'Anulado';
-          const estadoClass = a.estado === 'A' ? 'text-success' : a.estado == 'B' ? 'text-danger' : '';
-
-          let html_botonEliminar = "";
-
-          if (a.estado != "X") {
-            html_botonEliminar = `
-                      <button class="btn btn-sm btn-danger btn-eliminar-anticipo"
-                              data-id-anticipo="${a.id_anticipo}"
-                              data-id-proveedor="${proveedor.id_proveedor}"
-                              data-factura="${a.serie_factura}-${a.numero_factura}"
-                              data-cantidad-transacciones="${a.cantidad_transacciones}"
-                              title="Eliminar Anticipo">
-                          <i class="bi bi-trash"></i>
-                      </button>
-            `;
-          }
-
-          html += `
-              <tr>
-                  <td>${a.serie_factura}-${a.numero_factura}</td>
-                  <td class="text-end">${formatCurrency(a.saldo_inicial)}</td>
-                  <td class="text-end">${formatCurrency(a.saldo_actual)}</td>
-                  <td class="text-center">${a.cantidad_transacciones}</td>
-                  <td class="text-center">${a.fecha_registro}</td>
-                  <td class="text-center ${estadoClass}"><strong>${estadoText}</strong></td>
-                  <td class="text-center">
-                      <button class="btn btn-sm btn-info text-white btn-view-transacciones"
-                              data-id-anticipo="${a.id_anticipo}"
-                              data-id-proveedor="${proveedor.id_proveedor}"
-                              title="Ver Transacciones">
-                          <i class="bi bi-receipt"></i>
-                      </button>
-                      ${html_botonEliminar}
-                  </td>
-              </tr>`;
-        });
-
-        $("#tbl_anticipos_proveedor").html(html);
+        $('#total-facturas').text(totalFacturas);
+        $('#monto-total').text(formatCurrency(montoTotal));
+        $('#anticipos-aplicados').text(anticiposAplicados);
+        $('#saldo-pendiente').text(formatCurrency(saldoPendiente));
       }
 
-      function renderTransaccionesModal(anticipo) {
-        $("#modal_anticipo_factura").text(`${anticipo.serie_factura}-${anticipo.numero_factura}`);
-        $("#modal_transaccion_saldo_inicial").text(formatCurrency(anticipo.saldo_inicial));
-        $("#modal_transaccion_saldo_actual").text(formatCurrency(anticipo.saldo_actual));
+      // Cargar datos iniciales
+      function loadTransacciones() {
+        const filters = {
+          factura: $('#filter-factura').val(),
+          factura_amortiza: $('#filter-factura-amortiza').val(),
+          fecha_desde: $('#filter-fecha-desde').val(),
+          fecha_hasta: $('#filter-fecha-hasta').val(),
+          estado: $('#filter-estado').val()
+        };
 
-        let html = '';
-        if (anticipo.transacciones.length === 0) {
-          html = '<tr><td colspan="8" class="text-center">No hay transacciones registradas para este anticipo.</td></tr>';
-        }
+        $('#tbl-transacciones').html(`
+          <tr>
+            <td colspan="13" class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="mt-2 text-muted">Cargando transacciones...</p>
+            </td>
+          </tr>
+        `);
 
-        // Transacciones deben venir ordenadas por el backend (por ID de transacción ASC)
-        anticipo.transacciones.forEach((t, index) => {
-          html += `
-            <tr>
-              <td class="text-center">${index + 1}</td>
-              <td>${t.codigo_unico}</td>
-              <td>${t.procedencia}</td>
-              <td>${t.concesion}</td>
-              <td class="text-end">${formatCurrency(t.saldo_actual)}</td>
-              <td class="text-end text-danger"><strong>${formatCurrency(t.monto_retirado)}</strong></td>
-              <td class="text-end">${formatCurrency(t.saldo_restante)}</td>
-              <td>${t.fecha_registro}</td>
-            </tr>`;
-        });
-
-        $("#tbl_transacciones").html(html);
-        transaccionesModal.show();
-      }
-
-      function loadSelect2Providers() {
-        const data = proveedores_aptos.map(p => ({
-          id: p.id_proveedor,
-          text: `${p.razon_social} (${p.documento})`
-        }));
-
-        $("#reg_proveedor").select2({
-          dropdownParent: $('#modal_nuevo_anticipo'),
-          theme: "bootstrap-5", // Usar el tema de Bootstrap 5
-          placeholder: 'Buscar o seleccionar un proveedor...',
-          data: data,
-          allowClear: true
-        });
-      }
-
-
-      // -------------------------
-      // Lógica de Eventos
-      // -------------------------
-
-      // 1. Carga Inicial de Datos
-      function loadAllData() {
-        f_callBackend('getAnticiposAndProviders', {})
+        f_callBackend('getTransaccionesAnticipos', filters)
           .done(function(r) {
             if (r.estado === 1 && r.data) {
-              allData = r.data;
-              cantidad_anticipos = parseInt(allData.cantidad_anticipos || 0);
-              anticipos_con_saldo = parseInt(allData.anticipos_con_saldo || 0);
-              anticipos_sin_saldo = parseInt(allData.anticipos_sin_saldo || 0);
-              proveedores_aptos = allData.proveedores || [];
-              proveedores_con_anticipos = allData.proveedores_con_anticipos || [];
+              transaccionesData = r.data;
+              currentPage = 1;
 
-              renderGeneralSummary();
-              renderProveedores();
-              loadSelect2Providers();
+              updateSummary(transaccionesData);
+              renderPagination();
+              renderCurrentPage();
 
-              // Si había un proveedor seleccionado previamente (mantener el estado después de una recarga)
-              if (proveedor_seleccionado) {
-                const updatedProv = findProveedorById(proveedor_seleccionado.id_proveedor);
-                if (updatedProv) {
-                  proveedor_seleccionado = updatedProv;
-                  renderAnticipos(proveedor_seleccionado);
-                }
-              }
+              // Actualizar información de paginación
+              const start = ((currentPage - 1) * itemsPerPage) + 1;
+              const end = Math.min(currentPage * itemsPerPage, transaccionesData.length);
+              $('#info-paginacion').text(`Mostrando ${start}-${end} de ${transaccionesData.length} registros`);
 
             } else {
-              alert("Error al cargar datos iniciales: " + (r.msg || "Respuesta incompleta del servidor."));
+              alert("Error al cargar transacciones: " + (r.msg || "Error desconocido"));
             }
           })
           .fail(function() {
-            alert("Error de conexión al cargar datos de anticipos.");
+            alert("Error de conexión al cargar transacciones");
           });
       }
 
-      // 2. Evento: Seleccionar Proveedor (para ver sus anticipos)
-      // Delegamos el evento al cuerpo de la tabla
-      $("#tbl_proveedores_con_anticipos").on("click", ".proveedor-row", function() {
-        const id = $(this).data('id-proveedor');
-        proveedor_seleccionado = findProveedorById(id);
-        anticipo_seleccionado = null; // Limpiar selección de anticipo
-        renderAnticipos(proveedor_seleccionado);
-      });
+      // Paginación
+      function renderPagination() {
+        const totalPages = Math.ceil(transaccionesData.length / itemsPerPage);
+        const pagination = $('#pagination-container');
 
-      // 3. Evento: Abrir Modal de Transacciones
-      // Delegamos el evento al cuerpo de la tabla de anticipos
-      $("#tbl_anticipos_proveedor").on("click", ".btn-view-transacciones", function() {
-        const idAnticipo = $(this).data('id-anticipo');
-
-        // El proveedor debe estar seleccionado ya
-        if (proveedor_seleccionado) {
-          anticipo_seleccionado = findAnticipoById(proveedor_seleccionado, idAnticipo);
-        }
-
-        if (anticipo_seleccionado) {
-          renderTransaccionesModal(anticipo_seleccionado);
-        } else {
-          alert('Error: Anticipo no encontrado o proveedor no seleccionado.');
-        }
-      });
-
-
-      // 4. Evento: Abrir Modal de Nuevo Anticipo
-      $("#btn_open_new_anticipo_modal").on("click", function() {
-        // Limpiar modal
-        $("#reg_proveedor").val('').trigger('change');
-        $("#reg_serie_factura").val('');
-        $("#reg_numero_factura").val('');
-        $("#reg_saldo_inicial").val('');
-        nuevoAnticipoModal.show();
-      });
-
-
-      // 5. Evento: Guardar Nuevo Anticipo
-      $("#btn_guardar_anticipo").on("click", function() {
-        const id_proveedor = $("#reg_proveedor").val();
-        const serie_factura = $("#reg_serie_factura").val().trim().toUpperCase();
-        const numero_factura = $("#reg_numero_factura").val().trim();
-        const saldo_inicial = parseFloat($("#reg_saldo_inicial").val());
-
-        if (!id_proveedor) {
-          alert("Debe seleccionar un proveedor.");
-          return;
-        }
-        if (serie_factura.length === 0 || numero_factura.length === 0) {
-          alert("Debe ingresar la Serie y Número de Factura.");
-          return;
-        }
-        if (isNaN(saldo_inicial) || saldo_inicial <= 0) {
-          alert("Debe ingresar un Saldo Inicial válido.");
+        if (totalPages <= 1) {
+          pagination.hide();
           return;
         }
 
-        // Deshabilitar botón
-        const $btn = $(this);
-        $btn.prop('disabled', true).text('Grabando...');
+        pagination.show();
 
-        f_callBackend('registerNewAnticipo', {
-            id_proveedor: id_proveedor,
-            serie_factura: serie_factura,
-            numero_factura: numero_factura,
-            saldo_inicial: saldo_inicial
-          })
-          .done(function(r) {
-            if (r.estado === 1) {
-              alert("Anticipo registrado con éxito.");
+        let html = `
+          <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage - 1}" aria-label="Previous">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+        `;
 
-              // Ocultar modal y re-habilitar botón
-              nuevoAnticipoModal.hide();
+        // Mostrar máximo 5 páginas
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
 
-              // --- 1. Simular la inserción dinámica en las variables globales ---
-              const new_data = r.new_data; // Objeto del nuevo anticipo
-
-              // Actualizar contadores globales
-              cantidad_anticipos++;
-              anticipos_con_saldo++;
-              renderGeneralSummary();
-
-              // 2. Insertar/Actualizar la lista de proveedores con anticipos
-              let targetProv = findProveedorById(id_proveedor);
-
-              if (targetProv) {
-                // Caso A: El proveedor ya existía con anticipos
-                targetProv.anticipos.push(new_data);
-                targetProv.cantidad_anticipos++;
-                targetProv.anticipos_con_saldo++;
-              } else {
-                // Caso B: Es el primer anticipo del proveedor
-                const provInfo = proveedores_aptos.find(p => String(p.id_proveedor) === String(id_proveedor));
-                if (provInfo) {
-                  targetProv = {
-                    id_proveedor: provInfo.id_proveedor,
-                    documento: provInfo.documento,
-                    razon_social: provInfo.razon_social,
-                    cantidad_anticipos: 1,
-                    anticipos_con_saldo: 1,
-                    anticipos_sin_saldo: 0,
-                    anticipos: [new_data]
-                  };
-                  proveedores_con_anticipos.push(targetProv);
-                }
-              }
-
-              // 3. Seleccionar el proveedor recién actualizado y renderizar
-              proveedor_seleccionado = targetProv;
-              renderProveedores(); // Actualiza la tabla izquierda
-              renderAnticipos(proveedor_seleccionado); // Muestra el nuevo anticipo a la derecha
-
-            } else {
-              alert("Error al registrar anticipo: " + (r.msg || "Error desconocido."));
-            }
-          })
-          .fail(function() {
-            alert("Error de conexión al intentar grabar el anticipo.");
-          })
-          .always(function() {
-            $btn.prop('disabled', false).text('Grabar Anticipo');
-          });
-      });
-
-
-      // Evento: Eliminar Anticipo
-      $("#tbl_anticipos_proveedor").on("click", ".btn-eliminar-anticipo", function() {
-        const idAnticipo = $(this).data('id-anticipo');
-        const idProveedor = $(this).data('id-proveedor');
-        const factura = $(this).data('factura');
-        const cantidadTransacciones = $(this).data('cantidad-transacciones');
-
-        // Confirmar eliminación
-        if (!confirm(`¿Está seguro de eliminar el anticipo ${factura}?\n\nSe eliminarán todas las transacciones asociadas.\n\nEsta acción no se puede deshacer.`)) {
-          return;
+        if (endPage - startPage < 4) {
+          startPage = Math.max(1, endPage - 4);
         }
 
-        // Obtener el proveedor actual
-        const proveedorActual = findProveedorById(idProveedor);
-        if (!proveedorActual) {
-          alert("Error: Proveedor no encontrado.");
-          return;
+        for (let i = startPage; i <= endPage; i++) {
+          html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+              <a class="page-link" href="#" data-page="${i}">${i}</a>
+            </li>
+          `;
         }
 
-        // Obtener el anticipo específico
-        const anticipoAEliminar = findAnticipoById(proveedorActual, idAnticipo);
-        if (!anticipoAEliminar) {
-          alert("Error: Anticipo no encontrado.");
-          return;
-        }
+        html += `
+          <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage + 1}" aria-label="Next">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        `;
 
-        // Verificar si tiene transacciones aprobadas
-        if (anticipoAEliminar.transacciones && anticipoAEliminar.transacciones.length > 0) {
-          const tieneAprobadas = anticipoAEliminar.transacciones.some(t => t.estado === 'A');
-          if (tieneAprobadas) {
-            alert("No se puede eliminar este anticipo porque tiene transacciones APROBADAS asociadas.");
-            return;
-          }
-        }
-
-        // Proceder con la eliminación
-        eliminarAnticipoBackend(idAnticipo, anticipoAEliminar, proveedorActual);
-      });
-
-      // Función para llamar al backend de eliminación
-      function eliminarAnticipoBackend(idAnticipo, anticipo, proveedor) {
-        f_callBackend('eliminarAnticipo', {
-            id_anticipo: idAnticipo
-          })
-          .done(function(r) {
-            if (r.estado === 1) {
-              alert(`Anticipo eliminado exitosamente.\n\nTransacciones eliminadas: ${r.transacciones_eliminadas || 0}\nValorizaciones anuladas: ${r.valorizaciones_anuladas || 0}`);
-
-              // Actualizar la lista local
-              // 1. Remover el anticipo de la lista del proveedor
-              const index = proveedor.anticipos.findIndex(a => String(a.id_anticipo) === String(idAnticipo));
-              if (index !== -1) {
-                proveedor.anticipos.splice(index, 1);
-                proveedor.cantidad_anticipos--;
-
-                // Actualizar contadores según estado
-                if (anticipo.estado === 'A') {
-                  proveedor.anticipos_con_saldo--;
-                  anticipos_con_saldo--;
-                } else {
-                  proveedor.anticipos_sin_saldo--;
-                  anticipos_sin_saldo--;
-                }
-                cantidad_anticipos--;
-
-                // 2. Si el proveedor ya no tiene anticipos, removerlo de la lista
-                if (proveedor.anticipos.length === 0) {
-                  const provIndex = proveedores_con_anticipos.findIndex(p => String(p.id_proveedor) === String(proveedor.id_proveedor));
-                  if (provIndex !== -1) {
-                    proveedores_con_anticipos.splice(provIndex, 1);
-                  }
-                }
-
-                // 3. Actualizar la UI
-                renderGeneralSummary();
-                renderProveedores();
-
-                // Si el proveedor sigue existiendo, mostrar sus anticipos
-                if (proveedor.anticipos.length > 0) {
-                  proveedor_seleccionado = proveedor;
-                  renderAnticipos(proveedor_seleccionado);
-                } else {
-                  proveedor_seleccionado = null;
-                  renderAnticipos(null);
-                }
-              }
-            } else {
-              alert("Error al eliminar anticipo: " + (r.msg || "Error desconocido."));
-            }
-          })
-          .fail(function() {
-            alert("Error de conexión al intentar eliminar el anticipo.");
-          });
+        pagination.html(html);
       }
 
-      // -------------------------
-      // Start
-      // -------------------------
+      function renderCurrentPage() {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = transaccionesData.slice(startIndex, endIndex);
+        renderTable(pageData);
+      }
 
+      // Event Listeners
+      $(document).on('click', '#pagination-container .page-link', function(e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (page && page !== currentPage) {
+          currentPage = page;
+          renderPagination();
+          renderCurrentPage();
+
+          const start = ((currentPage - 1) * itemsPerPage) + 1;
+          const end = Math.min(currentPage * itemsPerPage, transaccionesData.length);
+          $('#info-paginacion').text(`Mostrando ${start}-${end} de ${transaccionesData.length} registros`);
+        }
+      });
+
+      $('#btn-aplicar-filtros').on('click', function() {
+        loadTransacciones();
+      });
+
+      $('#btn-limpiar-filtros').on('click', function() {
+        $('#filter-factura').val('');
+        $('#filter-factura-amortiza').val('');
+        $('#filter-fecha-desde').val('');
+        $('#filter-fecha-hasta').val('');
+        $('#filter-estado').val('');
+        loadTransacciones();
+      });
+
+      $('#btn-exportar-excel').on('click', function() {
+        // Aquí iría la lógica para exportar a Excel
+        alert('Funcionalidad de exportación a Excel en desarrollo...');
+      });
+
+      $(document).on('click', '.btn-view-details', function() {
+        const index = $(this).data('index');
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const actualIndex = startIndex + index;
+
+        selectedTransaccion = transaccionesData[actualIndex];
+
+        if (selectedTransaccion) {
+          // Llenar datos del modal
+          $('#detalle-factura-venta').text(selectedTransaccion.accion_anticipo || '---');
+          $('#detalle-factura-amortiza').text(selectedTransaccion.factura_amortiza || '---');
+          $('#detalle-fecha').text(formatDate(selectedTransaccion.fecha));
+          $('#detalle-valorizacion').text(selectedTransaccion.numero_valorizacion || '---');
+          $('#detalle-importe-factura').text(formatCurrency(selectedTransaccion.importe_factura));
+          $('#detalle-importe-amortiza').text(formatCurrency(selectedTransaccion.importe_amortiza));
+          $('#detalle-saldo-deuda').text(formatCurrency(selectedTransaccion.saldo_deuda));
+          $('#detalle-estado').html(
+            selectedTransaccion.estado === 'Comprobante Pendiente' ?
+            '<span class="status-badge status-pendiente">PENDIENTE</span>' :
+            selectedTransaccion.estado === 'Aprobado' ?
+            '<span class="status-badge status-aprobado">APROBADO</span>' :
+            '<span class="status-badge status-anulado">ANULADO</span>'
+          );
+
+          // Aquí cargaríamos los lotes desde el backend
+          // Por ahora mostramos un mensaje
+          $('#tbl-lotes-detalle tbody').html(`
+            <tr>
+              <td colspan="5" class="text-center">Cargando lotes...</td>
+            </tr>
+          `);
+
+          detallesModal.show();
+
+          // Simular carga de lotes
+          setTimeout(() => {
+            $('#tbl-lotes-detalle tbody').html(`
+              <tr>
+                <td>GEL-25-1609</td>
+                <td>Mineral de oro</td>
+                <td>1,250.50</td>
+                <td>15.8</td>
+                <td>$ 45,250.00</td>
+              </tr>
+              <tr>
+                <td>GEL-25-1810</td>
+                <td>Mineral de plata</td>
+                <td>2,150.00</td>
+                <td>8.5</td>
+                <td>$ 32,150.00</td>
+              </tr>
+            `);
+          }, 500);
+        }
+      });
+
+      $('#btn-imprimir-comprobante').on('click', function() {
+        if (selectedTransaccion) {
+          window.open(`imprimir_comprobante.php?id=${selectedTransaccion.id}`, '_blank');
+        }
+      });
+
+      // Inicialización
       function f_Init() {
-        // Genera menús
         f_GetMenuPrincipal();
-
-        // Titulo de Pantalla
-        $("#nv_titulo").html('| Anticipos a proveedores');
-
-        // Carga todos los datos al iniciar
-        loadAllData();
+        $("#nv_titulo").html('| Transacciones Anticipos');
+        loadTransacciones();
       }
 
       f_Init();
