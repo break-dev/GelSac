@@ -1861,6 +1861,11 @@ if (!isset($_SESSION["Id"])) {
     }
 
     async function f_AdminValorizacion(_item, _pos = 0, _id_valorizacion = '', _num_oficio = '', _id_proveedor = '', _id_concesion = '', _id_cuentabancaria = '', _id_cuentadetraccion = '') {
+      anticiposSeleccionados = [];
+      anticiposDisponibles = [];
+      montoTotalValorizacion = 0;
+      // limpiamos los anticipos previamente seleccionados
+      f_LimpiarSeleccionAnticipos();
       let titulo = "";
       let tipo = "";
 
@@ -1870,8 +1875,6 @@ if (!isset($_SESSION["Id"])) {
       } else {
         tipo = "N";
         titulo = "Nueva Valorización";
-        // limpiamos los anticipos previamente seleccionados
-        f_LimpiarSeleccionAnticipos();
       }
 
       // Seteando variables hidden
@@ -1887,9 +1890,8 @@ if (!isset($_SESSION["Id"])) {
       // $("#valorizacion_cuentadetraccionproveedor").html('');
       $("#cmb_proveedor").prop('disabled', false);
       $("#cmb_concesion").prop('disabled', false);
-      // Abre modal
-      f_OpenModal('modal_valorizacion');
-
+      let monto_banco = 0;
+      let es_mixto = false;
       if (tipo != "N") {
         $("#hd_id_valorizacion").val(_id_valorizacion);
         $("#txt_nro_oficio").val(f_CleanInjection(_num_oficio));
@@ -1905,9 +1907,6 @@ if (!isset($_SESSION["Id"])) {
 
         f_MostrarInfoConcesionSeleccionada();
 
-        // Carga listas de Cuentas
-        await f_LoadListaCuentasBancarias(_id_cuentabancaria);
-        await f_LoadListaCuentaDetraccion(_id_cuentadetraccion);
 
         // Recarga detalle de lotes
         await f_CargarDetalleValorizacion_Editar(_id_valorizacion);
@@ -1941,27 +1940,57 @@ if (!isset($_SESSION["Id"])) {
             html += `<div class="mt-2 fw-bold">Total: $ ${f_RedondearDecimales(total, 2)}</div>`;
             $('#txt_anticipos_seleccionados').html(html);
           }
-        }, 'json');
-        $.post(url_api, {
-          accion: 'getTipoPagoValorizacion',
-          id_valorizacion: _id_valorizacion
-        }, function(data) {
-          if (data.estado == 1) {
-            // Si la valorizacion solo ha usado anticipos, vaciar y deshabilitar 
-            // las cuentas de banco
-            if (data.tipo_pago == 'anticipo') {
-              $("#valorizacion_cuentaproveedor").val('');
-              $("#valorizacion_cuentadetraccionproveedor").val('');
-              $("#valorizacion_cuentaproveedor").prop('disabled', true);
-              $("#valorizacion_cuentadetraccionproveedor").prop('disabled', true);
-            }
-          }
-        }, 'json');
 
+          $.post(url_api, {
+            accion: 'getTipoPagoValorizacion',
+            id_valorizacion: _id_valorizacion
+          }, async function(data) {
+            if (data.estado == 1) {
+              // Si la valorizacion solo ha usado anticipos, vaciar y deshabilitar 
+              // las cuentas de banco
+              if (data.tipo_pago == 'anticipo') {
+                $("#valorizacion_cuentaproveedor").val('');
+                $("#valorizacion_cuentadetraccionproveedor").val('');
+                $("#valorizacion_cuentaproveedor").prop('disabled', true);
+                $("#valorizacion_cuentadetraccionproveedor").prop('disabled', true);
+              } else if (data.tipo_pago == 'mixto') {
+                es_mixto = true;
+              }
+
+              $.post(url_api, {
+                accion: 'get_montos_valorizacion',
+                id_valorizacion: _id_valorizacion
+              }, async function(data) {
+                if (data.estado == 1) {
+                  if (es_mixto) {
+                    console.log("data: ", data);
+                    monto_banco = data.monto_banco;
+                    console.log("monto_banco: ", monto_banco);
+                  }
+                  // Carga listas de Cuentas
+                  await f_LoadListaCuentasBancarias(_id_cuentabancaria);
+                  await f_LoadListaCuentaDetraccion(_id_cuentadetraccion);
+
+                  // Setear Total de Valorización
+                  f_GetTotalValorizacion();
+                  f_ActualizarTipoPago();
+                  // Abre modal
+                  if (es_mixto && monto_banco > 0) {
+                    $('#txt_monto_transferencia').val(f_RedondearDecimales(monto_banco, 2).replace(',', ''));
+                    $('#txt_monto_transferencia').prop('disabled', true);
+                    $('#txt_monto_transferencia').show();
+                  }
+                  f_OpenModal('modal_valorizacion');
+
+                  return;
+                }
+              }, 'json');
+            }
+          }, 'json');
+
+        }, 'json');
 
       } else {
-        // Resetear anticipos para nueva valorización
-        anticiposSeleccionados = [];
         $('#chk_usar_anticipo').prop('checked', false);
         $("#hd_id_valorizacion").val(0);
         $("#txt_nro_oficio").val('');
@@ -1975,6 +2004,13 @@ if (!isset($_SESSION["Id"])) {
       // Setear Total de Valorización
       f_GetTotalValorizacion();
       f_ActualizarTipoPago();
+      // Abre modal
+      if (es_mixto && monto_banco > 0) {
+        $('#txt_monto_transferencia').val(f_RedondearDecimales(monto_banco, 2).replace(',', ''));
+        $('#txt_monto_transferencia').prop('disabled', true);
+        $('#txt_monto_transferencia').show();
+      }
+      f_OpenModal('modal_valorizacion');
     }
 
     function f_LoadProveedoresValorizacion() {

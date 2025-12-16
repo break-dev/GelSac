@@ -1618,6 +1618,79 @@ switch ($_POST["accion"]) {
         ]);
         break;
 
+    case "get_montos_valorizacion":
+        $estado = 0;
+        $mensaje = "Error desconocido.";
+        $monto_total = 0.00; // Usar float para montos
+        $monto_anticipo = 0.00;
+        $monto_banco = 0.00;
+
+        // 1. Validar y Sanitizar la Entrada
+        if (!isset($_POST["id_valorizacion"])) {
+            $mensaje = "Parámetro 'id_valorizacion' no recibido.";
+            break;
+        }
+
+        $id_valorizacion = $_POST["id_valorizacion"];
+
+        if (!is_numeric($id_valorizacion) || $id_valorizacion <= 0) {
+            $mensaje = "ID de valorización inválido.";
+            break;
+        }
+
+        $id_valorizacion = (int)$id_valorizacion;
+
+        // Consulta del monto total de la valorización
+        $q_monto_total = "
+            SELECT
+                IFNULL(SUM(vcd.total), 0.00) AS monto_total
+            FROM
+                valorizacion_compramineral_detalle vcd
+            WHERE
+                vcd.id_valorizacion = {$id_valorizacion};
+        ";
+
+        // Consulta del monto de anticipo usado
+        $q_uso_anticipo = "
+            SELECT
+                IFNULL(SUM(pat.monto_retirado), 0.00) AS monto_anticipo
+            FROM
+                proveedor_anticipo_transaccion pat
+            WHERE
+                pat.id_valorizacion_compramineral = {$id_valorizacion}
+                AND pat.estado <> 'C';
+        ";
+
+        $res_monto_total = mysqli_query($enlace, $q_monto_total);
+        $res_uso_anticipo = mysqli_query($enlace, $q_uso_anticipo);
+
+        if (!$res_monto_total || !$res_uso_anticipo) {
+            $mensaje = "Error en la consulta a la base de datos: " . mysqli_error($enlace);
+        } else {
+            if ($row_monto = mysqli_fetch_assoc($res_monto_total)) {
+                $monto_total = (float)$row_monto['monto_total'];
+            }
+
+            if ($row_anticipo = mysqli_fetch_assoc($res_uso_anticipo)) {
+                $monto_anticipo = (float)$row_anticipo['monto_anticipo'];
+            }
+
+            $monto_banco = $monto_total - $monto_anticipo;
+            $monto_banco = max(0.00, $monto_banco);
+
+            $estado = 1;
+            $mensaje = "Montos de valorización obtenidos correctamente.";
+        }
+
+        echo json_encode([
+            "estado" => $estado,
+            "msg" => $mensaje,
+            "monto_total" => $monto_total,
+            "monto_anticipo" => $monto_anticipo,
+            "monto_banco" => $monto_banco,
+        ]);
+        break;
+
     default:
         # code...
 
