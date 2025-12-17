@@ -70281,11 +70281,18 @@ switch ($_POST["accion"]) {
         // Obtiene elementos ya registrados
         $in_elementos = "";
 
-        $q_datos = "SELECT CMD.id_elemento
-	  									FROM valorizacion_compramineral_detalle CMD
-		           						 INNER JOIN valorizacion_compramineral CM ON CMD.id_valorizacion = CM.Id
-		           			 WHERE CMD.cod_lote = '$cod_lote'
-		           				 AND CM.estado <> 'X'";
+        $q_datos = "
+            SELECT
+                CMD.id_elemento
+            FROM
+                valorizacion_compramineral_detalle CMD
+            INNER JOIN valorizacion_compramineral CM ON
+                CMD.id_valorizacion = CM.Id
+            WHERE
+                CMD.cod_lote = '$cod_lote' AND (CM.estado = 'A' OR CM.estado = 'I')
+            GROUP BY
+                CMD.id_elemento
+        ";
 
         if ($res_datos = mysqli_query($enlace, $q_datos)) {
             if (mysqli_num_rows($res_datos) > 0) {
@@ -72492,7 +72499,7 @@ switch ($_POST["accion"]) {
         echo json_encode($out);
         break;
 
-    case "get_ValorizacionCompra_Detalle_Lista":
+    case "get_ValorizacionCompra_Lista":
         $id_proveedor = isset($_POST["id_proveedor"])
             ? intval($_POST["id_proveedor"])
             : 0;
@@ -72500,38 +72507,19 @@ switch ($_POST["accion"]) {
             ? intval($_POST["id_moneda"])
             : 0;
 
-        $sql = "SELECT V.Id AS id_valorizacion,
-      							 vd.Id AS id_valorizacion_detalle,
-      							 V.correlativo,
-      							 E.abv AS ELEMENTO,
-	                   vd.*,
-	                   P.razon_social AS PROVEEDOR_RAZON_SOCIAL,
-	                   P.documento AS PROVEEDOR_RUC,
-	                   (SELECT L.id_CatalogoLotes FROM catalogolotes L WHERE L.ccod_Lote = vd.cod_lote) AS ID_LOTE,
-	                   $id_moneda AS id_moneda,
-	                   (SELECT abv FROM tbconfig_monedas M WHERE M.id = $id_moneda LIMIT 1) AS moneda_abv
-	              FROM valorizacion_compramineral_detalle vd
-	                   LEFT JOIN valorizacion_compramineral V ON vd.id_valorizacion = V.Id
-	                   LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
-	                   INNER JOIN tb_ensayos_analisis E ON vd.id_elemento = E.Id
-	             WHERE vd.estado <> 'X'
-	             	 AND V.is_aprobado = 1
-	             	 AND NOT EXISTS (	SELECT 1
-																		FROM comprobante_pago CP
-																	 WHERE CP.estado <> 'X'
-																	 	 AND FIND_IN_SET( CAST(vd.Id AS CHAR),
-																	 	 									REPLACE(CP.id_valorizacion_detalle,' ','') ) > 0
-													  		)";
-
-        if ($id_proveedor > 0) {
-            $sql .= " AND V.id_proveedor = $id_proveedor";
-        }
-
-        // if ($id_moneda > 0) {
-        //   $sql .= " AND V.id_moneda = $id_moneda";
-        // }
-
-        $sql .= " ORDER BY vd.Id ASC";
+        $sql = "
+            SELECT
+                vc.Id AS id_valorizacion,
+                vc.codigo_unico,
+                vc.procedencia,
+                vc.concesion,
+                (CONCAT(vc.codigo_unico, ' | ', vc.procedencia, ' | ', vc.concesion)) AS info_valorizacion
+            FROM
+                valorizacion_compramineral vc
+            WHERE
+                vc.is_aprobado = 1 AND vc.id_proveedor = $id_proveedor
+            ORDER BY vc.fechahora_registro DESC;
+        ";
 
         $res = mysqli_query($enlace, $sql);
         $registros = [];
@@ -72552,7 +72540,7 @@ switch ($_POST["accion"]) {
 
         $modo_grabar = $_POST["modograbar_comprobante"];
         $id_proveedor = $_POST["id_proveedor"];
-        $id_valorizacion_detalle = $_POST["id_valorizacion_detalle"];
+        $id_valorizacion = $_POST["id_valorizacion"];
         $id_moneda = $_POST["id_moneda"];
         $comprobante_serie = strtoupper(trim($_POST["comprobante_serie"]));
         $comprobante_numero = strtoupper(trim($_POST["comprobante_numero"]));
@@ -72596,9 +72584,9 @@ switch ($_POST["accion"]) {
 
                 // Insertar
                 $q_insert =
-                    "INSERT INTO comprobante_pago (id_proveedor, id_valorizacion_detalle, id_moneda, fecha_emision_comprobante, serie_comprobante, numero_comprobante, sub_total, igv, total_comprobante, porc_detraccion, total_detraccion, total_detraccion_soles, total_sin_detraccion, tipo_cambio, fechahora_registro, usuario_registro) VALUES (";
+                    "INSERT INTO comprobante_pago (id_proveedor, id_valorizacion, id_moneda, fecha_emision_comprobante, serie_comprobante, numero_comprobante, sub_total, igv, total_comprobante, porc_detraccion, total_detraccion, total_detraccion_soles, total_sin_detraccion, tipo_cambio, fechahora_registro, usuario_registro) VALUES (";
                 $q_insert .= "$id_proveedor, ";
-                $q_insert .= "'$id_valorizacion_detalle', ";
+                $q_insert .= "'$id_valorizacion', ";
                 $q_insert .= "$id_moneda, ";
                 $q_insert .= "'$fecha_emision', ";
                 $q_insert .= "'$comprobante_serie', ";
@@ -72782,7 +72770,7 @@ switch ($_POST["accion"]) {
         // Query para obtener el tipo: "Recepción de Mineral"
         $q_validacion = "	SELECT 
                               CP.Id AS id_comprobante_pago,
-                              CP.id_valorizacion_detalle,
+                              CP.id_valorizacion,
                               CP.serie_comprobante,
                               CP.numero_comprobante,
                               CP.fecha_emision_comprobante,
@@ -72840,7 +72828,7 @@ switch ($_POST["accion"]) {
                               CP.id_moneda
 
                             FROM comprobante_pago CP
-                            		 INNER JOIN valorizacion_compramineral_detalle VD ON FIND_IN_SET(VD.Id, CP.id_valorizacion_detalle) > 0
+                            		 INNER JOIN valorizacion_compramineral_detalle VD ON FIND_IN_SET(VD.Id, CP.id_valorizacion) > 0
                             		 INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
 																 LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
 																 LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
@@ -75907,7 +75895,7 @@ case "eliminarAnticipo":
             FROM
                 comprobante_pago cp
             INNER JOIN valorizacion_compramineral_detalle vcd ON
-                vcd.Id = cp.id_valorizacion_detalle
+                vcd.Id = cp.id_valorizacion
             INNER JOIN valorizacion_compramineral vc ON
                 vc.Id = vcd.id_valorizacion
             INNER JOIN tb_clientes cli ON

@@ -672,7 +672,7 @@ if (!isset($_SESSION["Id"])) {
 						</div>
 
 						<div class="col-md-8 col-sm-8 col-xs-12" style="margin-left: -20px;">
-							<select id="comprobante_valorizacion" class="form-select" multiple data-placeholder="Elija opciones..." style="font-size: 14px;">
+							<select id="comprobante_valorizacion" class="form-select" data-placeholder="Elija opciones..." style="font-size: 14px;">
 							</select>
 						</div>
 					</div>
@@ -1486,20 +1486,32 @@ if (!isset($_SESSION["Id"])) {
 			$combo.html('<option value="">Cargando valorizaciones...</option>');
 
 			$.post('apis/backend.php', {
-				accion: 'get_ValorizacionCompra_Detalle_Lista',
+				accion: 'get_ValorizacionCompra_Lista',
 				id_proveedor: id_proveedor,
 				id_moneda: id_moneda
-
 			}, function(data) {
 				if (data.estado == 1) {
 					let html = '';
-					data.registros.forEach(item => {
-						html += `
-                <option value="${item.id_valorizacion_detalle}" data-total="${item.total}">
-                  N° Valorización: ${item.correlativo} | ${item.cod_gel} | ${item.ELEMENTO} | ${item.moneda_abv} ${f_RedondearDecimales(item.total, 2)}
-                </option>`;
-					});
-					$combo.html(html).val(null).trigger('change.select2');
+
+					// Si hay registros
+					if (data.registros && data.registros.length > 0) {
+						data.registros.forEach(item => {
+							// Usa los campos REALES que vienen del backend
+							const codigo = item.codigo_unico || '';
+							const procedencia = item.procedencia || '';
+							const concesion = item.concesion || '';
+							const info = item.info_valorizacion || `${codigo} | ${procedencia} | ${concesion}`;
+
+							// Si quieres mostrar el ID de la respuesta
+							const valorizacionId = item.id_valorizacion || '';
+
+							html += `<option value="${valorizacionId}">${info}</option>`;
+						});
+					} else {
+						html = '<option value="">No hay valorizaciones disponibles</option>';
+					}
+
+					$combo.html(html).val(null).trigger('change');
 				} else {
 					$combo.html('<option value="">No hay valorizaciones disponibles</option>');
 				}
@@ -1750,31 +1762,6 @@ if (!isset($_SESSION["Id"])) {
 
 			f_OpenModal('modal_admintipocambio');
 		}
-
-		/*function f_ValidarTipoCambioPorMoneda() {
-		  const id_moneda_1 = $("#pago_entidadbancaria_cuentas_1 option:selected").data("idmoneda");
-		  const id_moneda_2 = $("#pago_entidadbancaria_cuentas_2 option:selected").data("idmoneda");
-
-		  // Ocultar y limpiar por defecto si falta alguno
-		  if (!id_moneda_1 || !id_moneda_2) {
-		    $("#div_tipocambio").removeClass("d-flex").addClass("d-none");
-		    $("#pago_tipocambio").val('');
-		    return;
-		  }
-
-		  // Mostrar u ocultar según comparación
-		  if (id_moneda_1 === id_moneda_2) {
-		    $("#div_tipocambio").removeClass("d-flex").addClass("d-none");
-		    $("#pago_tipocambio").val('');
-		  } else {
-		    $("#div_tipocambio").removeClass("d-none").addClass("d-flex");
-
-		    $("#pago_tipocambio").val('');
-
-		    var tipo_cambio = $("#hd_tipo_cambio").val();
-		    $("#pago_tipocambio").val(tipo_cambio);
-		  }
-		}*/
 	</script>
 
 	<script>
@@ -1951,7 +1938,8 @@ if (!isset($_SESSION["Id"])) {
 			const serie = ($.trim($("#comprobante_serie").val()) || '').toUpperCase();
 			const numero = ($.trim($("#comprobante_numero").val()) || '').toUpperCase();
 			const id_proveedor = $("#comprobante_proveedor").val() || ''; // opcional (por si tu backend lo usa)
-			const vals = $("#comprobante_valorizacion").val() || [];
+			let vals = $("#comprobante_valorizacion").val() || [];
+			if (!Array.isArray(vals)) vals = [vals]; // Force to array if single string
 			const porc_detraccion = parseFloat($("#comprobante_porc_detraccion").val());
 			const tipo_cambio = $("#comprobante_tipocambio").val();
 
