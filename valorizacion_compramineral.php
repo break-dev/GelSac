@@ -1551,12 +1551,22 @@ if (!isset($_SESSION["Id"])) {
         if (data.estado == 1) {
           // 1) Conteo por correlativo (para saber si hay múltiples versiones)
           const counts = {};
+          // 2) Mapa de grupos aprobados: correlativo -> boolean (si alguna está aprobada)
+          const gruposAprobados = {};
+
           (data.registros || []).forEach(r => {
             const key = String(r.correlativo || '');
             counts[key] = (counts[key] || 0) + 1;
+
+            // Si alguna valorización del grupo está aprobada, marcamos el grupo como aprobado
+            if (r.is_aprobado == 1) {
+              gruposAprobados[key] = true;
+            } else if (gruposAprobados[key] === undefined) {
+              gruposAprobados[key] = false;
+            }
           });
 
-          // 2) Paleta por grupo
+          // 3) Paleta por grupo
           const PALETTE = [{
               border: '#2563eb',
               bg: '#e8f0ff',
@@ -1625,12 +1635,12 @@ if (!isset($_SESSION["Id"])) {
 
             // Estilos por grupo
             const groupStyles = `
-              --group-border:${pal.border};
-              --group-bg:${pal.bg};
-              --group-ink:${pal.ink};
-              border-left:3px solid var(--group-border);
-              background-color:var(--group-bg);
-            `;
+                    --group-border:${pal.border};
+                    --group-bg:${pal.bg};
+                    --group-ink:${pal.ink};
+                    border-left:3px solid var(--group-border);
+                    background-color:var(--group-bg);
+                `;
 
             // Indicadores
             const totalVersions = counts[corrKey] || 1;
@@ -1638,41 +1648,49 @@ if (!isset($_SESSION["Id"])) {
             const versionsIcon = hasMany ? `<i class="bi bi-layers" title="Tiene ${totalVersions} versiones"></i>` : '';
             const versionBadge = `<span class="badge-version" style="color:${pal.border}; background:#fff;">v${row.version}</span>`;
 
+            // Verificar si el grupo tiene alguna valorización aprobada
+            const grupoTieneAprobado = gruposAprobados[corrKey] || false;
+
             // --- HTML de la Fila (Inicio) ---
             _html += `
-            <tr class="valo-row ${isGroupStart ? 'group-start' : ''}"
-              data-id="${row.Id}" data-codigo="${row.correlativo}"
-              data-ruc="${row.ruc}" data-proveedor="${row.proveedor}"
-              style="font-size:12px; cursor:pointer; ${groupStyles}"
-              onclick="f_SelectValorizacion(this);">
-              <td id="tdvalorizaciones_1_${i}" style="text-align:center; vertical-align:middle;">${i}</td>
+                <tr class="valo-row ${isGroupStart ? 'group-start' : ''}"
+                    data-id="${row.Id}" data-codigo="${row.correlativo}"
+                    data-ruc="${row.ruc}" data-proveedor="${row.proveedor}"
+                    style="font-size:12px; cursor:pointer; ${groupStyles}"
+                    onclick="f_SelectValorizacion(this);">
+                    <td id="tdvalorizaciones_1_${i}" style="text-align:center; vertical-align:middle;">${i}</td>
 
-              <td id="tdvalorizaciones_2_${i}" style="text-align:center; vertical-align:middle;"
-                onclick="f_PrintValorizacion('${row.ID_MD5}'); event.stopPropagation();">
-                <span class="corr-wrapper" style="color:${pal.ink}">
-                  ${versionsIcon}
-                  <u>${row.correlativo}</u>
-                </span>
-              </td>
+                    <td id="tdvalorizaciones_2_${i}" style="text-align:center; vertical-align:middle;"
+                        onclick="f_PrintValorizacion('${row.ID_MD5}'); event.stopPropagation();">
+                        <span class="corr-wrapper" style="color:${pal.ink}">
+                            ${versionsIcon}
+                            <u>${row.correlativo}</u>
+                        </span>
+                    </td>
 
-              <td id="tdvalorizaciones_3_${i}" style="text-align:center; vertical-align:middle;">${row.nro_oficio || '---'}</td>
-              <td id="tdvalorizaciones_4_${i}" style="text-align:center; vertical-align:middle;">${row.ruc}</td>
-              <td id="tdvalorizaciones_5_${i}" style="text-align:center; vertical-align:middle;">${row.proveedor}</td>
+                    <td id="tdvalorizaciones_3_${i}" style="text-align:center; vertical-align:middle;">${row.nro_oficio || '---'}</td>
+                    <td id="tdvalorizaciones_4_${i}" style="text-align:center; vertical-align:middle;">${row.ruc}</td>
+                    <td id="tdvalorizaciones_5_${i}" style="text-align:center; vertical-align:middle;">${row.proveedor}</td>
 
-              <td style="text-align:center; vertical-align:middle;">${versionBadge}</td>
+                    <td style="text-align:center; vertical-align:middle;">${versionBadge}</td>
 
-              <td id="tdvalorizaciones_6_${i}" style="text-align:center; vertical-align:middle;">
-                <b>${row.usuario_registro}</b><br>${row.fechahora_registro}
-              </td>
+                    <td id="tdvalorizaciones_6_${i}" style="text-align:center; vertical-align:middle;">
+                        <b>${row.usuario_registro}</b><br>${row.fechahora_registro}
+                    </td>
 
-              <td id="tdvalorizaciones_7_${i}" style="text-align:center; vertical-align:middle;">
-          `;
+                    <td id="tdvalorizaciones_7_${i}" style="text-align:center; vertical-align:middle;">
+                `;
 
             // Lógica de Aprobación
             if (row.IS_VALORIZACIONAPROBADA == 0 && row.estado == 'A') {
-              _html += `<button class="btn btn-primary btn-sm" style="font-size: 13px;" onclick="event.stopPropagation(); f_AprobarValorizacion(${row.Id}, ${row.correlativo}, ${row.version});">
-                      Aprobar
-                    </button>`;
+              // Solo mostrar botón "Aprobar" si el grupo NO tiene ya una aprobada
+              if (!grupoTieneAprobado) {
+                _html += `<button class="btn btn-primary btn-sm" style="font-size: 13px;" onclick="event.stopPropagation(); f_AprobarValorizacion(${row.Id}, ${row.correlativo}, ${row.version});">
+                                Aprobar
+                            </button>`;
+              } else {
+                _html += `<span class="text-muted" style="font-size: 12px;">No disponible</span>`;
+              }
             } else {
               if (row.is_aprobado == 1) {
                 _html += `<b>${row.is_aprobado_usuarioregistro}</b><br>${row.is_aprobado_fechahoraregistro}`;
@@ -1681,77 +1699,90 @@ if (!isset($_SESSION["Id"])) {
 
             // Cierre de TD 7
             _html += `
-                                </td>
+                                    </td>
 
-                        <td id="tdvalorizaciones_8_${i}" class="text-center estado-pill" style="background-color:${estado_color}; vertical-align:middle;">
-                          ${estado_txt}
-                        </td>
+                            <td id="tdvalorizaciones_8_${i}" class="text-center estado-pill" style="background-color:${estado_color}; vertical-align:middle;">
+                                ${estado_txt}
+                            </td>
 
-                        <td class="text-center" style="vertical-align:middle;">
-                    `;
+                            <td class="text-center" style="vertical-align:middle;">
+                        `;
 
             const is_aprobado = row.is_aprobado == 1;
 
             if (is_aprobado) {
               // Si está aprobada, mostrar solo botón "Reabrir"
               _html += `
-                    <button class="btn btn-sm btn-warning" title="Reabrir Valorización" style="margin:2px;"
-                      onclick="event.stopPropagation(); f_ReabrirValorizacion(${row.Id});">
-                      <i class="bi bi-arrow-counterclockwise"></i> Reabrir
-                    </button>
-                `;
+                        <button class="btn btn-sm btn-warning" title="Reabrir Valorización" style="margin:2px;"
+                            onclick="event.stopPropagation(); f_ReabrirValorizacion(${row.Id});">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reabrir
+                        </button>
+                    `;
             }
             // si esta eliminado por anticipos, solo permitir eliminar
             else if (row.estado == "R") {
               _html += `
-                <div class="d-flex justify-content-center align-items-center">
-                  <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
-                    onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </div>
-                `;
+                        <div class="d-flex justify-content-center align-items-center">
+                            <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
+                                onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        `;
             } else {
-              // Si NO está aprobada, mostrar los 4 botones normales
-              _html += `
-                  <div class="d-flex justify-content-center align-items-center">
-                    <div class="d-flex flex-column mb-1">
-                      <button class="btn btn-sm btn-primary" title="Editar" style="margin:2px;"
-                        onclick="event.stopPropagation(); f_AdminValorizacion('E', ${i}, ${row.Id}, '${row.num_oficio || ''}', ${row.id_proveedor || ''}, ${row.id_concesion || ''}, ${row.id_cuentabancaria}, ${row.id_cuentadetraccion});">
-                        <i class="bi bi-pencil-square"></i>
-                      </button>
+              // Si NO está aprobada individualmente...
+              // Verificar si el grupo tiene alguna aprobada
+              if (grupoTieneAprobado) {
+                // Si el grupo tiene alguna aprobada, ocultar todos los botones
+                _html += `
+                            <div class="d-flex justify-content-center align-items-center">
+                                <span class="text-muted" style="font-size: 11px;">
+                                    Hay una copia aprobada
+                                </span>
+                            </div>
+                        `;
+              } else {
+                // Si el grupo NO tiene aprobaciones, mostrar los 4 botones normales
+                _html += `
+                            <div class="d-flex justify-content-center align-items-center">
+                                <div class="d-flex flex-column mb-1">
+                                    <button class="btn btn-sm btn-primary" title="Editar" style="margin:2px;"
+                                        onclick="event.stopPropagation(); f_AdminValorizacion('E', ${i}, ${row.Id}, '${row.num_oficio || ''}', ${row.id_proveedor || ''}, ${row.id_concesion || ''}, ${row.id_cuentabancaria}, ${row.id_cuentadetraccion});">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
 
-                      <button class="btn btn-sm btn-secondary" title="Nueva versión" style="margin:2px;"
-                        onclick="event.stopPropagation(); f_NuevaVersion(${row.Id}, ${row.correlativo});">
-                        <i class="bi bi-clouds"></i>
-                      </button>
-                    </div>
+                                    <button class="btn btn-sm btn-secondary" title="Nueva versión" style="margin:2px;"
+                                        onclick="event.stopPropagation(); f_NuevaVersion(${row.Id}, ${row.correlativo});">
+                                        <i class="bi bi-clouds"></i>
+                                    </button>
+                                </div>
 
-                    <div class="d-flex flex-column mb-1">
-                      ${row.estado == 'A'
-                        ? `<button class="btn btn-sm btn-warning" title="Inactivar" style="margin:2px;"
-                            onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'I');">
-                            <i class="bi bi-x-circle"></i>
-                          </button>`
-                        : `<button class="btn btn-sm btn-success" title="Activar" style="margin:2px;"
-                            onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'A');">
-                            <i class="bi bi-check-circle"></i>
-                          </button>`
-                      }
-                      <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
-                        onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </div>
-                  </div>
-                `;
+                                <div class="d-flex flex-column mb-1">
+                                    ${row.estado == 'A'
+                                        ? `<button class="btn btn-sm btn-warning" title="Inactivar" style="margin:2px;"
+                                                onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'I');">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>`
+                                        : `<button class="btn btn-sm btn-success" title="Activar" style="margin:2px;"
+                                                onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'A');">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>`
+                                    }
+                                    <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
+                                        onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+              }
             }
 
             // Cierre de TD 9 y de la Fila
             _html += `
-              </td>
-            </tr>
-          `;
+                    </td>
+                </tr>
+                `;
             i++;
           });
 
