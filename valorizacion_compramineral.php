@@ -1799,7 +1799,7 @@ if (!isset($_SESSION["Id"])) {
     }
 
     function f_ReabrirValorizacion(id_valorizacion) {
-      if (!confirm("¿Está seguro de reabrir esta valorización?\n\nEsto revertirá las transacciones de anticipos y cambiará el estado a 'Por confirmar'.")) {
+      if (!confirm("¿Está seguro de reabrir esta valorización?\n\nSi usaste anticipos, se revertirán las transacciones.")) {
         return;
       }
 
@@ -1808,7 +1808,7 @@ if (!isset($_SESSION["Id"])) {
         id_valorizacion: id_valorizacion
       }, function(data) {
         if (data.estado == 1) {
-          alert('Valorización reabierta correctamente. Las transacciones han sido revertidas.');
+          alert('Valorización reabierta correctamente.');
           f_LoadValorizaciones();
         } else {
           alert('Error al reabrir la valorización: ' + (data.msg || 'Error desconocido'));
