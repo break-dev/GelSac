@@ -3577,6 +3577,10 @@ if (!isset($_SESSION["Id"])) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
+            if(data.msg){
+              alert(data.msg);
+              return;
+            }
             alert("Ocurrió un error al generar la copia.");
           }
         }, "json");
