@@ -1497,10 +1497,10 @@ if (!isset($_SESSION["Id"])) {
 					if (data.registros && data.registros.length > 0) {
 						data.registros.forEach(item => {
 							// Usa los campos REALES que vienen del backend
-							const codigo = item.codigo_unico || '';
+							const correlativo = item.correlativo || '';
 							const procedencia = item.procedencia || '';
 							const concesion = item.concesion || '';
-							const info = item.info_valorizacion || `${codigo} | ${procedencia} | ${concesion}`;
+							const info = item.info_valorizacion || `${correlativo} | ${procedencia} | ${concesion}`;
 
 							// Si quieres mostrar el ID de la respuesta
 							const valorizacionId = item.id_valorizacion || '';
@@ -1938,8 +1938,8 @@ if (!isset($_SESSION["Id"])) {
 			const serie = ($.trim($("#comprobante_serie").val()) || '').toUpperCase();
 			const numero = ($.trim($("#comprobante_numero").val()) || '').toUpperCase();
 			const id_proveedor = $("#comprobante_proveedor").val() || ''; // opcional (por si tu backend lo usa)
-			let vals = $("#comprobante_valorizacion").val() || [];
-			if (!Array.isArray(vals)) vals = [vals]; // Force to array if single string
+			let id_valorizacion = $("#comprobante_valorizacion").val();
+			console.log("vals: ", id_valorizacion);
 			const porc_detraccion = parseFloat($("#comprobante_porc_detraccion").val());
 			const tipo_cambio = $("#comprobante_tipocambio").val();
 
@@ -2009,6 +2009,8 @@ if (!isset($_SESSION["Id"])) {
 				return;
 			}
 
+			alert("Valorizacion", vals);
+			return;
 			// Total = suma de data-total de cada opción seleccionada
 			let total = 0;
 			$("#comprobante_valorizacion option:selected").each(function() {

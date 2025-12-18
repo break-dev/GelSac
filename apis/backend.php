@@ -72510,15 +72510,34 @@ switch ($_POST["accion"]) {
         $sql = "
             SELECT
                 vc.Id AS id_valorizacion,
-                vc.codigo_unico,
                 vc.procedencia,
                 vc.concesion,
-                (CONCAT(vc.codigo_unico, ' | ', vc.procedencia, ' | ', vc.concesion)) AS info_valorizacion
+                vc.correlativo,
+                (
+                    CONCAT(
+                        vc.correlativo,
+                        ' | ',
+                        vc.procedencia,
+                        ' | ',
+                        vc.concesion
+                    )
+                ) AS info_valorizacion
             FROM
                 valorizacion_compramineral vc
             WHERE
-                vc.is_aprobado = 1 AND vc.id_proveedor = $id_proveedor
-            ORDER BY vc.fechahora_registro DESC;
+            vc.is_aprobado = 1 AND 
+            vc.id_proveedor = $id_proveedor 
+            AND vc.Id NOT IN(
+                SELECT
+                    cp.id_valorizacion
+                FROM
+                    comprobante_pago cp
+                WHERE
+                    cp.id_valorizacion = vc.Id AND cp.estado = 'A'
+            )
+            ORDER BY
+                vc.fechahora_registro
+            DESC;
         ";
 
         $res = mysqli_query($enlace, $sql);
@@ -75935,6 +75954,56 @@ case "eliminarAnticipo":
             "data" => $data
         ]);
         break;
+
+case "get_monto_total_valorizacion":
+        $estado = 0;
+        $data = [];
+        
+        // Obtener y validar el ID de la Valorización
+        $id_valorizacion = isset($_POST["id_valorizacion"]) ? intval($_POST["id_valorizacion"]) : 0;
+        
+        if ($id_valorizacion == 0) {
+            echo json_encode(["estado" => 0, "msg" => "ID de Valorizacion inválida."]);
+            exit();
+        }
+        
+        // La consulta SQL corregida - usando el parámetro $id_valorizacion
+        $q_monto_total_valorizacion = "
+            SELECT
+                SUM(vcd.total) AS monto_total_valorizacion
+            FROM
+                valorizacion_compramineral vc
+            INNER JOIN valorizacion_compramineral_detalle vcd ON
+                vcd.id_valorizacion = vc.Id
+            WHERE
+                vc.Id = $id_valorizacion AND vc.estado = 'A';
+        ";
+        
+        $res_data = mysqli_query($enlace, $q_monto_total_valorizacion);
+        
+        if ($res_data === false) {
+            // Manejo de error de consulta SQL
+            $msg = "Error al ejecutar la consulta: " . mysqli_error($enlace);
+            echo json_encode(["estado" => 0, "msg" => $msg]);
+            exit();
+        }
+        
+        if (mysqli_num_rows($res_data) > 0) {
+            $row = mysqli_fetch_assoc($res_data);
+            $data = $row;
+            $estado = 1;
+            $msg = "Monto total de valorización obtenido correctamente.";
+        } else {
+            $msg = "No se encontraron datos para la valorización ID $id_valorizacion.";
+        }
+        
+        echo json_encode([
+            "estado" => $estado, 
+            "msg" => $msg ?? "",
+            "data" => $data
+        ]);
+        break;
+
     default:
         # code...
 
