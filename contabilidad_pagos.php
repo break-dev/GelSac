@@ -1939,7 +1939,7 @@ if (!isset($_SESSION["Id"])) {
 			const numero = ($.trim($("#comprobante_numero").val()) || '').toUpperCase();
 			const id_proveedor = $("#comprobante_proveedor").val() || ''; // opcional (por si tu backend lo usa)
 			let id_valorizacion = $("#comprobante_valorizacion").val();
-			console.log("vals: ", id_valorizacion);
+			console.log("id_valorizacion: ", id_valorizacion);
 			const porc_detraccion = parseFloat($("#comprobante_porc_detraccion").val());
 			const tipo_cambio = $("#comprobante_tipocambio").val();
 
@@ -1988,8 +1988,8 @@ if (!isset($_SESSION["Id"])) {
 				return;
 			}
 
-			if (!vals || vals.length === 0) {
-				alert("Debe ingresar al menos una Valorización.");
+			if (!id_valorizacion) {
+				alert("Debe seleccionar una Valorización.");
 				return;
 			}
 
@@ -2009,57 +2009,54 @@ if (!isset($_SESSION["Id"])) {
 				return;
 			}
 
-			alert("Valorizacion", vals);
-			return;
 			// Total = suma de data-total de cada opción seleccionada
 			let total = 0;
-			$("#comprobante_valorizacion option:selected").each(function() {
-				const v = parseFloat($(this).data("total"));
-				if (!isNaN(v)) total += v;
-			});
-			total = Number(total.toFixed(2));
-
-			// (opcional) monto de detracción calculado en Front
-			const monto_detraccion = Number((total * (porc_detraccion / 100)).toFixed(2));
-
-			// Cadena de IDs de valorizaciones
-			const vals_str = vals.join(',');
-
-			// Loading ON
-			f_SavingDatos(1);
-			$(".wt_grabarcomprobante_button").prop("disabled", true).css("background-color", "#C2C0A6");
-
-			// Grabando datos
-			const id_moneda = $("#comprobante_moneda").val();
-
 			$.post("apis/backend.php", {
-					accion: "grabar_ComprobantePago_Valorizacion",
+					accion: "get_monto_total_valorizacion",
 					modograbar_comprobante: modo,
-					id_proveedor,
-					id_valorizacion_detalle: vals_str,
-					id_moneda: id_moneda,
-					comprobante_serie: serie,
-					comprobante_numero: numero,
-					comprobante_fecha: fecha,
-					sub_total: total,
-					comprobante_porc_detraccion: porc_detraccion,
-					tipo_cambio
+					id_valorizacion: id_valorizacion,
 				},
-				function(data) {
-					if (data.estado == 1) {
-						f_LoadResultados();
-						f_cerrarModal('modal_admincomprobantes');
+				function(r) {
+					if (r.estado == 1) {
+						total = r.data.monto_total_valorizacion;
+						console.log("Total: ", total);
+						const monto_detraccion = Number((total * (porc_detraccion / 100)).toFixed(2));
+						// Loading ON
+						f_SavingDatos(1);
+						$(".wt_grabarcomprobante_button").prop("disabled", true).css("background-color", "#C2C0A6");
+						// Grabando datos
+						const id_moneda = $("#comprobante_moneda").val();
+						$.post("apis/backend.php", {
+								accion: "grabar_ComprobantePago_Valorizacion",
+								modograbar_comprobante: modo,
+								id_proveedor,
+								id_valorizacion: id_valorizacion,
+								id_moneda: id_moneda,
+								comprobante_serie: serie,
+								comprobante_numero: numero,
+								comprobante_fecha: fecha,
+								sub_total: total,
+								comprobante_porc_detraccion: porc_detraccion,
+								tipo_cambio
+							},
+							function(data) {
+								if (data.estado == 1) {
+									f_LoadResultados();
+									f_cerrarModal('modal_admincomprobantes');
+								} else {
+									if (data.estado == 2) {
+										alert("No se ha configurado el Tipo de Cambio para el día: " + f_FormatFecha(fecha, 0));
+									} else {
+										alert("Ocurrió un error al momento de grabar el Comprobante.");
+									}
+								}
+								f_SavingDatos(0);
+								$(".wt_grabarcomprobante_button").prop("disabled", false).css("background-color", "");
+			
+							}, "json");
 					} else {
-						if (data.estado == 2) {
-							alert("No se ha configurado el Tipo de Cambio para el día: " + f_FormatFecha(fecha, 0));
-						} else {
-							alert("Ocurrió un error al momento de grabar el Comprobante.");
-						}
+						alert("Ocurrió un error al momento de grabar el Comprobante.");
 					}
-
-					f_SavingDatos(0);
-					$(".wt_grabarcomprobante_button").prop("disabled", false).css("background-color", "");
-
 				}, "json");
 		}
 
