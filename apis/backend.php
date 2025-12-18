@@ -72847,7 +72847,8 @@ switch ($_POST["accion"]) {
                               CP.id_moneda
 
                             FROM comprobante_pago CP
-                            		 INNER JOIN valorizacion_compramineral_detalle VD ON FIND_IN_SET(VD.Id, CP.id_valorizacion) > 0
+                            		INNER JOIN valorizacion_compramineral_detalle VD ON
+                                    cp.id_valorizacion = VD.id_valorizacion
                             		 INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
 																 LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
 																 LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
@@ -73260,9 +73261,9 @@ switch ($_POST["accion"]) {
                         $row_validacion["ARR_CODVALORIZACION"]
                     );
 
-                    foreach ($arr_codvalorizacion as $cod_valorizacion) {
-                        $html .= "		" . trim($cod_valorizacion) . "<br>";
-                    }
+                    // foreach ($arr_codvalorizacion as $cod_valorizacion) {
+                    //     $html .= "		" . trim($cod_valorizacion) . "<br>";
+                    // }
 
                     $html .= "    " . $row_validacion["COD_VALORIZACION"];
                     $html .= "  </td>";

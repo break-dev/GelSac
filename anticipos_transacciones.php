@@ -245,62 +245,19 @@ $backendUrl = 'apis/backend.php';
       <!-- Contenido Principal -->
       <div class="col-md-12 col-sm-12 col-xs-12" style="padding-top: 10px; padding-left: 15px; padding-right: 15px;">
 
-        <!-- Resumen General -->
-        <div class="summary-card">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0"><i class="bi bi-clipboard-data"></i> Transacciones de Anticipos</h4>
-            <span class="badge bg-light text-dark fs-6">Fecha: <?php echo date('d/m/Y'); ?></span>
-          </div>
-
-          <div class="row">
-            <div class="col-md-3">
-              <div class="summary-item">
-                <div class="d-flex justify-content-between">
-                  <span>Total Facturas:</span>
-                  <strong id="total-facturas">0</strong>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="summary-item">
-                <div class="d-flex justify-content-between">
-                  <span>Monto Total USD:</span>
-                  <strong id="monto-total">$ 0.00</strong>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="summary-item">
-                <div class="d-flex justify-content-between">
-                  <span>Anticipos Aplicados:</span>
-                  <strong id="anticipos-aplicados">0</strong>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="summary-item">
-                <div class="d-flex justify-content-between">
-                  <span>Saldo Pendiente:</span>
-                  <strong id="saldo-pendiente" class="text-warning">$ 0.00</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Filtros -->
         <div class="filter-card">
           <h5 class="mb-3"><i class="bi bi-funnel"></i> Filtros de Búsqueda</h5>
 
           <div class="row g-3">
             <div class="col-md-3">
-              <label class="form-label">N° Factura Venta</label>
-              <input type="text" class="form-control" id="filter-factura" placeholder="Ej: E001-42">
+              <label class="form-label">Proveedor</label>
+              <input type="text" class="form-control" id="filter_proveedor" placeholder="Ej: E001-42">
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">N° Factura Amortiza</label>
-              <input type="text" class="form-control" id="filter-factura-amortiza" placeholder="Ej: E001-42">
+              <label class="form-label">N° Factura</label>
+              <input type="text" class="form-control" id="filter_factura" placeholder="Ej: E001-42">
             </div>
 
             <div class="col-md-2">
@@ -350,24 +307,37 @@ $backendUrl = 'apis/backend.php';
               <table class="table table-custom table-hover mb-0">
                 <thead>
                   <tr>
-                    <th class="header-bg-primary" colspan="2">Acción de Anticipo</th>
-                    <th class="header-bg-secondary">Factura de Venta</th>
-                    <th class="header-bg-secondary">N° Factura Amortiza</th>
-                    <th class="header-bg-secondary">Fecha</th>
-                    <th class="header-bg-success">Importe Factura USD $</th>
-                    <th class="header-bg-success">Importe Amortiza Adelanto USD $</th>
-                    <th class="header-bg-warning">Saldo Factura Amortiza</th>
-                    <th class="header-bg-warning">Saldo Neto Factura Amortiza</th>
-                    <th class="header-bg-success">Importe USD $</th>
-                    <th class="header-bg-danger">Saldo Deuda</th>
-                    <th class="header-bg-info">Estado</th>
-                    <th class="header-bg-primary">N° Valorización</th>
+                    <th class="header-bg-success" colspan="3">Acción de anticipo</th>
+                    <th class="header-bg-success" colspan="5">Factura de venta</th>
+                    <th class="header-bg-success">DSCT DETRACC</th>
+                    <th class="header-bg-success">SALDO DEUDA</th>
+                    <th class="header-bg-primary" rowspan="2">ESTADO</th>
+                    <th class="header-bg-primary" rowspan="2">N° VALORIZACIÓN</th>
+                  </tr>
+                  <tr>
+                    <!-- Acción de anticipo subheaders -->
+                    <th class="header-bg-primary">Aplicado al 100%</th>
+                    <th class="header-bg-primary">Aplicado parcialmente</th>
+                    <th class="header-bg-primary">LOTE</th>
+
+                    <!-- Factura de venta subheaders -->
+                    <th class="header-bg-primary">N° Factura Amortiza</th>
+                    <th class="header-bg-primary">Fecha</th>
+                    <th class="header-bg-primary">Importe Factura USD $</th>
+                    <th class="header-bg-primary">Importe Amortiza Adelanto USD $</th>
+                    <th class="header-bg-primary">Saldo Factura Amortiza</th>
+
+                    <!-- DSCT DETRACC subheader -->
+                    <th class="header-bg-primary">Saldo Neto Factura Amortiza</th>
+
+                    <!-- SALDO DEUDA subheader -->
+                    <th class="header-bg-primary">Importe USD $</th>
                   </tr>
                 </thead>
                 <tbody id="tbl-transacciones">
                   <!-- Los datos se cargarán dinámicamente -->
                   <tr>
-                    <td colspan="13" class="text-center py-5">
+                    <td colspan="12" class="text-center py-5">
                       <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Cargando...</span>
                       </div>
@@ -481,8 +451,6 @@ $backendUrl = 'apis/backend.php';
 
       // Variables globales
       let transaccionesData = [];
-      let currentPage = 1;
-      const itemsPerPage = 15;
       const backendUrl = '<?php echo $backendUrl; ?>';
       const detallesModal = new bootstrap.Modal(document.getElementById('modalDetalles'));
       let selectedTransaccion = null;
@@ -520,7 +488,7 @@ $backendUrl = 'apis/backend.php';
         if (data.length === 0) {
           tbody.html(`
             <tr>
-              <td colspan="13" class="text-center py-5 text-muted">
+              <td colspan="12" class="text-center py-5 text-muted">
                 <i class="bi bi-inbox" style="font-size: 48px;"></i>
                 <p class="mt-2">No se encontraron transacciones</p>
               </td>
@@ -532,59 +500,97 @@ $backendUrl = 'apis/backend.php';
         let html = '';
 
         data.forEach((item, index) => {
-          // Determinar clase de resaltado según el tipo
-          let rowClass = '';
-          if (item.porcentaje_aplicado === '100%') {
-            rowClass = 'highlight-green';
-          } else if (parseFloat(item.porcentaje_aplicado) < 100 && parseFloat(item.porcentaje_aplicado) > 0) {
-            rowClass = 'highlight-blue';
-          } else if (item.accion_anticipo && item.accion_anticipo.includes('E001')) {
-            rowClass = 'highlight-yellow';
+          // Detectar si es una fila de cabecera/grupo (basado en accion_anticipo teniendo E001 y otros campos vacios/nulos si aplica)
+          // La lógica original usaba highlight-yellow para item.accion_anticipo.includes('E001')
+          // En el excel, hay filas que son solo el titulo del grupo "E001-41 | 15/07/2025 | $ 300,000.00"
+
+          let isHeaderRow = false;
+          // Asumimos que si no tiene porcentaje_aplicado y tiene accion_anticipo con E001, es header
+          if (!item.porcentaje_aplicado && item.accion_anticipo && item.accion_anticipo.includes('E001')) {
+            isHeaderRow = true;
           }
 
-          // Determinar clase para Saldo Deuda
-          const saldoDeudaClass = parseFloat(item.saldo_deuda) > 0 ? 'negative' :
-            parseFloat(item.saldo_deuda) < 0 ? 'positive' : '';
-
-          // Determinar badge de estado
-          let estadoBadge = '';
-          if (item.estado === 'Comprobante Pendiente') {
-            estadoBadge = '<span class="status-badge status-pendiente">PENDIENTE</span>';
-          } else if (item.estado === 'Aprobado') {
-            estadoBadge = '<span class="status-badge status-aprobado">APROBADO</span>';
-          } else if (item.estado === 'Anulado') {
-            estadoBadge = '<span class="status-badge status-anulado">ANULADO</span>';
+          if (isHeaderRow) {
+            html += `
+              <tr class="table-secondary fw-bold">
+                <td colspan="12" class="text-center text-uppercase" style="background-color: #e2e3e5;">
+                  ${item.accion_anticipo}
+                  ${item.fecha ? ' | ' + formatDate(item.fecha) : ''}
+                  ${item.importe_factura ? ' | ' + formatCurrency(item.importe_factura) : ''}
+                </td>
+              </tr>
+             `;
           } else {
-            estadoBadge = `<span class="status-badge">${item.estado}</span>`;
-          }
+            // Determinar clases de fila
+            let rowClass = 'btn-view-details'; // Hacemos toda la fila clickable
+            let style = 'cursor: pointer;';
 
-          html += `
-            <tr class="${rowClass}">
-              <td class="text-center" width="40">
-                <button class="btn btn-sm btn-outline-primary btn-custom-sm btn-view-details" 
-                        data-index="${index}"
-                        title="Ver detalles">
-                  <i class="bi bi-eye"></i>
-                </button>
-              </td>
-              <td class="${item.accion_anticipo ? 'fw-bold' : ''}">
-                ${item.porcentaje_aplicado || ''}
-                ${item.monto_aplicado ? `<br><small>${formatCurrency(item.monto_aplicado)}</small>` : ''}
-                ${item.lote ? `<br><small class="text-muted">${item.lote}</small>` : ''}
-              </td>
-              <td>${item.accion_anticipo || '---'}</td>
-              <td>${item.factura_amortiza || '---'}</td>
-              <td>${formatDate(item.fecha)}</td>
-              <td class="currency-cell">${formatCurrency(item.importe_factura)}</td>
-              <td class="currency-cell">${formatCurrency(item.importe_amortiza)}</td>
-              <td class="currency-cell">${formatCurrency(item.saldo_factura_amortiza)}</td>
-              <td class="currency-cell">${formatCurrency(item.saldo_neto_factura_amortiza)}</td>
-              <td class="currency-cell">${formatCurrency(item.importe_usd)}</td>
-              <td class="currency-cell ${saldoDeudaClass}">${formatCurrency(item.saldo_deuda)}</td>
-              <td class="text-center">${estadoBadge}</td>
-              <td class="text-center">${item.numero_valorizacion || '---'}</td>
-            </tr>
-          `;
+            // Colores especificos del excel
+            // Aplicado 100% -> No parece tener color especial salvo el texto
+            // Filas amarillas para items especificos
+            if (item.porcentaje_aplicado === '100%') {
+              // rowClass += ' highlight-green'; // Ajustar segun necesidad, excel no muestra verde claro en filas normales
+            }
+
+            // El excel muestra celdas amarillas en las columnas de importe amortiza y saldo si hay valores?
+            // Replicamos lógica visual basica.
+
+            const saldoDeudaClass = parseFloat(item.saldo_deuda) > 0 ? 'negative' :
+              parseFloat(item.saldo_deuda) < 0 ? 'positive' : '';
+
+            // Determinar badge de estado
+            let estadoBadge = '';
+            // Ajuste para coincidir con diseño excel (texto simple o badge)
+            if (item.estado === 'Comprobante Pendiente') {
+              estadoBadge = '<span class="text-danger fw-bold" style="font-size: 11px;">Comprobante<br>Pendiente</span>';
+            } else if (item.estado === 'Aprobado') {
+              estadoBadge = '<span class="text-success fw-bold">Aprobado</span>';
+            } else if (item.estado === 'Anulado') {
+              estadoBadge = '<span class="text-muted">Anulado</span>';
+            } else {
+              estadoBadge = item.estado;
+            }
+
+            html += `
+              <tr class="${rowClass}" data-index="${index}" style="${style}">
+                <!-- Aplicado al 100% -->
+                <td class="text-center fw-bold">${item.porcentaje_aplicado || ''}</td>
+                
+                <!-- Aplicado parcialmente -->
+                <td class="currency-cell">${item.monto_aplicado ? formatCurrency(item.monto_aplicado) : ''}</td>
+                
+                <!-- LOTE -->
+                <td class="text-center font-monospace small">${item.lote || ''}</td>
+                
+                <!-- N° Factura Amortiza -->
+                <td class="text-center fw-bold">${item.factura_amortiza || ''}</td>
+                
+                <!-- Fecha -->
+                <td class="text-center">${formatDate(item.fecha)}</td>
+                
+                <!-- Importe Factura USD -->
+                <td class="currency-cell">${formatCurrency(item.importe_factura)}</td>
+                
+                <!-- Importe Amortiza Adelanto USD -->
+                <td class="currency-cell bg-warning bg-opacity-25">${formatCurrency(item.importe_amortiza)}</td>
+                
+                <!-- Saldo Factura Amortiza -->
+                <td class="currency-cell">${formatCurrency(item.saldo_factura_amortiza)}</td>
+                
+                <!-- Saldo Neto Factura Amortiza (DSCT DETRACC col) -->
+                <td class="currency-cell">${formatCurrency(item.saldo_neto_factura_amortiza)}</td>
+                
+                <!-- Importe USD $ (SALDO DEUDA col) -->
+                <td class="currency-cell ${saldoDeudaClass}">${formatCurrency(item.saldo_deuda)}</td>
+                
+                <!-- Estado -->
+                <td class="text-center align-middle">${estadoBadge}</td>
+                
+                <!-- N° Valorización -->
+                <td class="text-center fw-bold text-primary">${item.numero_valorizacion || ''}</td>
+              </tr>
+            `;
+          }
         });
 
         tbody.html(html);
@@ -628,16 +634,13 @@ $backendUrl = 'apis/backend.php';
           .done(function(r) {
             if (r.estado === 1 && r.data) {
               transaccionesData = r.data;
-              currentPage = 1;
 
               updateSummary(transaccionesData);
-              renderPagination();
-              renderCurrentPage();
+              renderTable(transaccionesData);
 
-              // Actualizar información de paginación
-              const start = ((currentPage - 1) * itemsPerPage) + 1;
-              const end = Math.min(currentPage * itemsPerPage, transaccionesData.length);
-              $('#info-paginacion').text(`Mostrando ${start}-${end} de ${transaccionesData.length} registros`);
+              // Ocultar paginacion si existe
+              $('#pagination-container').hide();
+              $('#info-paginacion').text(`Mostrando ${transaccionesData.length} registros`);
 
             } else {
               alert("Error al cargar transacciones: " + (r.msg || "Error desconocido"));
@@ -647,75 +650,6 @@ $backendUrl = 'apis/backend.php';
             alert("Error de conexión al cargar transacciones");
           });
       }
-
-      // Paginación
-      function renderPagination() {
-        const totalPages = Math.ceil(transaccionesData.length / itemsPerPage);
-        const pagination = $('#pagination-container');
-
-        if (totalPages <= 1) {
-          pagination.hide();
-          return;
-        }
-
-        pagination.show();
-
-        let html = `
-          <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="#" data-page="${currentPage - 1}" aria-label="Previous">
-              <span aria-hidden="true">&laquo;</span>
-            </a>
-          </li>
-        `;
-
-        // Mostrar máximo 5 páginas
-        let startPage = Math.max(1, currentPage - 2);
-        let endPage = Math.min(totalPages, startPage + 4);
-
-        if (endPage - startPage < 4) {
-          startPage = Math.max(1, endPage - 4);
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-          html += `
-            <li class="page-item ${i === currentPage ? 'active' : ''}">
-              <a class="page-link" href="#" data-page="${i}">${i}</a>
-            </li>
-          `;
-        }
-
-        html += `
-          <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-            <a class="page-link" href="#" data-page="${currentPage + 1}" aria-label="Next">
-              <span aria-hidden="true">&raquo;</span>
-            </a>
-          </li>
-        `;
-
-        pagination.html(html);
-      }
-
-      function renderCurrentPage() {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const pageData = transaccionesData.slice(startIndex, endIndex);
-        renderTable(pageData);
-      }
-
-      // Event Listeners
-      $(document).on('click', '#pagination-container .page-link', function(e) {
-        e.preventDefault();
-        const page = $(this).data('page');
-        if (page && page !== currentPage) {
-          currentPage = page;
-          renderPagination();
-          renderCurrentPage();
-
-          const start = ((currentPage - 1) * itemsPerPage) + 1;
-          const end = Math.min(currentPage * itemsPerPage, transaccionesData.length);
-          $('#info-paginacion').text(`Mostrando ${start}-${end} de ${transaccionesData.length} registros`);
-        }
-      });
 
       $('#btn-aplicar-filtros').on('click', function() {
         loadTransacciones();
@@ -737,10 +671,8 @@ $backendUrl = 'apis/backend.php';
 
       $(document).on('click', '.btn-view-details', function() {
         const index = $(this).data('index');
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const actualIndex = startIndex + index;
-
-        selectedTransaccion = transaccionesData[actualIndex];
+        // El index ahora corresponde directamente a transaccionesData ya que no hay paginación
+        selectedTransaccion = transaccionesData[index];
 
         if (selectedTransaccion) {
           // Llenar datos del modal
