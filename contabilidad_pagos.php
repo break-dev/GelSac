@@ -2018,9 +2018,9 @@ if (!isset($_SESSION["Id"])) {
 				},
 				function(r) {
 					if (r.estado == 1) {
-						total = r.data.monto_total_valorizacion;
+						total = r.data.saldo_transferencia;
 						console.log("Total: ", total);
-						const monto_detraccion = Number((total * (porc_detraccion / 100)).toFixed(2));
+						const monto_detraccion = total <= 0 ? 0 : Number((total * (porc_detraccion / 100)).toFixed(2));
 						// Loading ON
 						f_SavingDatos(1);
 						$(".wt_grabarcomprobante_button").prop("disabled", true).css("background-color", "#C2C0A6");
@@ -2052,7 +2052,7 @@ if (!isset($_SESSION["Id"])) {
 								}
 								f_SavingDatos(0);
 								$(".wt_grabarcomprobante_button").prop("disabled", false).css("background-color", "");
-			
+
 							}, "json");
 					} else {
 						alert("Ocurrió un error al momento de grabar el Comprobante.");

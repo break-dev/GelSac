@@ -75956,7 +75956,7 @@ case "eliminarAnticipo":
         ]);
         break;
 
-case "get_monto_total_valorizacion":
+    case "get_monto_total_valorizacion":
         $estado = 0;
         $data = [];
         
@@ -75968,10 +75968,10 @@ case "get_monto_total_valorizacion":
             exit();
         }
         
-        // La consulta SQL corregida - usando el parámetro $id_valorizacion
+        // 1. Consulta para obtener el monto total de la valorización
         $q_monto_total_valorizacion = "
             SELECT
-                SUM(vcd.total) AS monto_total_valorizacion
+                COALESCE(SUM(vcd.total), 0) AS monto_total_valorizacion
             FROM
                 valorizacion_compramineral vc
             INNER JOIN valorizacion_compramineral_detalle vcd ON
@@ -75980,20 +75980,61 @@ case "get_monto_total_valorizacion":
                 vc.Id = $id_valorizacion AND vc.estado = 'A';
         ";
         
-        $res_data = mysqli_query($enlace, $q_monto_total_valorizacion);
+        $res_monto_total = mysqli_query($enlace, $q_monto_total_valorizacion);
         
-        if ($res_data === false) {
-            // Manejo de error de consulta SQL
-            $msg = "Error al ejecutar la consulta: " . mysqli_error($enlace);
+        if ($res_monto_total === false) {
+            $msg = "Error al ejecutar la consulta del monto total: " . mysqli_error($enlace);
             echo json_encode(["estado" => 0, "msg" => $msg]);
             exit();
         }
         
-        if (mysqli_num_rows($res_data) > 0) {
-            $row = mysqli_fetch_assoc($res_data);
-            $data = $row;
+        // 2. Consulta para obtener el monto usado de anticipos
+        $q_monto_anticipos = "
+            SELECT
+                COALESCE(SUM(pat.monto_retirado), 0) AS monto_total_anticipos
+            FROM
+                valorizacion_compramineral vc
+            INNER JOIN proveedor_anticipo_transaccion pat ON
+                pat.id_valorizacion_compramineral = vc.Id
+            WHERE
+                vc.Id = $id_valorizacion 
+                AND vc.estado = 'A' 
+                AND pat.estado = 'A';
+        ";
+        
+        $res_monto_anticipos = mysqli_query($enlace, $q_monto_anticipos);
+        
+        if ($res_monto_anticipos === false) {
+            $msg = "Error al ejecutar la consulta de anticipos: " . mysqli_error($enlace);
+            echo json_encode(["estado" => 0, "msg" => $msg]);
+            exit();
+        }
+        
+        // Obtener resultados
+        $row_monto_total = mysqli_fetch_assoc($res_monto_total);
+        $row_monto_anticipos = mysqli_fetch_assoc($res_monto_anticipos);
+        
+        if ($row_monto_total) {
+            $monto_total_valorizacion = floatval($row_monto_total['monto_total_valorizacion']);
+            $monto_total_anticipos = floatval($row_monto_anticipos['monto_total_anticipos']);
+            
+            // Calcular saldo por transferencia
+            $saldo_transferencia = $monto_total_valorizacion - $monto_total_anticipos;
+            
+            // Asegurarse de que no sea negativo (por si acaso)
+            if ($saldo_transferencia < 0) {
+                $saldo_transferencia = 0;
+            }
+            
+            // Preparar los datos para la respuesta
+            $data = [
+                "monto_total_valorizacion" => $monto_total_valorizacion,
+                "monto_total_anticipos" => $monto_total_anticipos,
+                "saldo_transferencia" => $saldo_transferencia
+            ];
+            
             $estado = 1;
-            $msg = "Monto total de valorización obtenido correctamente.";
+            $msg = "Montos obtenidos correctamente.";
         } else {
             $msg = "No se encontraron datos para la valorización ID $id_valorizacion.";
         }
