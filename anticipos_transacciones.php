@@ -14,7 +14,7 @@ if (!isset($_SESSION["Id"])) {
 }
 
 // endpoint de backend
-$backendUrl = 'apis/backend.php';
+$backendUrl = 'apis/anticipos_resumen_controller.php';
 ?>
 
 <!DOCTYPE html>
@@ -337,7 +337,7 @@ $backendUrl = 'apis/backend.php';
                     <th class="header-bg-warning text-center small">Saldo Factura Amortiza</th>
 
                     <!-- DSCT DETRACC subcol -->
-                    <th class="header-bg-info text-center small">Saldo Neto Factura</th>
+                    <th class="header-bg-info text-center small">Saldo Neto Factura </th>
 
                     <!-- SALDO DEUDA subcol -->
                     <th class="header-bg-danger text-center small">Importe $</th>
