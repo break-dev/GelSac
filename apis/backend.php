@@ -73380,6 +73380,12 @@ switch ($_POST["accion"]) {
                         );
                     $html .= "  </td>";
 
+                    // 
+                    $aprobado_total =
+                        intval($row_validacion["aprobo_contabilidad"]) === 1 &&
+                        intval($row_validacion["aprobo_comercial"]) === 1 &&
+                        intval($row_validacion["aprobo_documentaria"]) === 1;
+
                     // Obteniendo Saldo (Netoo)
                     $neto_estado = "";
                     $neto_bg = "";
@@ -73387,7 +73393,7 @@ switch ($_POST["accion"]) {
                         $row_validacion["total_sin_detraccion"] -
                         $row_validacion["pago_sin_detraccion"];
 
-                    if ($neto_saldo == 0) {
+                    if ($neto_saldo == 0 && $aprobado_total) {
                         $neto_estado = "PAGADO";
                         $neto_bg = "bg-success";
                     } else {
@@ -73475,7 +73481,7 @@ switch ($_POST["accion"]) {
                         $row_validacion["total_detraccion_soles"] -
                         $row_validacion["DETRACCION_PAGOTOTAL"];
 
-                    if ($detraccion_saldo == 0) {
+                    if ($detraccion_saldo == 0 && $aprobado_total) {
                         $detraccion_estado = "PAGADO";
                         $detraccion_bg = "bg-success";
                     } else {
@@ -73785,62 +73791,117 @@ switch ($_POST["accion"]) {
         echo json_encode($out);
         break;
 
-    case "actualizar_CampoTexto_ComprobantePago":
-        $id = intval($_POST["id"]);
-        $campo = $_POST["campo"];
-        $valor = mysqli_real_escape_string($enlace, $_POST["valor"]);
-        $fechahora_actual = date("Y-m-d H:i:s");
-        $usuario_registro = $_SESSION["usu_usuario"];
+case "actualizar_CampoTexto_ComprobantePago":
+    $id = intval($_POST["id"]);
+    $campo = $_POST["campo"];
+    $valor = mysqli_real_escape_string($enlace, $_POST["valor"]);
+    $fechahora_actual_raw = date("Y-m-d H:i:s");
+    $usuario_registro_raw = $_SESSION["usu_usuario"];
 
-        // Asegurar que el campo sea permitido
-        $campos_permitidos = [
-            "observaciones",
-            "aprobo_contabilidad",
-            "aprobo_comercial",
-            "aprobo_documentaria",
-            "djvm",
-            "val",
-        ];
+    $campos_permitidos = [
+        "observaciones",
+        "aprobo_contabilidad",
+        "aprobo_comercial",
+        "aprobo_documentaria",
+        "djvm",
+        "val",
+    ];
 
-        if (!in_array($campo, $campos_permitidos)) {
-            echo json_encode(["estado" => 0, "msg" => "Campo no permitido"]);
-            break;
+    if (!in_array($campo, $campos_permitidos)) {
+        echo json_encode(["estado" => 0, "msg" => "Campo no permitido"]);
+        break;
+    }
+
+    if ($valor == 0) {
+        $fechahora_actual = "NULL";
+        $usuario_registro = "NULL";
+    } else {
+        $fechahora_actual = "'" . $fechahora_actual_raw . "'";
+        $usuario_registro = "'" . $usuario_registro_raw . "'";
+    }
+
+    mysqli_begin_transaction($enlace);
+
+    try {
+        // 1. Actualizar el campo solicitado
+        $q = "UPDATE comprobante_pago SET
+                $campo = '$valor',
+                {$campo}_fechahora_registro = $fechahora_actual,
+                {$campo}_usuario_registro = $usuario_registro
+              WHERE Id = $id";
+
+        if (!mysqli_query($enlace, $q)) {
+            throw new Exception("Error al actualizar el campo");
         }
 
-        // Seteando datos
-        if ($valor == 0) {
-            $fechahora_actual = "NULL";
-            $usuario_registro = "NULL";
-        } else {
-            $fechahora_actual = "'" . $fechahora_actual . "'";
-            $usuario_registro = "'" . $usuario_registro . "'";
+        // 2. Verificar si corresponde marcar como pagado
+        $q_check = "
+            SELECT
+                aprobo_contabilidad,
+                aprobo_comercial,
+                aprobo_documentaria,
+                total_sin_detraccion,
+                total_detraccion_soles,
+                pago_sin_detraccion,
+                pago_detraccion
+            FROM comprobante_pago
+            WHERE Id = $id
+            FOR UPDATE
+        ";
+
+        $r = mysqli_query($enlace, $q_check);
+        $cp = mysqli_fetch_assoc($r);
+
+        $aprobado =
+            $cp["aprobo_contabilidad"] == 1 &&
+            $cp["aprobo_comercial"] == 1 &&
+            $cp["aprobo_documentaria"] == 1;
+
+        $es_cero =
+            floatval($cp["total_sin_detraccion"]) == 0 &&
+            floatval($cp["total_detraccion_soles"]) == 0;
+
+        $no_pagado =
+            floatval($cp["pago_sin_detraccion"]) == 0 &&
+            floatval($cp["pago_detraccion"]) == 0;
+
+        if ($aprobado && $es_cero && $no_pagado) {
+            $q_pago = "
+                UPDATE comprobante_pago SET
+                    pago_sin_detraccion = 0,
+                    pago_sin_detraccion_fechahora_registro = '$fechahora_actual_raw',
+                    pago_sin_detraccion_usuario_registro = '$usuario_registro_raw',
+                    pago_detraccion = 0,
+                    pago_detraccion_fechahora_registro = '$fechahora_actual_raw',
+                    pago_detraccion_usuario_registro = '$usuario_registro_raw'
+                WHERE Id = $id
+            ";
+
+            if (!mysqli_query($enlace, $q_pago)) {
+                throw new Exception("Error al marcar comprobante como pagado");
+            }
         }
 
-        $q = "UPDATE comprobante_pago ";
-        $q .= " SET " . $campo . " = '" . $valor . "', ";
-        $q .= $campo . "_fechahora_registro = " . $fechahora_actual . ", ";
-        $q .= $campo . "_usuario_registro = " . $usuario_registro . " ";
-        $q .= " WHERE Id = " . $id;
-
-        $estado = 0;
-
-        if (mysqli_query($enlace, $q)) {
-            $estado = 1;
-        }
+        mysqli_commit($enlace);
 
         echo json_encode([
-            "estado" => $estado,
+            "estado" => 1,
             "id_comprobante" => $id,
             "fechahora_registro" =>
                 $fechahora_actual == "NULL"
                     ? ""
-                    : str_replace("'", "", $fechahora_actual),
+                    : $fechahora_actual_raw,
             "usuario_registro" =>
                 $usuario_registro == "NULL"
                     ? ""
-                    : str_replace("'", "", $usuario_registro),
+                    : $usuario_registro_raw,
         ]);
-        break;
+    } catch (Exception $e) {
+        mysqli_rollback($enlace);
+        echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+    }
+
+    break;
 
     case "get_CuentasBancariasPorBanco":
         $id_banco = intval($_POST["id_banco"]);
