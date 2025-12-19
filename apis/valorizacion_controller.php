@@ -250,14 +250,18 @@ switch ($_POST["accion"]) {
             // Revertir transacciones de anticipos si corresponde
             if ($usa_anticipo) {
                 // Obtener transacciones confirmadas para revertir
-                $q_transacciones = "SELECT 
-                    trans.id,
-                    trans.id_proveedor_anticipo,
-                    trans.monto_retirado,
-                    trans.saldo_actual
-                FROM proveedor_anticipo_transaccion trans
-                WHERE trans.id_valorizacion_compramineral = $id_valorizacion 
-                AND trans.estado = 'A'";
+                $q_transacciones = "
+                    SELECT
+                        trans.id,
+                        trans.id_proveedor_anticipo,
+                        trans.monto_retirado,
+                        pa.saldo_actual
+                    FROM
+                        proveedor_anticipo_transaccion trans
+                    INNER JOIN proveedor_anticipo pa on pa.id = trans.id_proveedor_anticipo
+                    WHERE
+                        trans.id_valorizacion_compramineral = $id_valorizacion AND trans.estado = 'A';
+                    ";
 
                 $res_trans = mysqli_query($enlace, $q_transacciones);
 
