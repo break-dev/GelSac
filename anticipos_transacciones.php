@@ -252,7 +252,7 @@ $backendUrl = 'apis/backend.php';
           <div class="row g-3">
             <div class="col-md-3">
               <label class="form-label">Proveedor</label>
-              <input type="text" class="form-control" id="filter_proveedor" placeholder="Ej: E001-42">
+              <select class="form-select" id="filter_proveedor" style="width: 100%;"></select>
             </div>
 
             <div class="col-md-3">
@@ -307,31 +307,40 @@ $backendUrl = 'apis/backend.php';
               <table class="table table-custom table-hover mb-0">
                 <thead>
                   <tr>
-                    <th class="header-bg-success" colspan="3">Acción de anticipo</th>
-                    <th class="header-bg-success" colspan="5">Factura de venta</th>
-                    <th class="header-bg-success">DSCT DETRACC</th>
-                    <th class="header-bg-success">SALDO DEUDA</th>
-                    <th class="header-bg-primary" rowspan="2">ESTADO</th>
-                    <th class="header-bg-primary" rowspan="2">N° VALORIZACIÓN</th>
+                    <th class="header-bg-primary text-center" colspan="3">Factura por anticipo</th>
+                    <th class="header-bg-success text-center" colspan="3">Acción de anticipo</th>
+                    <th class="header-bg-secondary text-center" colspan="4">Factura de venta</th>
+                    <th class="header-bg-warning text-center">Saldo</th>
+                    <th class="header-bg-info text-center">DSCT DETRACC</th>
+                    <th class="header-bg-danger text-center">SALDO DEUDA</th>
+                    <th class="header-bg-primary text-center" rowspan="2">ESTADO</th>
+                    <th class="header-bg-primary text-center" rowspan="2">N° VALORIZACIÓN</th>
                   </tr>
                   <tr>
-                    <!-- Acción de anticipo subheaders -->
-                    <th class="header-bg-primary">Aplicado al 100%</th>
-                    <th class="header-bg-primary">Aplicado parcialmente</th>
-                    <th class="header-bg-primary">LOTE</th>
+                    <!-- Factura por anticipo subcols -->
+                    <th class="header-bg-primary text-center small">Factura</th>
+                    <th class="header-bg-primary text-center small">Fecha</th>
+                    <th class="header-bg-primary text-center small">Importe</th>
 
-                    <!-- Factura de venta subheaders -->
-                    <th class="header-bg-primary">N° Factura Amortiza</th>
-                    <th class="header-bg-primary">Fecha</th>
-                    <th class="header-bg-primary">Importe Factura USD $</th>
-                    <th class="header-bg-primary">Importe Amortiza Adelanto USD $</th>
-                    <th class="header-bg-primary">Saldo Factura Amortiza</th>
+                    <!-- Acción de anticipo subcols -->
+                    <th class="header-bg-success text-center small">Aplicado 100%</th>
+                    <th class="header-bg-success text-center small">Aplicado parcialmente</th>
+                    <th class="header-bg-success text-center small">Lote</th>
 
-                    <!-- DSCT DETRACC subheader -->
-                    <th class="header-bg-primary">Saldo Neto Factura Amortiza</th>
+                    <!-- Factura de venta subcols -->
+                    <th class="header-bg-secondary text-center small">N° Factura Amortiza</th>
+                    <th class="header-bg-secondary text-center small">Fecha</th>
+                    <th class="header-bg-secondary text-center small">Importe Factura $</th>
+                    <th class="header-bg-secondary text-center small">Importe Amortiza Adelanto $</th>
 
-                    <!-- SALDO DEUDA subheader -->
-                    <th class="header-bg-primary">Importe USD $</th>
+                    <!-- Saldo subcol -->
+                    <th class="header-bg-warning text-center small">Saldo Factura Amortiza</th>
+
+                    <!-- DSCT DETRACC subcol -->
+                    <th class="header-bg-info text-center small">Saldo Neto Factura</th>
+
+                    <!-- SALDO DEUDA subcol -->
+                    <th class="header-bg-danger text-center small">Importe $</th>
                   </tr>
                 </thead>
                 <tbody id="tbl-transacciones">
@@ -448,12 +457,17 @@ $backendUrl = 'apis/backend.php';
 
   <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function() {
-
       // Variables globales
-      let transaccionesData = [];
+      let selectedProveedor = null;
       const backendUrl = '<?php echo $backendUrl; ?>';
       const detallesModal = new bootstrap.Modal(document.getElementById('modalDetalles'));
-      let selectedTransaccion = null;
+
+      // Inicializar Select2
+      $('#filter_proveedor').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Seleccione un proveedor...',
+        allowClear: true
+      });
 
       // Función para llamar al backend
       function f_callBackend(accion, data) {
@@ -465,32 +479,63 @@ $backendUrl = 'apis/backend.php';
 
       // Formato de moneda
       function formatCurrency(amount, showSymbol = true) {
-        if (amount === null || amount === undefined) return '---';
+        if (amount === null || amount === undefined || amount === "") return '';
         const num = parseFloat(amount);
-        if (isNaN(num)) return '---';
-
+        if (isNaN(num)) return '';
         const formatted = num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         return showSymbol ? `$ ${formatted}` : formatted;
       }
 
-      // Formato de fecha
+      // Formato de fecha (DD/MM/YYYY)
       function formatDate(dateString) {
-        if (!dateString) return '---';
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString;
-        return date.toLocaleDateString('es-ES');
+        if (!dateString) return '';
+        // Asumiendo YYYY-MM-DD
+        const parts = dateString.split('-');
+        if (parts.length < 3) return dateString; // Si ya viene formateada o es invalida
+        // Retornar solo fecha si viene con hora
+        const dayPart = parts[2].split(' ')[0];
+        return `${dayPart}/${parts[1]}/${parts[0]}`;
       }
 
-      // Renderizar tabla
+      // Cargar Proveedores
+      function loadProviders() {
+        // Usamos getAnticiposAndProviders para obtener la lista de proveedores
+        f_callBackend('getAnticiposAndProviders', {})
+          .done(function(r) {
+            if (r.estado === 1 && r.data && r.data.proveedores) {
+              const providers = r.data.proveedores.map(p => ({
+                id: p.id_proveedor,
+                text: `${p.razon_social} (${p.documento})`
+              }));
+
+              $('#filter_proveedor').empty();
+              $('#filter_proveedor').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Seleccione un proveedor...',
+                allowClear: true,
+                data: providers
+              });
+
+              // Si no hay seleccion, limpiar
+              $('#filter_proveedor').val(null).trigger('change');
+            }
+          })
+          .fail(function() {
+            alert("Error al cargar lista de proveedores.");
+          });
+      }
+
+      // Renderizar tabla jerárquica
       function renderTable(data) {
         const tbody = $('#tbl-transacciones');
+        tbody.empty();
 
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
           tbody.html(`
             <tr>
-              <td colspan="12" class="text-center py-5 text-muted">
+              <td colspan="15" class="text-center py-5 text-muted">
                 <i class="bi bi-inbox" style="font-size: 48px;"></i>
-                <p class="mt-2">No se encontraron transacciones</p>
+                <p class="mt-2">No se encontraron registros para los filtros seleccionados.</p>
               </td>
             </tr>
           `);
@@ -499,241 +544,153 @@ $backendUrl = 'apis/backend.php';
 
         let html = '';
 
-        data.forEach((item, index) => {
-          // Detectar si es una fila de cabecera/grupo (basado en accion_anticipo teniendo E001 y otros campos vacios/nulos si aplica)
-          // La lógica original usaba highlight-yellow para item.accion_anticipo.includes('E001')
-          // En el excel, hay filas que son solo el titulo del grupo "E001-41 | 15/07/2025 | $ 300,000.00"
+        data.forEach((group) => {
+          const ant = group.anticipo_info;
 
-          let isHeaderRow = false;
-          // Asumimos que si no tiene porcentaje_aplicado y tiene accion_anticipo con E001, es header
-          if (!item.porcentaje_aplicado && item.accion_anticipo && item.accion_anticipo.includes('E001')) {
-            isHeaderRow = true;
-          }
+          // 1. Fila de Encabezado (Anticipo)
+          // La regla: Columna 1 (Factura Anticipo) tiene 3 subcolumnas.
+          // El diseño en HTML es:
+          // Col 1: Factura
+          // Col 2: Fecha
+          // Col 3: Importe
+          // Cols 4-15: Vacías (para separar y agrupar)
 
-          if (isHeaderRow) {
+          html += `
+            <tr class="table-secondary fw-bold" style="background-color: #e9ecef;">
+              <!-- Info Anticipo -->
+              <td class="text-center text-primary">${ant.factura}</td>
+              <td class="text-center">${formatDate(ant.fecha)}</td>
+              <td class="text-end text-primary">${formatCurrency(ant.importe_inicial)}</td>
+              
+              <!-- Resto de columnas vacías para el header del grupo -->
+              <td colspan="12" style="background-color: #f8f9fa;"></td>
+            </tr>
+          `;
+
+          // 2. Filas de Transacciones
+          group.transacciones.forEach((tr, index) => {
+            // Determinar estado badge
+            let estadoBadge = tr.estado_comprobante;
+            if (tr.estado_comprobante === 'Confirmado' || tr.estado_comprobante === 'A') {
+              estadoBadge = '<span class="badge bg-success">Confirmado</span>';
+            } else if (tr.estado_comprobante === 'Pendiente') {
+              estadoBadge = '<span class="badge bg-warning text-dark">Pendiente</span>';
+            } else {
+              estadoBadge = `<span class="badge bg-secondary">${tr.estado_comprobante}</span>`;
+            }
+
             html += `
-              <tr class="table-secondary fw-bold">
-                <td colspan="12" class="text-center text-uppercase" style="background-color: #e2e3e5;">
-                  ${item.accion_anticipo}
-                  ${item.fecha ? ' | ' + formatDate(item.fecha) : ''}
-                  ${item.importe_factura ? ' | ' + formatCurrency(item.importe_factura) : ''}
-                </td>
+              <tr>
+                <!-- Col 1-3: Anticipo Info (Vacío para transacciones) -->
+                <td></td>
+                <td></td>
+                <td></td>
+                
+                <!-- Acción Anticipo -->
+                <td class="text-center">${tr.porcentaje_aplicado}</td> <!-- Aplicado % -->
+                <td class="text-end">${formatCurrency(tr.monto_aplicado)}</td> <!-- Aplicado Parc -->
+                <td class="text-center small font-monospace">${tr.lotes || ''}</td> <!-- Lote -->
+                
+                <!-- Factura Venta -->
+                <td class="text-center fw-bold">${tr.factura_amortiza_serie}</td>
+                <td class="text-center">${formatDate(tr.fecha_factura)}</td>
+                <td class="text-end">${formatCurrency(tr.importe_factura_usd)}</td>
+                <td class="text-end text-danger">${formatCurrency(tr.importe_amortiza_adelanto_usd)}</td>
+                
+                <!-- Vacíos solicitados -->
+                <td class="text-end">${tr.saldo_factura_amortiza || ''}</td>
+                <td class="text-end">${tr.saldo_neto_factura_amortiza || ''}</td>
+                
+                <!-- Saldo Deuda (Saldo Restante del Anticipo) -->
+                <td class="text-end fw-bold text-primary">${formatCurrency(tr.saldo_deuda_usd)}</td>
+                
+                <!-- Estado y Val -->
+                <td class="text-center">${estadoBadge}</td>
+                <td class="text-center">${tr.nro_valorizacion || ''}</td>
               </tr>
              `;
-          } else {
-            // Determinar clases de fila
-            let rowClass = 'btn-view-details'; // Hacemos toda la fila clickable
-            let style = 'cursor: pointer;';
-
-            // Colores especificos del excel
-            // Aplicado 100% -> No parece tener color especial salvo el texto
-            // Filas amarillas para items especificos
-            if (item.porcentaje_aplicado === '100%') {
-              // rowClass += ' highlight-green'; // Ajustar segun necesidad, excel no muestra verde claro en filas normales
-            }
-
-            // El excel muestra celdas amarillas en las columnas de importe amortiza y saldo si hay valores?
-            // Replicamos lógica visual basica.
-
-            const saldoDeudaClass = parseFloat(item.saldo_deuda) > 0 ? 'negative' :
-              parseFloat(item.saldo_deuda) < 0 ? 'positive' : '';
-
-            // Determinar badge de estado
-            let estadoBadge = '';
-            // Ajuste para coincidir con diseño excel (texto simple o badge)
-            if (item.estado === 'Comprobante Pendiente') {
-              estadoBadge = '<span class="text-danger fw-bold" style="font-size: 11px;">Comprobante<br>Pendiente</span>';
-            } else if (item.estado === 'Aprobado') {
-              estadoBadge = '<span class="text-success fw-bold">Aprobado</span>';
-            } else if (item.estado === 'Anulado') {
-              estadoBadge = '<span class="text-muted">Anulado</span>';
-            } else {
-              estadoBadge = item.estado;
-            }
-
-            html += `
-              <tr class="${rowClass}" data-index="${index}" style="${style}">
-                <!-- Aplicado al 100% -->
-                <td class="text-center fw-bold">${item.porcentaje_aplicado || ''}</td>
-                
-                <!-- Aplicado parcialmente -->
-                <td class="currency-cell">${item.monto_aplicado ? formatCurrency(item.monto_aplicado) : ''}</td>
-                
-                <!-- LOTE -->
-                <td class="text-center font-monospace small">${item.lote || ''}</td>
-                
-                <!-- N° Factura Amortiza -->
-                <td class="text-center fw-bold">${item.factura_amortiza || ''}</td>
-                
-                <!-- Fecha -->
-                <td class="text-center">${formatDate(item.fecha)}</td>
-                
-                <!-- Importe Factura USD -->
-                <td class="currency-cell">${formatCurrency(item.importe_factura)}</td>
-                
-                <!-- Importe Amortiza Adelanto USD -->
-                <td class="currency-cell bg-warning bg-opacity-25">${formatCurrency(item.importe_amortiza)}</td>
-                
-                <!-- Saldo Factura Amortiza -->
-                <td class="currency-cell">${formatCurrency(item.saldo_factura_amortiza)}</td>
-                
-                <!-- Saldo Neto Factura Amortiza (DSCT DETRACC col) -->
-                <td class="currency-cell">${formatCurrency(item.saldo_neto_factura_amortiza)}</td>
-                
-                <!-- Importe USD $ (SALDO DEUDA col) -->
-                <td class="currency-cell ${saldoDeudaClass}">${formatCurrency(item.saldo_deuda)}</td>
-                
-                <!-- Estado -->
-                <td class="text-center align-middle">${estadoBadge}</td>
-                
-                <!-- N° Valorización -->
-                <td class="text-center fw-bold text-primary">${item.numero_valorizacion || ''}</td>
-              </tr>
-            `;
-          }
+          });
         });
 
         tbody.html(html);
       }
 
-      // Actualizar resumen
-      function updateSummary(data) {
-        const totalFacturas = data.length;
-        const montoTotal = data.reduce((sum, item) => sum + parseFloat(item.importe_factura || 0), 0);
-        const anticiposAplicados = data.filter(item => item.porcentaje_aplicado && item.porcentaje_aplicado !== '0%').length;
-        const saldoPendiente = data.reduce((sum, item) => sum + Math.max(0, parseFloat(item.saldo_deuda || 0)), 0);
+      // Cargar datos
+      function loadReporte() {
+        const idProveedor = $('#filter_proveedor').val();
+        const fechaDesde = $('#filter-fecha-desde').val();
+        const fechaHasta = $('#filter-fecha-hasta').val();
 
-        $('#total-facturas').text(totalFacturas);
-        $('#monto-total').text(formatCurrency(montoTotal));
-        $('#anticipos-aplicados').text(anticiposAplicados);
-        $('#saldo-pendiente').text(formatCurrency(saldoPendiente));
-      }
-
-      // Cargar datos iniciales
-      function loadTransacciones() {
-        const filters = {
-          factura: $('#filter-factura').val(),
-          factura_amortiza: $('#filter-factura-amortiza').val(),
-          fecha_desde: $('#filter-fecha-desde').val(),
-          fecha_hasta: $('#filter-fecha-hasta').val(),
-          estado: $('#filter-estado').val()
-        };
+        if (!idProveedor) {
+          // Si no hay proveedor seleccionado, mostrar tabla vacía o mensaje
+          $('#tbl-transacciones').html(`
+             <tr>
+               <td colspan="15" class="text-center py-5 text-muted">
+                 <p class="mt-2">Seleccione un proveedor para ver el reporte.</p>
+               </td>
+             </tr>
+           `);
+          // Actualizar resumen a 0
+          updateSummary(0, 0, 0);
+          return;
+        }
 
         $('#tbl-transacciones').html(`
-          <tr>
-            <td colspan="13" class="text-center py-5">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-              </div>
-              <p class="mt-2 text-muted">Cargando transacciones...</p>
-            </td>
-          </tr>
-        `);
+           <tr>
+             <td colspan="15" class="text-center py-5">
+               <div class="spinner-border text-primary" role="status">
+                 <span class="visually-hidden">Cargando...</span>
+               </div>
+               <p class="mt-2 text-muted">Generando reporte...</p>
+             </td>
+           </tr>
+         `);
 
-        f_callBackend('getTransaccionesAnticipos', filters)
+        f_callBackend('getReporteAnticiposTransacciones', {
+            id_proveedor: idProveedor,
+            fecha_desde: fechaDesde,
+            fecha_hasta: fechaHasta
+          })
           .done(function(r) {
-            if (r.estado === 1 && r.data) {
-              transaccionesData = r.data;
-
-              updateSummary(transaccionesData);
-              renderTable(transaccionesData);
-
-              // Ocultar paginacion si existe
-              $('#pagination-container').hide();
-              $('#info-paginacion').text(`Mostrando ${transaccionesData.length} registros`);
-
+            if (r.estado === 1) {
+              renderTable(r.data);
+              // Calcular totales simples para el resumen (opcional)
+              // ...
             } else {
-              alert("Error al cargar transacciones: " + (r.msg || "Error desconocido"));
+              alert("Error al cargar reporte: " + (r.msg || "Desconocido"));
+              $('#tbl-transacciones').empty();
             }
           })
           .fail(function() {
-            alert("Error de conexión al cargar transacciones");
+            alert("Error de conexión.");
+            $('#tbl-transacciones').empty();
           });
       }
 
+      // Resumen visual (opcional/dummy por ahora ya que el backend trae estructura compleja)
+      function updateSummary(total, monto, saldo) {
+        // ...
+      }
+
+      // Eventos
       $('#btn-aplicar-filtros').on('click', function() {
-        loadTransacciones();
+        loadReporte();
       });
 
       $('#btn-limpiar-filtros').on('click', function() {
-        $('#filter-factura').val('');
-        $('#filter-factura-amortiza').val('');
+        $('#filter_proveedor').val(null).trigger('change');
         $('#filter-fecha-desde').val('');
         $('#filter-fecha-hasta').val('');
-        $('#filter-estado').val('');
-        loadTransacciones();
-      });
-
-      $('#btn-exportar-excel').on('click', function() {
-        // Aquí iría la lógica para exportar a Excel
-        alert('Funcionalidad de exportación a Excel en desarrollo...');
-      });
-
-      $(document).on('click', '.btn-view-details', function() {
-        const index = $(this).data('index');
-        // El index ahora corresponde directamente a transaccionesData ya que no hay paginación
-        selectedTransaccion = transaccionesData[index];
-
-        if (selectedTransaccion) {
-          // Llenar datos del modal
-          $('#detalle-factura-venta').text(selectedTransaccion.accion_anticipo || '---');
-          $('#detalle-factura-amortiza').text(selectedTransaccion.factura_amortiza || '---');
-          $('#detalle-fecha').text(formatDate(selectedTransaccion.fecha));
-          $('#detalle-valorizacion').text(selectedTransaccion.numero_valorizacion || '---');
-          $('#detalle-importe-factura').text(formatCurrency(selectedTransaccion.importe_factura));
-          $('#detalle-importe-amortiza').text(formatCurrency(selectedTransaccion.importe_amortiza));
-          $('#detalle-saldo-deuda').text(formatCurrency(selectedTransaccion.saldo_deuda));
-          $('#detalle-estado').html(
-            selectedTransaccion.estado === 'Comprobante Pendiente' ?
-            '<span class="status-badge status-pendiente">PENDIENTE</span>' :
-            selectedTransaccion.estado === 'Aprobado' ?
-            '<span class="status-badge status-aprobado">APROBADO</span>' :
-            '<span class="status-badge status-anulado">ANULADO</span>'
-          );
-
-          // Aquí cargaríamos los lotes desde el backend
-          // Por ahora mostramos un mensaje
-          $('#tbl-lotes-detalle tbody').html(`
-            <tr>
-              <td colspan="5" class="text-center">Cargando lotes...</td>
-            </tr>
-          `);
-
-          detallesModal.show();
-
-          // Simular carga de lotes
-          setTimeout(() => {
-            $('#tbl-lotes-detalle tbody').html(`
-              <tr>
-                <td>GEL-25-1609</td>
-                <td>Mineral de oro</td>
-                <td>1,250.50</td>
-                <td>15.8</td>
-                <td>$ 45,250.00</td>
-              </tr>
-              <tr>
-                <td>GEL-25-1810</td>
-                <td>Mineral de plata</td>
-                <td>2,150.00</td>
-                <td>8.5</td>
-                <td>$ 32,150.00</td>
-              </tr>
-            `);
-          }, 500);
-        }
-      });
-
-      $('#btn-imprimir-comprobante').on('click', function() {
-        if (selectedTransaccion) {
-          window.open(`imprimir_comprobante.php?id=${selectedTransaccion.id}`, '_blank');
-        }
+        loadReporte(); // Limpia la tabla
       });
 
       // Inicialización
       function f_Init() {
         f_GetMenuPrincipal();
-        $("#nv_titulo").html('| Transacciones Anticipos');
-        loadTransacciones();
+        $("#nv_titulo").html('| Transacciones Anticipos - Reporte');
+        loadProviders();
+        // Renderizar tabla vacía inicial
+        loadReporte();
       }
 
       f_Init();

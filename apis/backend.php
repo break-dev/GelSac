@@ -70529,6 +70529,7 @@ switch ($_POST["accion"]) {
                 }
             }
 
+
             // Guardando Cabecera
             $correlativo_valorizacion = "";
 
@@ -76105,6 +76106,143 @@ case "eliminarAnticipo":
             "msg" => $msg ?? "",
             "data" => $data
         ]);
+        break;
+
+    case "getReporteAnticiposTransacciones":
+        $id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+        $fecha_desde = $_POST["fecha_desde"] ?? null;
+        $fecha_hasta = $_POST["fecha_hasta"] ?? null;
+
+        if ($id_proveedor == 0) {
+            header("Content-Type: application/json");
+            echo json_encode(["estado" => 0, "msg" => "ID de proveedor inválido."]);
+            exit();
+        }
+
+        // 1. Obtener Anticipos del Proveedor
+        // Regla: Estado 'B' o 'A'. Si es 'A', debe tener transacciones confirmadas.
+        $q_anticipos = "
+            SELECT 
+                ant.id,
+                ant.serie_factura,
+                ant.numero_factura,
+                ant.saldo_inicial,
+                ant.saldo_actual,
+                ant.created_at as fecha_registro,
+                ant.estado
+            FROM proveedor_anticipo ant
+            WHERE ant.id_proveedor = $id_proveedor
+              AND ant.estado != 'X'
+              AND (
+                  ant.estado = 'B' 
+                  OR (ant.estado = 'A' AND ant.cantidad_transacciones > 0)
+              )
+            ORDER BY ant.created_at DESC
+        ";
+
+        $res_anticipos = mysqli_query($enlace, $q_anticipos);
+        $data_final = [];
+
+        while ($ant = mysqli_fetch_assoc($res_anticipos)) {
+            $anticipo_id = $ant['id'];
+            
+            // 2. Obtener Transacciones para este Anticipo
+            // Solo estado 'A' (Confirmado)
+            $q_trans = "
+                SELECT 
+                    tr.id,
+                    tr.monto_retirado,
+                    tr.saldo_actual as saldo_antes_transaccion,
+                    tr.saldo_restante,
+                    tr.created_at as fecha_transaccion,
+                    
+                    -- Valorización Info
+                    val.Id as id_valorizacion,
+                    val.codigo_unico,
+                    val.correlativo as nro_valorizacion,
+                    val.estado as estado_val,
+                    
+                    -- Comprobante Info
+                    cp.serie_comprobante,
+                    cp.numero_comprobante,
+                    cp.fecha_emision_comprobante,
+                    cp.total_comprobante as importe_factura_usd,
+                    cp.estado as estado_comprobante,
+                    
+                    -- Detalle Valorización (Lotes)
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT IFNULL(vd.cod_gel, vd.cod_lote) SEPARATOR ', ')
+                        FROM valorizacion_compramineral_detalle vd
+                        WHERE vd.id_valorizacion = val.Id
+                    ) as lotes
+                    
+                FROM proveedor_anticipo_transaccion tr
+                INNER JOIN valorizacion_compramineral val ON tr.id_valorizacion_compramineral = val.Id
+                LEFT JOIN comprobante_pago cp ON cp.id_valorizacion = val.Id AND cp.estado = 'A' -- Solo comprobantes activos
+                WHERE tr.id_proveedor_anticipo = $anticipo_id
+                  AND tr.estado = 'A'
+                ORDER BY tr.created_at ASC
+            ";
+            
+            $res_trans = mysqli_query($enlace, $q_trans);
+            $transacciones = [];
+            
+            while ($tr = mysqli_fetch_assoc($res_trans)) {
+                // Filtro fecha transaccion (opcional)
+                if ($fecha_desde && $tr['fecha_transaccion'] < $fecha_desde) continue;
+                if ($fecha_hasta && $tr['fecha_transaccion'] > $fecha_hasta . ' 23:59:59') continue;
+
+                // Calculo de porcentajes y montos
+                $monto_retirado = floatval($tr['monto_retirado']);
+                $saldo_inicial_anticipo = floatval($ant['saldo_inicial']);
+                
+                $porcentaje_aplicado = 0;
+                if ($saldo_inicial_anticipo > 0) {
+                     $porcentaje_aplicado = ($monto_retirado / $saldo_inicial_anticipo) * 100;
+                }
+                
+                $transacciones[] = [
+                    "id_transaccion" => $tr['id'],
+                    "lotes" => $tr['lotes'], 
+                    "porcentaje_aplicado" => number_format($porcentaje_aplicado, 2) . '%',
+                    "monto_aplicado" => $monto_retirado,
+                    
+                    // Factura Venta Info
+                    "factura_amortiza_serie" => $tr['serie_comprobante'] ? $tr['serie_comprobante'] . '-' . $tr['numero_comprobante'] : 'S/N',
+                    "fecha_factura" => $tr['fecha_emision_comprobante'] ? $tr['fecha_emision_comprobante'] : $tr['fecha_transaccion'],
+                    "importe_factura_usd" => $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0,
+                    
+                    "importe_amortiza_adelanto_usd" => $monto_retirado,
+                    
+                    "saldo_factura_amortiza" => "", 
+                    "saldo_neto_factura_amortiza" => "", 
+                    
+                    "saldo_deuda_usd" => floatval($tr['saldo_restante']), 
+                    
+                    "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Confirmado' : 'Pendiente') : 'Pendiente',
+                    "nro_valorizacion" => $tr['nro_valorizacion']
+                ];
+            }
+            
+            // Solo agregar anticipo si tiene transacciones o si se quiere mostrar la cabecera del anticipo
+            // El usuario dijo: "Si su estado es ‘A’, debera tener al menos una transaccion confirmada."
+            // Si tiene estado 'B' (sin saldo), se lista aunque no tenga transacciones visibles?
+            // Pero un anticipo 'B' DEBE tener transacciones que lo agotaron.
+            if (count($transacciones) > 0 || $ant['estado'] == 'B') {
+                $data_final[] = [
+                    "anticipo_info" => [
+                        "factura" => $ant['serie_factura'] . '-' . $ant['numero_factura'],
+                        "fecha" => $ant['fecha_registro'],
+                        "importe_inicial" => floatval($ant['saldo_inicial']),
+                        "id" => $ant['id']
+                    ],
+                    "transacciones" => $transacciones
+                ];
+            }
+        }
+        
+        header("Content-Type: application/json");
+        echo json_encode(["estado" => 1, "data" => $data_final]);
         break;
 
     default:
