@@ -115,42 +115,82 @@ switch ($_POST["accion"]) {
         echo json_encode(["estado" => 1, "data" => $anticipos]);
         break;
     case "get_ValorizacionCompra_ListaValorizaciones":
-        $q_datos = "SELECT 
-            V.Id,
-            MD5(V.Id) AS ID_MD5,
-            V.correlativo,
-            V.version,
-            V.num_oficio,
-            V.id_proveedor,
-            V.id_concesion,
-            P.documento AS ruc,
-            P.razon_social AS proveedor,
-            V.usuario_registro,
-            V.is_aprobado,
-            V.is_aprobado_fechahoraregistro,
-            V.is_aprobado_usuarioregistro,
-            V.id_cuentabancaria,
-            V.id_cuentadetraccion,
-            V.fechahora_registro,
-            V.usuario_registro,
-            V.estado,
-            V.usa_anticipo,
-            IFNULL((SELECT V_x.is_aprobado
-                FROM valorizacion_compramineral V_x
-                WHERE V_x.is_aprobado = 1
-                AND V_x.correlativo = V.correlativo), 0) AS IS_VALORIZACIONAPROBADA,
-            -- Información de anticipos si los usa
-            IF(V.usa_anticipo = TRUE, 
-                (SELECT GROUP_CONCAT(CONCAT(ant.serie_factura, '-', ant.numero_factura) SEPARATOR ', ')
-                FROM proveedor_anticipo_transaccion trans
-                INNER JOIN proveedor_anticipo ant ON ant.id = trans.id_proveedor_anticipo
-                WHERE trans.id_valorizacion_compramineral = V.Id), 
-                NULL) AS anticipos_usados
-            
-        FROM valorizacion_compramineral V
-        LEFT JOIN tb_clientes P ON P.Id = V.id_proveedor
-        WHERE V.estado <> 'X'
-        ORDER BY V.correlativo DESC, V.version DESC, V.Id DESC";
+        $q_datos = "
+            SELECT
+                V.Id,
+                MD5(V.Id) AS ID_MD5,
+                V.correlativo,
+                V.version,
+                V.num_oficio,
+                V.id_proveedor,
+                V.id_concesion,
+                P.documento AS ruc,
+                P.razon_social AS proveedor,
+                V.usuario_registro,
+                V.is_aprobado,
+                V.is_aprobado_fechahoraregistro,
+                V.is_aprobado_usuarioregistro,
+                V.id_cuentabancaria,
+                V.id_cuentadetraccion,
+                V.fechahora_registro,
+                V.usuario_registro,
+                V.estado,
+                V.usa_anticipo,
+                IFNULL(
+                    (
+                    SELECT
+                        V_x.is_aprobado
+                    FROM
+                        valorizacion_compramineral V_x
+                    WHERE
+                        V_x.is_aprobado = 1 AND V_x.correlativo = V.correlativo
+                ),
+                0
+                ) AS IS_VALORIZACIONAPROBADA,
+                IF(
+                    V.usa_anticipo = TRUE,
+                    (
+                    SELECT
+                        GROUP_CONCAT(
+                            CONCAT(
+                                ant.serie_factura,
+                                '-',
+                                ant.numero_factura
+                            ) SEPARATOR ', '
+                        )
+                    FROM
+                        proveedor_anticipo_transaccion trans
+                    INNER JOIN proveedor_anticipo ant ON
+                        ant.id = trans.id_proveedor_anticipo
+                    WHERE
+                        trans.id_valorizacion_compramineral = V.Id
+                ),
+                NULL
+                ) AS anticipos_usados,
+                EXISTS(
+                SELECT
+                    1
+                FROM
+                    comprobante_pago cp
+                WHERE
+                    cp.id_valorizacion = V.Id AND cp.estado = 'A'
+            ) AS tiene_comprobante
+            FROM
+                valorizacion_compramineral V
+            LEFT JOIN tb_clientes P ON
+                P.Id = V.id_proveedor
+            WHERE
+                V.estado <> 'X'
+            ORDER BY
+                V.correlativo
+            DESC
+                ,
+                V.version
+            DESC
+                ,
+                V.Id
+            DESC
+        ";
 
         $res = mysqli_query($enlace, $q_datos);
         $data = [];

@@ -1709,14 +1709,24 @@ if (!isset($_SESSION["Id"])) {
                         `;
 
             const is_aprobado = row.is_aprobado == 1;
+            const tiene_comprobante = row.tiene_comprobante == 1;
 
-            if (is_aprobado) {
-              // Si está aprobada, mostrar solo botón "Reabrir"
+            if (is_aprobado && !tiene_comprobante) {
+              // Si está aprobada y no tiene comprobante, mostrar solo botón "Reabrir"
               _html += `
                         <button class="btn btn-sm btn-warning" title="Reabrir Valorización" style="margin:2px;"
                             onclick="event.stopPropagation(); f_ReabrirValorizacion(${row.Id});">
                             <i class="bi bi-arrow-counterclockwise"></i> Reabrir
                         </button>
+                    `;
+            } else if (is_aprobado && tiene_comprobante) {
+              // Si está aprobada y tiene comprobante, mostrar solo botón "Reabrir"
+              _html += `
+                        <div class="d-flex justify-content-center align-items-center">
+                                <span class="text-muted" style="font-size: 11px;">
+                                    Ya cuenta con comprobante
+                                </span>
+                        </div>
                     `;
             }
             // si esta eliminado por anticipos, solo permitir eliminar
@@ -3577,7 +3587,7 @@ if (!isset($_SESSION["Id"])) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
-            if(data.msg){
+            if (data.msg) {
               alert(data.msg);
               return;
             }
