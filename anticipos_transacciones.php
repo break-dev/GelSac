@@ -547,14 +547,6 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
         data.forEach((group) => {
           const ant = group.anticipo_info;
 
-          // 1. Fila de Encabezado (Anticipo)
-          // La regla: Columna 1 (Factura Anticipo) tiene 3 subcolumnas.
-          // El diseño en HTML es:
-          // Col 1: Factura
-          // Col 2: Fecha
-          // Col 3: Importe
-          // Cols 4-15: Vacías (para separar y agrupar)
-
           html += `
             <tr class="table-secondary fw-bold" style="background-color: #e9ecef;">
               <!-- Info Anticipo -->
@@ -571,8 +563,8 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
           group.transacciones.forEach((tr, index) => {
             // Determinar estado badge
             let estadoBadge = tr.estado_comprobante;
-            if (tr.estado_comprobante === 'Confirmado' || tr.estado_comprobante === 'A') {
-              estadoBadge = '<span class="badge bg-success">Confirmado</span>';
+            if (tr.estado_comprobante === 'Pagado' || tr.estado_comprobante === 'A') {
+              estadoBadge = '<span class="badge bg-success">Pagado</span>';
             } else if (tr.estado_comprobante === 'Pendiente') {
               estadoBadge = '<span class="badge bg-warning text-dark">Pendiente</span>';
             } else {
@@ -630,8 +622,6 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
                </td>
              </tr>
            `);
-          // Actualizar resumen a 0
-          updateSummary(0, 0, 0);
           return;
         }
 
@@ -654,8 +644,6 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
           .done(function(r) {
             if (r.estado === 1) {
               renderTable(r.data);
-              // Calcular totales simples para el resumen (opcional)
-              // ...
             } else {
               alert("Error al cargar reporte: " + (r.msg || "Desconocido"));
               $('#tbl-transacciones').empty();
@@ -665,11 +653,6 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
             alert("Error de conexión.");
             $('#tbl-transacciones').empty();
           });
-      }
-
-      // Resumen visual (opcional/dummy por ahora ya que el backend trae estructura compleja)
-      function updateSummary(total, monto, saldo) {
-        // ...
       }
 
       // Eventos

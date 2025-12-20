@@ -369,39 +369,48 @@ switch ($_POST["accion"]) {
             // 2. Obtener Transacciones para este Anticipo
             // Solo estado 'A' (Confirmado)
             $q_trans = "
-                SELECT 
+                SELECT
                     tr.id,
                     tr.monto_retirado,
-                    tr.saldo_actual as saldo_antes_transaccion,
+                    tr.saldo_actual AS saldo_antes_transaccion,
                     tr.saldo_restante,
-                    tr.created_at as fecha_transaccion,
-                    
-                    -- Valorización Info
-                    val.Id as id_valorizacion,
+                    tr.created_at AS fecha_transaccion,
+                    val.Id AS id_valorizacion,
                     val.codigo_unico,
-                    val.correlativo as nro_valorizacion,
-                    val.estado as estado_val,
-                    
-                    -- Comprobante Info
+                    val.correlativo AS nro_valorizacion,
+                    val.estado AS estado_val,
                     cp.serie_comprobante,
                     cp.numero_comprobante,
                     cp.fecha_emision_comprobante,
-                    cp.total_comprobante as importe_factura_usd,
-                    cp.estado as estado_comprobante,
-                    
-                    -- Detalle Valorización (Lotes)
                     (
-                        SELECT GROUP_CONCAT(DISTINCT IFNULL(vd.cod_gel, vd.cod_lote) SEPARATOR ', ')
-                        FROM valorizacion_compramineral_detalle vd
-                        WHERE vd.id_valorizacion = val.Id
-                    ) as lotes
-                    
-                FROM proveedor_anticipo_transaccion tr
-                INNER JOIN valorizacion_compramineral val ON tr.id_valorizacion_compramineral = val.Id
-                LEFT JOIN comprobante_pago cp ON cp.id_valorizacion = val.Id AND cp.estado = 'A' -- Solo comprobantes activos
-                WHERE tr.id_proveedor_anticipo = $anticipo_id
-                  AND tr.estado = 'A'
-                ORDER BY tr.created_at ASC
+                    SELECT
+                        SUM(vcd.total)
+                    FROM
+                        valorizacion_compramineral_detalle vcd
+                    WHERE
+                        vcd.id_valorizacion = val.Id AND vcd.estado = 'A'
+                ) AS importe_factura_usd,
+                cp.estado AS estado_comprobante,
+                (
+                    SELECT
+                        GROUP_CONCAT(
+                            DISTINCT IFNULL(vd.cod_gel, vd.cod_lote) SEPARATOR ', '
+                        )
+                    FROM
+                        valorizacion_compramineral_detalle vd
+                    WHERE
+                        vd.id_valorizacion = val.Id
+                ) AS lotes
+                FROM
+                    proveedor_anticipo_transaccion tr
+                INNER JOIN valorizacion_compramineral val ON
+                    tr.id_valorizacion_compramineral = val.Id
+                LEFT JOIN comprobante_pago cp ON
+                    cp.id_valorizacion = val.Id AND cp.estado = 'A'
+                WHERE
+                    tr.id_proveedor_anticipo = $anticipo_id AND tr.estado = 'A'
+                ORDER BY
+                    tr.created_at ASC;
             ";
 
             $res_trans = mysqli_query($enlace, $q_trans);
@@ -421,39 +430,38 @@ switch ($_POST["accion"]) {
                     $porcentaje_aplicado = ($monto_retirado / $saldo_inicial_anticipo) * 100;
                 }
 
+                $importe_factura_usd = $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0;
+                $saldo_factura_amortiza = $importe_factura_usd - $monto_retirado;
+                $saldo_neto_factura_amortiza = $saldo_factura_amortiza >= 0 ? $saldo_factura_amortiza - ($saldo_factura_amortiza * 0.1) : 0;
                 $transacciones[] = [
                     "id_transaccion" => $tr['id'],
                     "lotes" => $tr['lotes'],
                     "porcentaje_aplicado" => number_format($porcentaje_aplicado, 2) . '%',
-                    "monto_aplicado" => $monto_retirado,
+                    "monto_aplicado" => round($monto_retirado,2),
 
                     // Factura Venta Info
                     "factura_amortiza_serie" => $tr['serie_comprobante'] ? $tr['serie_comprobante'] . '-' . $tr['numero_comprobante'] : 'S/N',
-                    "fecha_factura" => $tr['fecha_emision_comprobante'] ? $tr['fecha_emision_comprobante'] : $tr['fecha_transaccion'],
-                    "importe_factura_usd" => $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0,
+                    "fecha_factura" => $tr['fecha_emision_comprobante'] ? $tr['fecha_emision_comprobante'] : '-',
+                    "importe_factura_usd" => round($importe_factura_usd,2),
 
-                    "importe_amortiza_adelanto_usd" => $monto_retirado,
+                    "importe_amortiza_adelanto_usd" => round($monto_retirado,2),
 
-                    "saldo_factura_amortiza" => "",
-                    "saldo_neto_factura_amortiza" => "",
+                    "saldo_factura_amortiza" => round($saldo_factura_amortiza,2),
+                    "saldo_neto_factura_amortiza" => round($saldo_neto_factura_amortiza,2),
 
-                    "saldo_deuda_usd" => floatval($tr['saldo_restante']),
+                    "saldo_deuda_usd" => round(floatval($tr['saldo_restante']),2),
 
-                    "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Confirmado' : 'Pendiente') : 'Pendiente',
+                    "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Pagado' : 'Pendiente') : 'Pendiente',
                     "nro_valorizacion" => $tr['nro_valorizacion']
                 ];
             }
 
-            // Solo agregar anticipo si tiene transacciones o si se quiere mostrar la cabecera del anticipo
-            // El usuario dijo: "Si su estado es ‘A’, debera tener al menos una transaccion confirmada."
-            // Si tiene estado 'B' (sin saldo), se lista aunque no tenga transacciones visibles?
-            // Pero un anticipo 'B' DEBE tener transacciones que lo agotaron.
             if (count($transacciones) > 0 || $ant['estado'] == 'B') {
                 $data_final[] = [
                     "anticipo_info" => [
                         "factura" => $ant['serie_factura'] . '-' . $ant['numero_factura'],
                         "fecha" => $ant['fecha_registro'],
-                        "importe_inicial" => floatval($ant['saldo_inicial']),
+                        "importe_inicial" => round(floatval($ant['saldo_inicial']),2),
                         "id" => $ant['id']
                     ],
                     "transacciones" => $transacciones
