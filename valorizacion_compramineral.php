@@ -1275,8 +1275,9 @@ if (!isset($_SESSION["Id"])) {
                                    value="${f_RedondearDecimales(montoSeleccionado, 2)}"
                                    min="0" 
                                    max="${saldoActual}"
+                                   max="${saldoActual}"
                                    step="0.01"
-                                   ${inputHabilitado ? '' : 'disabled readonly'}
+                                   ${inputHabilitado ? '' : 'disabled'}
                                    onchange="f_ActualizarMontoAnticipo(${idAnticipo}, this.value);">
                         </div>
                     </td>
@@ -1291,7 +1292,7 @@ if (!isset($_SESSION["Id"])) {
 
     // Nueva función para actualizar el monto de un anticipo manualmente
     function f_ActualizarMontoAnticipo(idAnticipo, monto) {
-      const montoNum = parseFloat(monto) || 0;
+      let montoNum = parseFloat(monto) || 0;
 
       // Buscar el anticipo en la lista de seleccionados
       const index = anticiposSeleccionados.findIndex(a =>
@@ -1299,9 +1300,22 @@ if (!isset($_SESSION["Id"])) {
       );
 
       if (index !== -1) {
-        // Actualizar el monto
-        anticiposSeleccionados[index].monto_a_usar = montoNum;
-        f_ActualizarTotalesModal();
+        const anticipo = anticiposSeleccionados[index];
+        // Validar que no supere el saldo actual
+        if (montoNum > anticipo.saldo_actual) {
+          alert(`El monto no puede superar el saldo disponible de ${anticipo.saldo_actual}`);
+          montoNum = anticipo.saldo_actual;
+          $(`#txt_monto_${idAnticipo}`).val(montoNum.toFixed(2));
+        }
+
+        // Actualizar el monto y marcar como manual
+        anticipo.monto_a_usar = montoNum;
+        anticipo.is_manual = true;
+
+        // Recalcular el resto para asegurar que no nos pasamos del total
+        f_ReasignarMontosAutomaticamente();
+
+        // f_ActualizarTotalesModal se llama dentro de f_ReasignarMontosAutomaticamente
       }
     }
 
@@ -1383,12 +1397,14 @@ if (!isset($_SESSION["Id"])) {
         });
 
         inputMonto.val(montoAsignar.toFixed(2));
-        inputMonto.prop('readonly', true); // ¡Importante! No editable manualmente
+        inputMonto.prop('disabled', false); // Habilitar para edición
+        // inputMonto.prop('readonly', true); // ¡Importante! No editable manualmente -> AHORA SI EDITABLE
       } else {
         // Remover
         anticiposSeleccionados = anticiposSeleccionados.filter(a => a.id_anticipo != idAnticipo);
         inputMonto.val('0.00');
-        inputMonto.prop('readonly', true);
+        inputMonto.prop('disabled', true); // Deshabilitar
+        // inputMonto.prop('readonly', true);
       }
 
       // Recalcular automáticamente todos los montos
@@ -1409,16 +1425,47 @@ if (!isset($_SESSION["Id"])) {
 
       // Redistribuir montos
       seleccionadosOrdenados.forEach((anticipo, idx) => {
-        const disponible = anticipo.saldo_actual;
-        const restantePorAsignar = montoTotal - montoAsignado;
+        // Si el anticipo fue editado manualmente, respetamos su monto (siempre que no supere el saldo, validado antes)
+        // PERO debemos validar que SUMA(manuales) <= MontoTotal
+        // La logica sera:
+        // 1. Asignar manuales primero
+        // 2. Asignar automaticos con lo que sobre
+      });
 
-        const montoAsignar = Math.min(disponible, restantePorAsignar);
+      // Paso 1: Respetar manuales
+      seleccionadosOrdenados.forEach(anticipo => {
+        if (anticipo.is_manual) {
+          // Ya tiene un monto asignado manualmente
+          // Solo validamos que no supere el saldo (ya hecho)
+          // Y restamos del total global? No, vamos a sumar todo al final.
+          // Simplemente lo dejamos como está, pero validando que sea logico.
+          let monto = parseFloat(anticipo.monto_a_usar || 0);
+          montoAsignado += monto;
+        }
+      });
 
-        anticipo.monto_a_usar = montoAsignar;
-        montoAsignado += montoAsignar;
+      // Paso 2: Rellenar con los automaticos
+      seleccionadosOrdenados.forEach(anticipo => {
+        if (!anticipo.is_manual) {
+          const disponible = parseFloat(anticipo.saldo_actual);
+          // Cuanto falta para llegar al monto total de la valorizacion?
+          // OJO: Si es pago MIXTO, montoTotal es el total de la valorizacion.
+          // Si el usuario quiere cubrir MENOS, deberia poder editar manual.
+          // La logica automatica intenta cubrir TODO lo que falta.
 
-        // Actualizar input
-        $(`#txt_monto_${anticipo.id_anticipo}`).val(montoAsignar.toFixed(2));
+          let restantePorAsignar = montoTotal - montoAsignado;
+          if (restantePorAsignar < 0) restantePorAsignar = 0;
+
+          const montoAsignar = Math.min(disponible, restantePorAsignar);
+
+          anticipo.monto_a_usar = montoAsignar;
+          montoAsignado += montoAsignar;
+        }
+
+        // Actualizar input SIEMPRE
+        // A MENOS que sea el que acabamos de editar (para no perder el foco si fuera typing, pero aqui es onchange)
+        // Mejor actualizamos todos para asegurar consistencia
+        $(`#txt_monto_${anticipo.id_anticipo}`).val(parseFloat(anticipo.monto_a_usar).toFixed(2));
       });
 
       f_ActualizarTotalesModal();
