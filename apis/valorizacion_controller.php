@@ -480,58 +480,69 @@ switch ($_POST["accion"]) {
         $id_proveedor = $_POST["id_proveedor"];
         $id_concesion = $_POST["id_concesion"];
 
-        $q = "SELECT V.Id,
-		               V.lote_cod_lote,
-		               V.lote_id_lote AS ID_CODLOTE,
-		               IFNULL(CG.codigo_gel, 'Pendiente') AS CODIGO_GEL,
-		               CONCAT(V.guiaremitente_serie, '-', V.guiaremitente_numero) AS GUIA_REMITENTE,
-		               CONCAT(V.guiatransportista_serie, '-', V.guiatransportista_numero) AS GUIA_TRANSPORTISTA,
-		               V.lote_pesoinicial_fechahoraregistro,
-		               /*H.cierre_prom AS h2o,*/
-
-		               LC_NewAu.promedio AS ley_au_oz,
-		               LC_NewAg.promedio AS ley_ag_oz,
-		               LC_H2O.promedio AS h2o,
-		               LC_RECUP.promedio AS recup,
-
-		               CASE WHEN RD.gestionleyes_cerrado_isvalorizar = 0
-		               	 THEN 1
-		               ELSE 0 END AS IS_SINVALORCOMERCIAL,
-
-		               (V.lote_peso_neto / 1000) AS TMH,
-		               ROUND(((100 - LC_H2O.promedio) / 100) * 100, 3) AS tms,
-
-		               CASE WHEN (V.lote_peso_neto / 1000) <= 1
-		               	 THEN 1
-		               ELSE 1.1023 END AS factor
-		          FROM despachos_primertramo_validaciondatos V
-				           LEFT JOIN consolidado_lotes_cierrecontable CC ON V.Id = CC.id_registro
-				           LEFT JOIN tb_leyes_analisis_cierre LC_NewAu ON V.lote_cod_lote = LC_NewAu.cod_lote 
-				             AND LC_NewAu.id_grupo = 3
-				             AND LC_NewAu.abv_elemento = 'newau'
-			             LEFT JOIN tb_leyes_analisis_cierre LC_NewAg ON V.lote_cod_lote = LC_NewAg.cod_lote
-				             AND LC_NewAg.id_grupo = 3
-				             AND LC_NewAg.abv_elemento = 'newag'
-			             LEFT JOIN tb_leyes_analisis_cierre LC_H2O ON V.lote_cod_lote = LC_H2O.cod_lote
-				             AND LC_H2O.id_grupo = 4
-				             AND LC_H2O.abv_elemento = 'h2o'
-			             LEFT JOIN tb_leyes_analisis_cierre LC_RECUP ON V.lote_cod_lote = LC_RECUP.cod_lote
-				             AND LC_RECUP.id_grupo = 5
-				             AND LC_RECUP.abv_elemento = 'recup'
-				           LEFT JOIN correlativo_codigosgel CG ON V.Id = CG.id_validaciondatos
-				           INNER JOIN import_resultadosleyes_detalle RD ON V.lote_cod_lote = RD.cod_interno
-		         WHERE RD.gestionleyes_cerrado = 1
-		         	 AND V.lote_id_proveedorminero = '$id_proveedor'
-		           AND V.lote_id_proveedorminero_concesion = '$id_concesion'
-		           AND (SELECT COUNT(CMD.Id)
-		           				FROM valorizacion_compramineral_detalle CMD
-		           						 INNER JOIN valorizacion_compramineral CM ON CMD.id_valorizacion = CM.Id
-		           			 WHERE CMD.cod_lote = V.lote_cod_lote
-		           				 AND CMD.id_elemento IN (33, 34)
-		           				 AND CM.estado <> 'X') < 2
-		           /*AND V.guiaremitente_serie IS NOT NULL*/
-		      ORDER BY V.Id DESC";
-
+        $q = "
+        SELECT
+            V.Id,
+            V.lote_cod_lote,
+            V.lote_id_lote AS ID_CODLOTE,
+            IFNULL(CG.codigo_gel, 'Pendiente') AS CODIGO_GEL,
+            CONCAT(
+                V.guiaremitente_serie,
+                '-',
+                V.guiaremitente_numero
+            ) AS GUIA_REMITENTE,
+            CONCAT(
+                V.guiatransportista_serie,
+                '-',
+                V.guiatransportista_numero
+            ) AS GUIA_TRANSPORTISTA,
+            V.lote_pesoinicial_fechahoraregistro,
+            LC_NewAu.promedio AS ley_au_oz,
+            LC_NewAg.promedio AS ley_ag_oz,
+            LC_H2O.promedio AS h2o,
+            LC_RECUP.promedio AS recup,
+            CASE WHEN RD.gestionleyes_cerrado_isvalorizar = 0 THEN 1 ELSE 0
+        END AS IS_SINVALORCOMERCIAL,
+        (V.lote_peso_neto / 1000) AS TMH,
+        ROUND(
+            ((100 - LC_H2O.promedio) / 100) * 100,
+            3
+        ) AS tms,
+        CASE WHEN(V.lote_peso_neto / 1000) <= 1 THEN 1 ELSE 1.1023
+        END AS factor
+        FROM
+            despachos_primertramo_validaciondatos V
+        LEFT JOIN consolidado_lotes_cierrecontable CC ON
+            V.Id = CC.id_registro
+        LEFT JOIN tb_leyes_analisis_cierre LC_NewAu ON
+            V.lote_cod_lote = LC_NewAu.cod_lote AND LC_NewAu.id_grupo = 3 AND LC_NewAu.abv_elemento = 'newau'
+        LEFT JOIN tb_leyes_analisis_cierre LC_NewAg ON
+            V.lote_cod_lote = LC_NewAg.cod_lote AND LC_NewAg.id_grupo = 3 AND LC_NewAg.abv_elemento = 'newag'
+        LEFT JOIN tb_leyes_analisis_cierre LC_H2O ON
+            V.lote_cod_lote = LC_H2O.cod_lote AND LC_H2O.id_grupo = 4 AND LC_H2O.abv_elemento = 'h2o'
+        LEFT JOIN tb_leyes_analisis_cierre LC_RECUP ON
+            V.lote_cod_lote = LC_RECUP.cod_lote AND LC_RECUP.id_grupo = 5 AND LC_RECUP.abv_elemento = 'recup'
+        LEFT JOIN correlativo_codigosgel CG ON
+            V.Id = CG.id_validaciondatos
+        INNER JOIN import_resultadosleyes_detalle RD ON
+            V.lote_cod_lote = RD.cod_interno
+        WHERE
+            RD.gestionleyes_cerrado = 1 AND V.lote_id_proveedorminero = '$id_proveedor' AND V.lote_id_proveedorminero_concesion = '$id_concesion' AND NOT EXISTS(
+            SELECT
+                1
+            FROM
+                valorizacion_compramineral_detalle CMD
+            INNER JOIN valorizacion_compramineral CM ON
+                CMD.id_valorizacion = CM.Id
+            LEFT JOIN comprobante_pago comp ON
+                comp.id_valorizacion = CM.Id
+            WHERE
+                CMD.cod_lote = V.lote_cod_lote AND CMD.id_elemento IN(33, 34) AND CM.estado <> 'X' AND CM.is_aprobado = 1
+        )
+        ORDER BY
+            V.Id
+        DESC;
+        ";
         $r = mysqli_query($enlace, $q);
         while ($f = mysqli_fetch_assoc($r)) {
             $res["registros"][] = $f;
