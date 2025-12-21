@@ -415,11 +415,19 @@ switch ($_POST["accion"]) {
 
             $res_trans = mysqli_query($enlace, $q_trans);
             $transacciones = [];
+            $anticipoMatchesDate = false;
 
             while ($tr = mysqli_fetch_assoc($res_trans)) {
-                // Filtro fecha transaccion (opcional)
-                if ($fecha_desde && $tr['fecha_transaccion'] < $fecha_desde) continue;
-                if ($fecha_hasta && $tr['fecha_transaccion'] > $fecha_hasta . ' 23:59:59') continue;
+
+                // Verificación de fecha para determinar si se incluye el anticipo
+                $fecha_comprobante = $tr['fecha_emision_comprobante'];
+                $matches = true;
+                if ($fecha_desde && (!$fecha_comprobante || $fecha_comprobante < $fecha_desde)) $matches = false;
+                if ($fecha_hasta && (!$fecha_comprobante || $fecha_comprobante > $fecha_hasta)) $matches = false;
+
+                if ($matches) {
+                    $anticipoMatchesDate = true;
+                }
 
                 // Calculo de porcentajes y montos
                 $monto_retirado = floatval($tr['monto_retirado']);
@@ -433,35 +441,51 @@ switch ($_POST["accion"]) {
                 $importe_factura_usd = $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0;
                 $saldo_factura_amortiza = $importe_factura_usd - $monto_retirado;
                 $saldo_neto_factura_amortiza = $saldo_factura_amortiza >= 0 ? $saldo_factura_amortiza - ($saldo_factura_amortiza * 0.1) : 0;
+
                 $transacciones[] = [
                     "id_transaccion" => $tr['id'],
                     "lotes" => $tr['lotes'],
                     "porcentaje_aplicado" => number_format($porcentaje_aplicado, 2) . '%',
-                    "monto_aplicado" => round($monto_retirado,2),
+                    "monto_aplicado" => round($monto_retirado, 2),
 
                     // Factura Venta Info
                     "factura_amortiza_serie" => $tr['serie_comprobante'] ? $tr['serie_comprobante'] . '-' . $tr['numero_comprobante'] : 'S/N',
                     "fecha_factura" => $tr['fecha_emision_comprobante'] ? $tr['fecha_emision_comprobante'] : '-',
-                    "importe_factura_usd" => round($importe_factura_usd,2),
+                    "importe_factura_usd" => round($importe_factura_usd, 2),
 
-                    "importe_amortiza_adelanto_usd" => round($monto_retirado,2),
+                    "importe_amortiza_adelanto_usd" => round($monto_retirado, 2),
 
-                    "saldo_factura_amortiza" => round($saldo_factura_amortiza,2),
-                    "saldo_neto_factura_amortiza" => round($saldo_neto_factura_amortiza,2),
+                    "saldo_factura_amortiza" => round($saldo_factura_amortiza, 2),
+                    "saldo_neto_factura_amortiza" => round($saldo_neto_factura_amortiza, 2),
 
-                    "saldo_deuda_usd" => round(floatval($tr['saldo_restante']),2),
+                    "saldo_deuda_usd" => round(floatval($tr['saldo_restante']), 2),
 
                     "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Pagado' : 'Pendiente') : 'Pendiente',
                     "nro_valorizacion" => $tr['nro_valorizacion']
                 ];
             }
 
-            if (count($transacciones) > 0 || $ant['estado'] == 'B') {
+            // Lógica de inclusión:
+            // 1. Si NO hay filtros de fecha, se incluye si tiene transacciones o es estado B.
+            // 2. Si HAY filtros de fecha, se incluye si $anticipoMatchesDate es true.
+
+            $include = false;
+            if (!$fecha_desde && !$fecha_hasta) {
+                if (count($transacciones) > 0 || $ant['estado'] == 'B') {
+                    $include = true;
+                }
+            } else {
+                if ($anticipoMatchesDate) {
+                    $include = true;
+                }
+            }
+
+            if ($include) {
                 $data_final[] = [
                     "anticipo_info" => [
                         "factura" => $ant['serie_factura'] . '-' . $ant['numero_factura'],
                         "fecha" => $ant['fecha_registro'],
-                        "importe_inicial" => round(floatval($ant['saldo_inicial']),2),
+                        "importe_inicial" => round(floatval($ant['saldo_inicial']), 2),
                         "id" => $ant['id']
                     ],
                     "transacciones" => $transacciones

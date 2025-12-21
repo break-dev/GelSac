@@ -246,55 +246,55 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
       <div class="col-md-12 col-sm-12 col-xs-12" style="padding-top: 10px; padding-left: 15px; padding-right: 15px;">
 
         <!-- Filtros -->
-        <div class="filter-card">
-          <h5 class="mb-3"><i class="bi bi-funnel"></i> Filtros de Búsqueda</h5>
+        <div class="filter-card pt-3 pb-3"> <!-- Reduced padding -->
+          <h6 class="mb-2 text-secondary"><i class="bi bi-funnel"></i> Filtros de Búsqueda</h6>
 
-          <div class="row g-3">
+          <div class="row g-2"> <!-- G-2 for tighter spacing -->
             <div class="col-md-3">
-              <label class="form-label">Proveedor</label>
-              <select class="form-select" id="filter_proveedor" style="width: 100%;"></select>
+              <label class="form-label small mb-1">Proveedor</label>
+              <select class="form-select form-select-sm" id="filter_proveedor" style="width: 100%;"></select>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Factura Anticipo</label>
+              <input type="text" class="form-control form-control-sm" id="filter_factura_anticipo" placeholder="Ej: F001-123">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Factura Comprobante</label>
+              <input type="text" class="form-control form-control-sm" id="filter_factura_comprobante" placeholder="Ej: E001-42">
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">N° Factura</label>
-              <input type="text" class="form-control" id="filter_factura" placeholder="Ej: E001-42">
+              <label class="form-label small mb-1">Rango Fechas (Comprobante)</label>
+              <div class="input-group input-group-sm">
+                <input type="date" class="form-control" id="filter-fecha-desde" title="Desde">
+                <span class="input-group-text bg-white">-</span>
+                <input type="date" class="form-control" id="filter-fecha-hasta" title="Hasta">
+              </div>
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Fecha Desde</label>
-              <input type="date" class="form-control" id="filter-fecha-desde">
-            </div>
-
-            <div class="col-md-2">
-              <label class="form-label">Fecha Hasta</label>
-              <input type="date" class="form-control" id="filter-fecha-hasta">
-            </div>
-
-            <div class="col-md-2">
-              <label class="form-label">Estado</label>
-              <select class="form-select" id="filter-estado">
+              <label class="form-label small mb-1">Estado</label>
+              <select class="form-select form-select-sm" id="filter-estado">
                 <option value="">Todos</option>
-                <option value="pendiente">Comprobante Pendiente</option>
-                <option value="aprobado">Aprobado</option>
-                <option value="anulado">Anulado</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="aprobado">Pagado</option>
+                <!-- <option value="anulado">Anulado</option> -->
               </select>
             </div>
 
-            <div class="col-md-12 mt-3">
-              <div class="d-flex justify-content-between">
-                <div>
-                  <button class="btn btn-secondary btn-sm" id="btn-limpiar-filtros">
-                    <i class="bi bi-eraser"></i> Limpiar Filtros
-                  </button>
-                </div>
-                <div>
-                  <button class="btn btn-primary btn-sm me-2" id="btn-aplicar-filtros">
-                    <i class="bi bi-search"></i> Aplicar Filtros
-                  </button>
-                  <button class="btn btn-success btn-sm" id="btn-exportar-excel">
-                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-                  </button>
-                </div>
+            <div class="col-md-12 mt-2">
+              <div class="d-flex justify-content-end">
+                <button class="btn btn-primary btn-sm me-2" id="btn-aplicar-filtros">
+                  <i class="bi bi-search"></i> Buscar
+                </button>
+                <button class="btn btn-secondary btn-sm me-2" id="btn-limpiar-filtros">
+                  <i class="bi bi-eraser"></i> Limpiar
+                </button>
+                <button class="btn btn-success btn-sm" id="btn-exportar-excel">
+                  <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
               </div>
             </div>
           </div>
@@ -497,9 +497,11 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
         return `${dayPart}/${parts[1]}/${parts[0]}`;
       }
 
+      // Variables globales
+      let currentData = [];
+
       // Cargar Proveedores
       function loadProviders() {
-        // Usamos getAnticiposAndProviders para obtener la lista de proveedores
         f_callBackend('getAnticiposAndProviders', {})
           .done(function(r) {
             if (r.estado === 1 && r.data && r.data.proveedores) {
@@ -516,7 +518,6 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
                 data: providers
               });
 
-              // Si no hay seleccion, limpiar
               $('#filter_proveedor').val(null).trigger('change');
             }
           })
@@ -534,8 +535,8 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
           tbody.html(`
             <tr>
               <td colspan="15" class="text-center py-5 text-muted">
-                <i class="bi bi-inbox" style="font-size: 48px;"></i>
-                <p class="mt-2">No se encontraron registros para los filtros seleccionados.</p>
+                <i class="bi bi-inbox" style="font-size: 32px;"></i>
+                <p class="mt-2 mb-0">No se encontraron registros.</p>
               </td>
             </tr>
           `);
@@ -546,6 +547,9 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
 
         data.forEach((group) => {
           const ant = group.anticipo_info;
+
+          // Si el grupo no tiene transacciones visibles (por filtrado), no mostrar encabezado
+          if (!group.transacciones || group.transacciones.length === 0) return;
 
           html += `
             <tr class="table-secondary fw-bold" style="background-color: #e9ecef;">
@@ -562,7 +566,7 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
           // 2. Filas de Transacciones
           group.transacciones.forEach((tr, index) => {
             // Determinar estado badge
-            let estadoBadge = tr.estado_comprobante;
+            let estadoBadge = '';
             if (tr.estado_comprobante === 'Pagado' || tr.estado_comprobante === 'A') {
               estadoBadge = '<span class="badge bg-success">Pagado</span>';
             } else if (tr.estado_comprobante === 'Pendiente') {
@@ -604,17 +608,86 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
           });
         });
 
-        tbody.html(html);
+        // Si después de filtrar filas individuales no queda nada en el HTML (casos raros)
+        if (html === '') {
+          tbody.html(`
+            <tr>
+              <td colspan="15" class="text-center py-5 text-muted">
+                <p class="mt-2 mb-0">No hay coincidencias con los filtros.</p>
+              </td>
+            </tr>
+          `);
+        } else {
+          tbody.html(html);
+        }
+      }
+
+      function filterAndRender() {
+        const fAnticipo = $('#filter_factura_anticipo').val().toLowerCase().trim();
+        const fComprobante = $('#filter_factura_comprobante').val().toLowerCase().trim();
+        const fEstado = $('#filter-estado').val();
+
+        if (currentData.length === 0) {
+          renderTable([]);
+          return;
+        }
+
+        // Filtrado profundo: Clonar estructura para no mutar original
+        // Estrategia: Iterar grupos, filtrar transacciones dentro, si quedan transacciones mantener grupo.
+        // Ademas, filtro de Anticipo Factura aplica al Header del grupo.
+
+        const filteredData = [];
+
+        currentData.forEach(group => {
+          const ant = group.anticipo_info;
+          // Filtro 1: Factura Anticipo (match en el padre)
+          const matchAnticipo = ant.factura.toLowerCase().includes(fAnticipo);
+
+          // Si el anticipo no matchea y se escribio algo, descartamos todo el grupo?
+          // UX: Si busco anticipo "F001", quiero ver sus trs. Si busco comprobante "E001", quiero ver trs E001 dentro de cualquier anticipo.
+          // Si estricto: (MatchAnt OR EmptyAnt) AND (Trans Has MatchComp)
+
+          // Simplificacion: Si buscó anticipo, debe matchear.
+          if (fAnticipo && !matchAnticipo) return; // Skip group
+
+          // Filtro 2 y 3: Transacciones
+          const matchingTransacciones = group.transacciones.filter(tr => {
+            // Filtro Factura Comprobante
+            const matchComprobante = !fComprobante || tr.factura_amortiza_serie.toLowerCase().includes(fComprobante);
+
+            // Filtro Estado
+            let matchEstado = true;
+            if (fEstado) {
+              const estadoStr = (tr.estado_comprobante === 'A' || tr.estado_comprobante === 'Pagado') ? 'aprobado' :
+                (tr.estado_comprobante === 'Pendiente' ? 'pendiente' :
+                  (tr.estado_comprobante === 'Anulado' ? 'anulado' : ''));
+              // Ajuste para coincidir con values del select
+              if (estadoStr !== fEstado) matchEstado = false;
+            }
+
+            return matchComprobante && matchEstado;
+          });
+
+          if (matchingTransacciones.length > 0) {
+            // Clonar grupo y asignar trs filtradas
+            filteredData.push({
+              anticipo_info: ant,
+              transacciones: matchingTransacciones
+            });
+          }
+        });
+
+        renderTable(filteredData);
       }
 
       // Cargar datos
       function loadReporte() {
         const idProveedor = $('#filter_proveedor').val();
+        // Fechas se envian al backend
         const fechaDesde = $('#filter-fecha-desde').val();
         const fechaHasta = $('#filter-fecha-hasta').val();
 
         if (!idProveedor) {
-          // Si no hay proveedor seleccionado, mostrar tabla vacía o mensaje
           $('#tbl-transacciones').html(`
              <tr>
                <td colspan="15" class="text-center py-5 text-muted">
@@ -643,7 +716,8 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
           })
           .done(function(r) {
             if (r.estado === 1) {
-              renderTable(r.data);
+              currentData = r.data || [];
+              filterAndRender(); // Filtra (vacio) y Rende
             } else {
               alert("Error al cargar reporte: " + (r.msg || "Desconocido"));
               $('#tbl-transacciones').empty();
@@ -660,11 +734,21 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
         loadReporte();
       });
 
+      // Filtros cliente-side inmediatos
+      $('#filter_factura_anticipo, #filter_factura_comprobante, #filter-estado').on('keyup change', function() {
+        filterAndRender();
+      });
+
       $('#btn-limpiar-filtros').on('click', function() {
         $('#filter_proveedor').val(null).trigger('change');
         $('#filter-fecha-desde').val('');
         $('#filter-fecha-hasta').val('');
-        loadReporte(); // Limpia la tabla
+        $('#filter_factura_anticipo').val('');
+        $('#filter_factura_comprobante').val('');
+        $('#filter-estado').val('');
+
+        currentData = []; // Clear data
+        loadReporte();
       });
 
       // Inicialización
