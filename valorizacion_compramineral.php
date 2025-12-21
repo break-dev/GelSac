@@ -91,7 +91,7 @@ if (!isset($_SESSION["Id"])) {
   <script type="text/javascript">
     let id_valorizacion_Selected = 0;
     let item_valorizacion_Selected = 0;
-    const url_api = "apis/valorizacion_controller.php";
+    const url_api = "apis/backend.php";
   </script>
 </head>
 

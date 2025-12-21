@@ -14,7 +14,7 @@ if (!isset($_SESSION["Id"])) {
 }
 
 // endpoint de backend
-$backendUrl = 'apis/anticipos_resumen_controller.php';
+$backendUrl = 'apis/backend.php';
 ?>
 
 <!DOCTYPE html>

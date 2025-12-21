@@ -70281,18 +70281,11 @@ switch ($_POST["accion"]) {
         // Obtiene elementos ya registrados
         $in_elementos = "";
 
-        $q_datos = "
-            SELECT
-                CMD.id_elemento
-            FROM
-                valorizacion_compramineral_detalle CMD
-            INNER JOIN valorizacion_compramineral CM ON
-                CMD.id_valorizacion = CM.Id
-            WHERE
-                CMD.cod_lote = '$cod_lote' AND (CM.estado = 'A' OR CM.estado = 'I')
-            GROUP BY
-                CMD.id_elemento
-        ";
+        $q_datos = "SELECT CMD.id_elemento
+	  									FROM valorizacion_compramineral_detalle CMD
+		           						 INNER JOIN valorizacion_compramineral CM ON CMD.id_valorizacion = CM.Id
+		           			 WHERE CMD.cod_lote = '$cod_lote'
+		           				 AND CM.estado <> 'X' AND CM.estado <> 'R'";
 
         if ($res_datos = mysqli_query($enlace, $q_datos)) {
             if (mysqli_num_rows($res_datos) > 0) {
@@ -70332,58 +70325,69 @@ switch ($_POST["accion"]) {
         $id_proveedor = $_POST["id_proveedor"];
         $id_concesion = $_POST["id_concesion"];
 
-        $q = "SELECT V.Id,
-		               V.lote_cod_lote,
-		               V.lote_id_lote AS ID_CODLOTE,
-		               IFNULL(CG.codigo_gel, 'Pendiente') AS CODIGO_GEL,
-		               CONCAT(V.guiaremitente_serie, '-', V.guiaremitente_numero) AS GUIA_REMITENTE,
-		               CONCAT(V.guiatransportista_serie, '-', V.guiatransportista_numero) AS GUIA_TRANSPORTISTA,
-		               V.lote_pesoinicial_fechahoraregistro,
-		               /*H.cierre_prom AS h2o,*/
-
-		               LC_NewAu.promedio AS ley_au_oz,
-		               LC_NewAg.promedio AS ley_ag_oz,
-		               LC_H2O.promedio AS h2o,
-		               LC_RECUP.promedio AS recup,
-
-		               CASE WHEN RD.gestionleyes_cerrado_isvalorizar = 0
-		               	 THEN 1
-		               ELSE 0 END AS IS_SINVALORCOMERCIAL,
-
-		               (V.lote_peso_neto / 1000) AS TMH,
-		               ROUND(((100 - LC_H2O.promedio) / 100) * 100, 3) AS tms,
-
-		               CASE WHEN (V.lote_peso_neto / 1000) <= 1
-		               	 THEN 1
-		               ELSE 1.1023 END AS factor
-		          FROM despachos_primertramo_validaciondatos V
-				           LEFT JOIN consolidado_lotes_cierrecontable CC ON V.Id = CC.id_registro
-				           LEFT JOIN tb_leyes_analisis_cierre LC_NewAu ON V.lote_cod_lote = LC_NewAu.cod_lote 
-				             AND LC_NewAu.id_grupo = 3
-				             AND LC_NewAu.abv_elemento = 'newau'
-			             LEFT JOIN tb_leyes_analisis_cierre LC_NewAg ON V.lote_cod_lote = LC_NewAg.cod_lote
-				             AND LC_NewAg.id_grupo = 3
-				             AND LC_NewAg.abv_elemento = 'newag'
-			             LEFT JOIN tb_leyes_analisis_cierre LC_H2O ON V.lote_cod_lote = LC_H2O.cod_lote
-				             AND LC_H2O.id_grupo = 4
-				             AND LC_H2O.abv_elemento = 'h2o'
-			             LEFT JOIN tb_leyes_analisis_cierre LC_RECUP ON V.lote_cod_lote = LC_RECUP.cod_lote
-				             AND LC_RECUP.id_grupo = 5
-				             AND LC_RECUP.abv_elemento = 'recup'
-				           LEFT JOIN correlativo_codigosgel CG ON V.Id = CG.id_validaciondatos
-				           INNER JOIN import_resultadosleyes_detalle RD ON V.lote_cod_lote = RD.cod_interno
-		         WHERE RD.gestionleyes_cerrado = 1
-		         	 AND V.lote_id_proveedorminero = '$id_proveedor'
-		           AND V.lote_id_proveedorminero_concesion = '$id_concesion'
-		           AND (SELECT COUNT(CMD.Id)
-		           				FROM valorizacion_compramineral_detalle CMD
-		           						 INNER JOIN valorizacion_compramineral CM ON CMD.id_valorizacion = CM.Id
-		           			 WHERE CMD.cod_lote = V.lote_cod_lote
-		           				 AND CMD.id_elemento IN (33, 34)
-		           				 AND CM.estado <> 'X') < 2
-		           /*AND V.guiaremitente_serie IS NOT NULL*/
-		      ORDER BY V.Id DESC";
-
+        $q = "
+        SELECT
+            V.Id,
+            V.lote_cod_lote,
+            V.lote_id_lote AS ID_CODLOTE,
+            IFNULL(CG.codigo_gel, 'Pendiente') AS CODIGO_GEL,
+            CONCAT(
+                V.guiaremitente_serie,
+                '-',
+                V.guiaremitente_numero
+            ) AS GUIA_REMITENTE,
+            CONCAT(
+                V.guiatransportista_serie,
+                '-',
+                V.guiatransportista_numero
+            ) AS GUIA_TRANSPORTISTA,
+            V.lote_pesoinicial_fechahoraregistro,
+            LC_NewAu.promedio AS ley_au_oz,
+            LC_NewAg.promedio AS ley_ag_oz,
+            LC_H2O.promedio AS h2o,
+            LC_RECUP.promedio AS recup,
+            CASE WHEN RD.gestionleyes_cerrado_isvalorizar = 0 THEN 1 ELSE 0
+        END AS IS_SINVALORCOMERCIAL,
+        (V.lote_peso_neto / 1000) AS TMH,
+        ROUND(
+            ((100 - LC_H2O.promedio) / 100) * 100,
+            3
+        ) AS tms,
+        CASE WHEN(V.lote_peso_neto / 1000) <= 1 THEN 1 ELSE 1.1023
+        END AS factor
+        FROM
+            despachos_primertramo_validaciondatos V
+        LEFT JOIN consolidado_lotes_cierrecontable CC ON
+            V.Id = CC.id_registro
+        LEFT JOIN tb_leyes_analisis_cierre LC_NewAu ON
+            V.lote_cod_lote = LC_NewAu.cod_lote AND LC_NewAu.id_grupo = 3 AND LC_NewAu.abv_elemento = 'newau'
+        LEFT JOIN tb_leyes_analisis_cierre LC_NewAg ON
+            V.lote_cod_lote = LC_NewAg.cod_lote AND LC_NewAg.id_grupo = 3 AND LC_NewAg.abv_elemento = 'newag'
+        LEFT JOIN tb_leyes_analisis_cierre LC_H2O ON
+            V.lote_cod_lote = LC_H2O.cod_lote AND LC_H2O.id_grupo = 4 AND LC_H2O.abv_elemento = 'h2o'
+        LEFT JOIN tb_leyes_analisis_cierre LC_RECUP ON
+            V.lote_cod_lote = LC_RECUP.cod_lote AND LC_RECUP.id_grupo = 5 AND LC_RECUP.abv_elemento = 'recup'
+        LEFT JOIN correlativo_codigosgel CG ON
+            V.Id = CG.id_validaciondatos
+        INNER JOIN import_resultadosleyes_detalle RD ON
+            V.lote_cod_lote = RD.cod_interno
+        WHERE
+            RD.gestionleyes_cerrado = 1 AND V.lote_id_proveedorminero = '$id_proveedor' AND V.lote_id_proveedorminero_concesion = '$id_concesion' AND NOT EXISTS(
+            SELECT
+                1
+            FROM
+                valorizacion_compramineral_detalle CMD
+            INNER JOIN valorizacion_compramineral CM ON
+                CMD.id_valorizacion = CM.Id
+            LEFT JOIN comprobante_pago comp ON
+                comp.id_valorizacion = CM.Id
+            WHERE
+                CMD.cod_lote = V.lote_cod_lote AND CMD.id_elemento IN(33, 34) AND CM.estado <> 'X' AND CM.is_aprobado = 1
+        )
+        ORDER BY
+            V.Id
+        DESC;
+        ";
         $r = mysqli_query($enlace, $q);
         while ($f = mysqli_fetch_assoc($r)) {
             $res["registros"][] = $f;
@@ -70435,7 +70439,7 @@ switch ($_POST["accion"]) {
 
     case "grabar_ValorizacionCompra":
         $estado = 0;
-        
+
         // Campos existentes
         $id_valorizacion = $_POST["id_valorizacion"];
         $id_proveedor = $_POST["id_proveedor"];
@@ -70450,7 +70454,7 @@ switch ($_POST["accion"]) {
         $modo_grabar = $_POST["modo_grabar"];
         $arr_detalle = json_decode($_POST["arr_detalle"], true);
         $usuario_registro = $_SESSION["usu_usuario"];
-        
+
         // Nuevos campos
         $usa_anticipo = isset($_POST["usa_anticipo"]) ? ($_POST["usa_anticipo"] === "true" || $_POST["usa_anticipo"] === true) : false;
         $es_pago_mixto = isset($_POST["es_pago_mixto"]) ? ($_POST["es_pago_mixto"] === "true" || $_POST["es_pago_mixto"] === true) : false;
@@ -70461,45 +70465,92 @@ switch ($_POST["accion"]) {
         mysqli_begin_transaction($enlace);
 
         try {
-            // Determinar ID medio de pago
-            $id_mediopago = 2; // Por defecto transferencia
-            
-            if ($usa_anticipo && !$es_pago_mixto) {
-                $id_mediopago = 10; // Solo anticipos
-            } elseif ($es_pago_mixto) {
-                $id_mediopago = 11; // Mixto (anticipo + transferencia)
+            // ===== DETECCIÓN AUTOMÁTICA DEL TIPO DE PAGO =====
+            // Procesar basándose en los datos recibidos, no en flags
+            $total_anticipos = 0;
+            if (!empty($anticipos_seleccionados)) {
+                foreach ($anticipos_seleccionados as $anticipo) {
+                    $total_anticipos += floatval($anticipo['monto_a_usar'] ?? 0);
+                }
             }
-            
-            // Validar anticipos si corresponde
-            if ($usa_anticipo) {
+
+            $tiene_anticipos = $total_anticipos > 0;
+            $tiene_cuenta_bancaria = !empty($id_cuentabancaria);
+
+            // Detectar tipo de pago según datos reales
+            if ($tiene_anticipos && $total_anticipos >= $monto_total_valorizacion) {
+                // Solo anticipos
+                $usa_anticipo = true;
+                $es_pago_mixto = false;
+                $id_mediopago = 10;
+                error_log("Tipo de pago detectado: SOLO ANTICIPOS");
+            } elseif ($tiene_anticipos && $total_anticipos > 0 && $tiene_cuenta_bancaria) {
+                // Pago mixto
+                $usa_anticipo = true;
+                $es_pago_mixto = true;
+                $id_mediopago = 11;
+                error_log("Tipo de pago detectado: MIXTO (Anticipos + Transferencia)");
+            } elseif ($tiene_cuenta_bancaria) {
+                // Solo transferencia
+                $usa_anticipo = false;
+                $es_pago_mixto = false;
+                $id_mediopago = 2;
+                error_log("Tipo de pago detectado: SOLO TRANSFERENCIA");
+            } else {
+                throw new Exception("No se especificó ningún método de pago válido.");
+            }
+
+            // ===== VALIDACIONES SEGÚN TIPO DE PAGO =====
+            if ($usa_anticipo && !$es_pago_mixto) {
+                // Solo anticipos - validar que cubran el total
                 if (empty($anticipos_seleccionados)) {
                     throw new Exception("Debe seleccionar al menos un anticipo.");
                 }
-                
-                $total_anticipos = 0;
-                foreach ($anticipos_seleccionados as $anticipo) {
-                    $total_anticipos += floatval($anticipo['monto_a_usar']);
+
+                if (abs($total_anticipos - $monto_total_valorizacion) > 0.01) {
+                    throw new Exception("Los anticipos seleccionados ($$total_anticipos) no cubren el monto total ($$monto_total_valorizacion).");
                 }
-                
-                // Para pago mixto, la suma debe coincidir
-                if ($es_pago_mixto) {
-                    $suma_total = $total_anticipos + $monto_transferencia;
-                    if (abs($suma_total - $monto_total_valorizacion) > 0.01) {
-                        throw new Exception("La suma de anticipos ($total_anticipos) y transferencia ($monto_transferencia) no coincide con el monto total ($monto_total_valorizacion).");
-                    }
-                } 
-                // Para solo anticipos, deben cubrir el total
-                elseif (abs($total_anticipos - $monto_total_valorizacion) > 0.01) {
-                    throw new Exception("Los anticipos seleccionados ($total_anticipos) no cubren el monto total ($monto_total_valorizacion).");
+            } elseif ($es_pago_mixto) {
+                // Pago mixto - validar anticipos + cuenta bancaria
+                if (empty($anticipos_seleccionados)) {
+                    throw new Exception("Debe seleccionar al menos un anticipo.");
+                }
+
+                if (empty($id_cuentabancaria)) {
+                    throw new Exception("Debe seleccionar una cuenta bancaria.");
+                }
+
+                if (empty($id_cuentadetraccion)) {
+                    throw new Exception("Debe seleccionar una cuenta de detracción.");
+                }
+
+                // Validar que la suma sea correcta
+                $suma_esperada = $total_anticipos + $monto_transferencia;
+                if (abs($suma_esperada - $monto_total_valorizacion) > 0.01) {
+                    throw new Exception("La suma de anticipos ($$total_anticipos) y transferencia ($$monto_transferencia) debe ser igual al total ($$monto_total_valorizacion).");
+                }
+            } else {
+                // Solo transferencia - validar cuenta bancaria
+                if (empty($id_cuentabancaria)) {
+                    throw new Exception("Debe seleccionar una cuenta bancaria.");
+                }
+
+                if (empty($id_cuentadetraccion)) {
+                    throw new Exception("Debe seleccionar una cuenta de detracción.");
+                }
+
+                // Asegurar que monto de transferencia sea el total
+                if ($monto_transferencia == 0) {
+                    $monto_transferencia = $monto_total_valorizacion;
                 }
             }
-            
+
             // Validar cuentas bancarias para transferencia o mixto
             if (!$usa_anticipo || $es_pago_mixto) {
                 if (empty($id_cuentabancaria) || empty($info_cuentabancaria)) {
                     throw new Exception("Debe seleccionar una cuenta bancaria.");
                 }
-                
+
                 // Procesar información de cuenta bancaria
                 $info_cuentabancaria_parts = explode("|", $info_cuentabancaria);
                 $info_bancomoneda = isset($info_cuentabancaria_parts[0]) ? trim($info_cuentabancaria_parts[0]) : '';
@@ -70520,7 +70571,7 @@ switch ($_POST["accion"]) {
                         $cuentabancaria_cuenta = trim($cuenta_part[1]);
                     }
                 }
-                
+
                 if (isset($info_cuentabancaria_parts[2])) {
                     $cci_part = explode(":", $info_cuentabancaria_parts[2]);
                     if (isset($cci_part[1])) {
@@ -70528,7 +70579,6 @@ switch ($_POST["accion"]) {
                     }
                 }
             }
-
 
             // Guardando Cabecera
             $correlativo_valorizacion = "";
@@ -70538,8 +70588,7 @@ switch ($_POST["accion"]) {
                     id_proveedor, id_concesion, concesion, codigo_unico, procedencia, 
                     correlativo, version, id_cuentabancaria, infopago_banco, infopago_moneda, 
                     infopago_cuenta, infopago_cci, id_cuentadetraccion, infopago_cuentadetraccion, 
-                    id_mediopago, fechahora_registro, usuario_registro, usa_anticipo, es_pago_mixto,
-                    monto_transferencia
+                    id_mediopago, fechahora_registro, usuario_registro, usa_anticipo
                 ) VALUES (
                     '$id_proveedor',
                     '$id_concesion',
@@ -70558,9 +70607,7 @@ switch ($_POST["accion"]) {
                     '$id_mediopago',
                     '$g_fecha',
                     '$usuario_registro',
-                    " . ($usa_anticipo ? "TRUE" : "FALSE") . ",
-                    " . ($es_pago_mixto ? "TRUE" : "FALSE") . ",
-                    " . ($es_pago_mixto ? $monto_transferencia : "0") . "
+                    " . ($usa_anticipo ? "TRUE" : "FALSE") . "
                 )";
 
                 if ($res_save = mysqli_query($enlace, $q_save)) {
@@ -70570,8 +70617,6 @@ switch ($_POST["accion"]) {
                 // Para edición, actualizar usa_anticipo y es_pago_mixto
                 $q_update = "UPDATE valorizacion_compramineral 
                             SET usa_anticipo = " . ($usa_anticipo ? "TRUE" : "FALSE") . ",
-                                es_pago_mixto = " . ($es_pago_mixto ? "TRUE" : "FALSE") . ",
-                                monto_transferencia = " . ($es_pago_mixto ? $monto_transferencia : "0") . ",
                                 id_cuentabancaria = " . ((!$usa_anticipo || $es_pago_mixto) ? "'$id_cuentabancaria'" : "NULL") . ",
                                 infopago_banco = " . ((!$usa_anticipo || $es_pago_mixto) ? "'$cuentabancaria_banco'" : "NULL") . ",
                                 infopago_moneda = " . ((!$usa_anticipo || $es_pago_mixto) ? "'$cuentabancaria_moneda'" : "NULL") . ",
@@ -70582,12 +70627,12 @@ switch ($_POST["accion"]) {
                                 id_mediopago = '$id_mediopago'
                             WHERE Id = $id_valorizacion";
                 mysqli_query($enlace, $q_update);
-                
+
                 // Eliminar detalle existente
                 $q_delete = "DELETE FROM valorizacion_compramineral_detalle
                             WHERE id_valorizacion = $id_valorizacion";
                 mysqli_query($enlace, $q_delete);
-                
+
                 // También eliminar transacciones de anticipos pendientes si existían
                 $q_delete_transacciones = "DELETE FROM proveedor_anticipo_transaccion
                                         WHERE id_valorizacion_compramineral = $id_valorizacion 
@@ -70635,10 +70680,36 @@ switch ($_POST["accion"]) {
 
             // Registrar transacciones de anticipos si se usan
             if ($usa_anticipo && !empty($anticipos_seleccionados)) {
-                foreach ($anticipos_seleccionados as $anticipo) {
+                error_log("Procesando " . count($anticipos_seleccionados) . " anticipos...");
+
+                foreach ($anticipos_seleccionados as $idx => $anticipo) {
+                    // Validar que existan los campos necesarios
+                    if (!isset($anticipo['id_anticipo']) || empty($anticipo['id_anticipo'])) {
+                        error_log("ERROR: Anticipo[$idx] no tiene id_anticipo. Datos: " . print_r($anticipo, true));
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": Falta el ID del anticipo.");
+                    }
+
+                    if (!isset($anticipo['monto_a_usar'])) {
+                        error_log("ERROR: Anticipo[$idx] no tiene monto_a_usar. Datos: " . print_r($anticipo, true));
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": Falta el monto a usar.");
+                    }
+
                     $id_anticipo = intval($anticipo['id_anticipo']);
                     $monto_a_usar = floatval($anticipo['monto_a_usar']);
-                    
+
+                    // Validar que los valores sean válidos
+                    if ($id_anticipo <= 0) {
+                        error_log("ERROR: Anticipo[$idx] tiene id_anticipo inválido: $id_anticipo");
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": ID de anticipo inválido.");
+                    }
+
+                    if ($monto_a_usar <= 0) {
+                        error_log("ERROR: Anticipo[$idx] tiene monto_a_usar inválido: $monto_a_usar");
+                        throw new Exception("Error en anticipo #" . ($idx + 1) . ": Monto a usar debe ser mayor a cero.");
+                    }
+
+                    error_log("Insertando transacción: id_anticipo=$id_anticipo, monto=$monto_a_usar");
+
                     $q_insert_transaccion = "INSERT INTO proveedor_anticipo_transaccion (
                         id_proveedor_anticipo, id_valorizacion_compramineral, monto_retirado, 
                         estado, created_at
@@ -70649,9 +70720,19 @@ switch ($_POST["accion"]) {
                         'B', -- Por confirmar
                         '$g_fecha'
                     )";
-                    
-                    mysqli_query($enlace, $q_insert_transaccion);
+
+                    if (!mysqli_query($enlace, $q_insert_transaccion)) {
+                        $mysql_error = mysqli_error($enlace);
+                        error_log("ERROR SQL al insertar transacción de anticipo: $mysql_error");
+                        throw new Exception("Error al registrar transacción de anticipo #" . ($idx + 1) . ": $mysql_error");
+                    }
+
+                    error_log("Transacción de anticipo insertada exitosamente (ID: $id_anticipo)");
                 }
+
+                error_log("Todas las transacciones de anticipos se procesaron correctamente.");
+            } elseif ($usa_anticipo && empty($anticipos_seleccionados)) {
+                error_log("WARNING: usa_anticipo=true pero anticipos_seleccionados está vacío");
             }
 
             // Generando Correlativo de Valorización
@@ -70666,7 +70747,6 @@ switch ($_POST["accion"]) {
 
             mysqli_commit($enlace);
             $estado = 1;
-            
         } catch (Exception $e) {
             mysqli_rollback($enlace);
             echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
@@ -70677,42 +70757,82 @@ switch ($_POST["accion"]) {
         break;
 
     case "get_ValorizacionCompra_ListaValorizaciones":
-        $q_datos = "SELECT 
-            V.Id,
-            MD5(V.Id) AS ID_MD5,
-            V.correlativo,
-            V.version,
-            V.num_oficio,
-            V.id_proveedor,
-            V.id_concesion,
-            P.documento AS ruc,
-            P.razon_social AS proveedor,
-            V.usuario_registro,
-            V.is_aprobado,
-            V.is_aprobado_fechahoraregistro,
-            V.is_aprobado_usuarioregistro,
-            V.id_cuentabancaria,
-            V.id_cuentadetraccion,
-            V.fechahora_registro,
-            V.usuario_registro,
-            V.estado,
-            V.usa_anticipo,
-            IFNULL((SELECT V_x.is_aprobado
-                FROM valorizacion_compramineral V_x
-                WHERE V_x.is_aprobado = 1
-                AND V_x.correlativo = V.correlativo), 0) AS IS_VALORIZACIONAPROBADA,
-            -- Información de anticipos si los usa
-            IF(V.usa_anticipo = TRUE, 
-                (SELECT GROUP_CONCAT(CONCAT(ant.serie_factura, '-', ant.numero_factura) SEPARATOR ', ')
-                FROM proveedor_anticipo_transaccion trans
-                INNER JOIN proveedor_anticipo ant ON ant.id = trans.id_proveedor_anticipo
-                WHERE trans.id_valorizacion_compramineral = V.Id), 
-                NULL) AS anticipos_usados
-            
-        FROM valorizacion_compramineral V
-        LEFT JOIN tb_clientes P ON P.Id = V.id_proveedor
-        WHERE V.estado <> 'X'
-        ORDER BY V.correlativo DESC, V.version DESC, V.Id DESC";
+        $q_datos = "
+            SELECT
+                V.Id,
+                MD5(V.Id) AS ID_MD5,
+                V.correlativo,
+                V.version,
+                V.num_oficio,
+                V.id_proveedor,
+                V.id_concesion,
+                P.documento AS ruc,
+                P.razon_social AS proveedor,
+                V.usuario_registro,
+                V.is_aprobado,
+                V.is_aprobado_fechahoraregistro,
+                V.is_aprobado_usuarioregistro,
+                V.id_cuentabancaria,
+                V.id_cuentadetraccion,
+                V.fechahora_registro,
+                V.usuario_registro,
+                V.estado,
+                V.usa_anticipo,
+                IFNULL(
+                    (
+                    SELECT
+                        V_x.is_aprobado
+                    FROM
+                        valorizacion_compramineral V_x
+                    WHERE
+                        V_x.is_aprobado = 1 AND V_x.correlativo = V.correlativo
+                ),
+                0
+                ) AS IS_VALORIZACIONAPROBADA,
+                IF(
+                    V.usa_anticipo = TRUE,
+                    (
+                    SELECT
+                        GROUP_CONCAT(
+                            CONCAT(
+                                ant.serie_factura,
+                                '-',
+                                ant.numero_factura
+                            ) SEPARATOR ', '
+                        )
+                    FROM
+                        proveedor_anticipo_transaccion trans
+                    INNER JOIN proveedor_anticipo ant ON
+                        ant.id = trans.id_proveedor_anticipo
+                    WHERE
+                        trans.id_valorizacion_compramineral = V.Id
+                ),
+                NULL
+                ) AS anticipos_usados,
+                EXISTS(
+                SELECT
+                    1
+                FROM
+                    comprobante_pago cp
+                WHERE
+                    cp.id_valorizacion = V.Id AND cp.estado = 'A'
+            ) AS tiene_comprobante
+            FROM
+                valorizacion_compramineral V
+            LEFT JOIN tb_clientes P ON
+                P.Id = V.id_proveedor
+            WHERE
+                V.estado <> 'X'
+            ORDER BY
+                V.correlativo
+            DESC
+                ,
+                V.version
+            DESC
+                ,
+                V.Id
+            DESC
+        ";
 
         $res = mysqli_query($enlace, $q_datos);
         $data = [];
@@ -70814,35 +70934,33 @@ switch ($_POST["accion"]) {
                 usa_anticipo 
             FROM valorizacion_compramineral 
             WHERE Id = $id";
-            
+
             $res_check = mysqli_query($enlace, $q_check);
-            
+
             if (mysqli_num_rows($res_check) == 0) {
                 throw new Exception("La valorización no existe.");
             }
-            
+
             $row_check = mysqli_fetch_assoc($res_check);
             $estado_actual = $row_check['estado'];
             $is_aprobado = $row_check['is_aprobado'];
             $usa_anticipo = $row_check['usa_anticipo'] == 1;
-            
+
             // Verificar si ya está inactiva o eliminada
-            if ($estado_actual == 'X' || $estado_actual == 'I') {
-                throw new Exception("La valorización ya se encuentra " . 
-                    ($estado_actual == 'X' ? "eliminada" : "inactiva") . ".");
+            if ($estado_actual == 'X' && $modo == 'X') {
+                throw new Exception("La valorización ya se encuentra eliminada.");
             }
 
             // Verificar si ya está eliminada
-            if ($estado_actual == 'X') {
+            if ($estado_actual == 'I' && $modo == 'I') {
                 throw new Exception("La valorización ya se encuentra eliminada");
             }
-            
+
             // Si está aprobada, no se puede eliminar, solo inactivar
             if ($is_aprobado == 1 && $modo == 'X') {
                 throw new Exception("No se puede eliminar una valorización aprobada. Solo se puede inactivar.");
             }
-            
-            // Si usa anticipos y está aprobada, hay que revertir las transacciones
+
             // Si usa anticipos y está aprobada, hay que revertir las transacciones
             if ($usa_anticipo && $is_aprobado == 1) {
                 // Obtener transacciones confirmadas para revertir
@@ -70853,29 +70971,29 @@ switch ($_POST["accion"]) {
                 FROM proveedor_anticipo_transaccion trans
                 WHERE trans.id_valorizacion_compramineral = $id 
                 AND trans.estado = 'A'";
-                
+
                 $res_trans = mysqli_query($enlace, $q_transacciones);
-                
+
                 while ($row = mysqli_fetch_assoc($res_trans)) {
                     $id_anticipo = $row['id_proveedor_anticipo'];
                     $monto_retirado = floatval($row['monto_retirado']);
-                    
+
                     // Obtener el saldo actual del ANTICIPO (no de la transacción)
                     $q_saldo_actual = "SELECT saldo_actual, cantidad_transacciones 
                                     FROM proveedor_anticipo 
                                     WHERE id = $id_anticipo 
                                     AND estado IN ('A', 'B')";
-                    
+
                     $res_saldo = mysqli_query($enlace, $q_saldo_actual);
-                    
+
                     if ($res_saldo && mysqli_num_rows($res_saldo) > 0) {
                         $row_saldo = mysqli_fetch_assoc($res_saldo);
                         $saldo_actual_anticipo = floatval($row_saldo['saldo_actual']);
                         $cantidad_transacciones = intval($row_saldo['cantidad_transacciones']);
-                        
+
                         // Calcular nuevo saldo
                         $saldo_nuevo = $saldo_actual_anticipo + $monto_retirado;
-                        
+
                         // Actualizar el anticipo
                         $q_actualizar_anticipo = "UPDATE proveedor_anticipo 
                                         SET saldo_actual = $saldo_nuevo,
@@ -70886,7 +71004,7 @@ switch ($_POST["accion"]) {
                                             END,
                                             updated_at = '$g_fecha'
                                         WHERE id = $id_anticipo";
-                        
+
                         mysqli_query($enlace, $q_actualizar_anticipo);
                     }
                     // Cambiar estado de transacción a 'C' (Cancelada)
@@ -70894,31 +71012,31 @@ switch ($_POST["accion"]) {
                                     SET estado = 'C',
                                         updated_at = '$g_fecha'
                                     WHERE id = {$row['id']}";
-                    
+
                     mysqli_query($enlace, $q_update_trans);
                 }
-            } 
+            }
             // Si usa anticipos pero NO está aprobada, eliminar transacciones pendientes
             elseif ($usa_anticipo && $is_aprobado == 0) {
                 $q_delete_trans = "DELETE FROM proveedor_anticipo_transaccion 
                                 WHERE id_valorizacion_compramineral = $id 
                                 AND estado = 'B'";
-                
+
                 mysqli_query($enlace, $q_delete_trans);
             }
-            
+
             // Actualizar el estado de la valorización
             $q_update = "UPDATE valorizacion_compramineral 
                         SET estado = '$modo'
                         WHERE Id = $id";
-            
+
             if (mysqli_query($enlace, $q_update)) {
                 $estado = 1;
-                $msg = "Valorización " . 
-                    ($modo == 'X' ? "eliminada" : "inactivada") . 
-                    " correctamente" . 
+                $msg = "Valorización " .
+                    ($modo == 'X' ? "eliminada" : "inactivada") .
+                    " correctamente" .
                     ($usa_anticipo && $is_aprobado == 1 ? " (transacciones de anticipos revertidas)" : "") . ".";
-                
+
                 // Si se está inactivando una valorización aprobada, también actualizar las tablas relacionadas
                 if ($modo == 'I' && $is_aprobado == 1) {
                     // Actualizar tablas de leyes
@@ -70931,9 +71049,9 @@ switch ($_POST["accion"]) {
                                         FROM valorizacion_compramineral_detalle 
                                         WHERE id_valorizacion = $id
                                     )";
-                    
+
                     mysqli_query($enlace, $q_update_leyes);
-                    
+
                     // Actualizar tabla de validación de lotes
                     $q_update_validacion = "UPDATE despachos_primertramo_validaciondatos 
                                         SET codigogel_valorizado = 0,
@@ -70944,15 +71062,14 @@ switch ($_POST["accion"]) {
                                             FROM valorizacion_compramineral_detalle 
                                             WHERE id_valorizacion = $id
                                         )";
-                    
+
                     mysqli_query($enlace, $q_update_validacion);
                 }
             } else {
                 throw new Exception("Error al actualizar la valorización.");
             }
-            
+
             mysqli_commit($enlace);
-            
         } catch (Exception $e) {
             mysqli_rollback($enlace);
             $msg = $e->getMessage();
@@ -74234,7 +74351,7 @@ case "actualizar_CampoTexto_ComprobantePago":
                     $row["num_operacion"] .
                     '</td>
               <td style="text-align: center; vertical-align: middle;">' .
-                    mb_strtoupper($row["observacion"]) .
+                    mb_strtoupper($row["observacion"] ?? '') .
                     '</td>
               <td style="text-align: center; vertical-align: middle;">';
 
@@ -74768,7 +74885,7 @@ case "actualizar_CampoTexto_ComprobantePago":
         $q_check_anticipo = "SELECT usa_anticipo FROM valorizacion_compramineral WHERE Id = $id_registro";
         $res_check = mysqli_query($enlace, $q_check_anticipo);
         $usa_anticipo = 0;
-        
+
         if ($res_check && mysqli_num_rows($res_check) > 0) {
             $row_check = mysqli_fetch_assoc($res_check);
             $usa_anticipo = $row_check['usa_anticipo'];
@@ -74910,19 +75027,19 @@ case "actualizar_CampoTexto_ComprobantePago":
                         FROM proveedor_anticipo_transaccion
                         WHERE id_valorizacion_compramineral = $id_registro
                     ";
-                    
+
                     $res_anticipos = mysqli_query($enlace, $q_get_anticipos);
-                    
+
                     if ($res_anticipos && mysqli_num_rows($res_anticipos) > 0) {
                         $anticipos_copiados = 0;
-                        
+
                         while ($row_anticipo = mysqli_fetch_assoc($res_anticipos)) {
                             // Para cada anticipo, crear un nuevo registro en proveedor_anticipo_transaccion
                             // No copiamos saldo_actual ni saldo_restante como especificaste
                             $id_proveedor_anticipo = $row_anticipo['id_proveedor_anticipo'];
                             $monto_retirado = $row_anticipo['monto_retirado'];
                             $estado_original = $row_anticipo['estado'];
-                            
+
                             $q_insert_anticipo = "
                                 INSERT INTO proveedor_anticipo_transaccion(
                                     id_proveedor_anticipo,
@@ -74938,12 +75055,12 @@ case "actualizar_CampoTexto_ComprobantePago":
                                     '$estado_original'
                                 )
                             ";
-                            
+
                             if (mysqli_query($enlace, $q_insert_anticipo)) {
                                 $anticipos_copiados++;
                             }
                         }
-                        
+
                         $mensaje = "Valorización copiada correctamente. Se copiaron $anticipos_copiados anticipos.";
                     } else {
                         $mensaje = "Valorización copiada correctamente. La valorización original usa anticipos pero no se encontraron registros para copiar.";
@@ -74951,7 +75068,7 @@ case "actualizar_CampoTexto_ComprobantePago":
                 } else {
                     $mensaje = "Valorización copiada correctamente.";
                 }
-                
+
                 $estado = 1;
             } else {
                 // Si falla la copia del detalle, eliminar la cabecera creada
@@ -74995,28 +75112,28 @@ case "actualizar_CampoTexto_ComprobantePago":
                 INNER JOIN proveedor_anticipo ant ON ant.id = trans.id_proveedor_anticipo
                 WHERE trans.id_valorizacion_compramineral = $id_registro 
                 AND trans.estado = 'B'";
-                
+
                 $res_trans = mysqli_query($enlace, $q_transacciones);
                 $transacciones = [];
-                
+
                 while ($row = mysqli_fetch_assoc($res_trans)) {
                     $transacciones[] = $row;
                 }
-                
+
                 // Verificar que cada anticipo tenga saldo suficiente
                 foreach ($transacciones as $trans) {
                     if ($trans['monto_retirado'] > $trans['saldo_disponible']) {
                         throw new Exception("El anticipo {$trans['id_proveedor_anticipo']} no tiene saldo suficiente. Saldo disponible: {$trans['saldo_disponible']}, Monto a retirar: {$trans['monto_retirado']}");
                     }
                 }
-                
+
                 // Actualizar saldos de anticipos y confirmar transacciones
                 foreach ($transacciones as $trans) {
                     $id_anticipo = $trans['id_proveedor_anticipo'];
                     $monto_retirado = $trans['monto_retirado'];
                     $saldo_actual = $trans['saldo_disponible'];
                     $saldo_restante = $saldo_actual - $monto_retirado;
-                    
+
                     // Actualizar transacción
                     $q_update_trans = "UPDATE proveedor_anticipo_transaccion 
                                     SET saldo_actual = $saldo_actual,
@@ -75025,7 +75142,7 @@ case "actualizar_CampoTexto_ComprobantePago":
                                         updated_at = '$g_fecha'
                                     WHERE id = {$trans['id']}";
                     mysqli_query($enlace, $q_update_trans);
-                    
+
                     // Actualizar anticipo
                     $q_update_anticipo = "UPDATE proveedor_anticipo 
                                         SET saldo_actual = $saldo_restante,
@@ -75033,7 +75150,7 @@ case "actualizar_CampoTexto_ComprobantePago":
                                             updated_at = '$g_fecha'
                                         WHERE id = $id_anticipo";
                     mysqli_query($enlace, $q_update_anticipo);
-                    
+
                     // Si el saldo llega a 0, cambiar estado a 'B' (Sin saldo)
                     if ($saldo_restante <= 0) {
                         $q_update_estado = "UPDATE proveedor_anticipo 
@@ -75053,14 +75170,14 @@ case "actualizar_CampoTexto_ComprobantePago":
                 FROM proveedor_anticipo_transaccion trans
                 WHERE trans.id_valorizacion_compramineral = $id_registro 
                 AND trans.estado = 'A'";
-                
+
                 $res_revertir = mysqli_query($enlace, $q_revertir);
-                
+
                 while ($row = mysqli_fetch_assoc($res_revertir)) {
                     $id_anticipo = $row['id_proveedor_anticipo'];
                     $monto_retirado = $row['monto_retirado'];
                     $saldo_actual = $row['saldo_actual'];
-                    
+
                     // Restaurar saldo del anticipo
                     $saldo_nuevo = $saldo_actual + $monto_retirado;
                     $q_restaurar = "UPDATE proveedor_anticipo 
@@ -75070,7 +75187,7 @@ case "actualizar_CampoTexto_ComprobantePago":
                                     updated_at = '$g_fecha'
                                 WHERE id = $id_anticipo";
                     mysqli_query($enlace, $q_restaurar);
-                    
+
                     // Cambiar estado de transacción a 'B' (Por confirmar)
                     $q_update_trans = "UPDATE proveedor_anticipo_transaccion 
                                     SET estado = 'B',
@@ -75089,27 +75206,26 @@ case "actualizar_CampoTexto_ComprobantePago":
 
             if (mysqli_query($enlace, $q_update)) {
                 $estado = 1;
-                
+
                 // Actualiza tablas adicionales (código existente)
                 $q_update2 = "UPDATE import_resultadosleyes_detalle SET 
                     is_valorizado = $is_aprobado,
                     is_valorizado_fechahoraregistro = " . ($is_aprobado == 1 ? "'$g_fecha'" : "NULL") . ",
                     is_valorizado_usuarioregistro = " . ($is_aprobado == 1 ? "'$usuario_registro'" : "NULL") . "
                     WHERE cod_interno IN (SELECT cod_lote FROM valorizacion_compramineral_detalle WHERE id_valorizacion = $id_registro)";
-                
+
                 mysqli_query($enlace, $q_update2);
-                
+
                 $q_update3 = "UPDATE despachos_primertramo_validaciondatos SET 
                     codigogel_valorizado = $is_aprobado,
                     codigogel_valorizado_fechahoraregistro = " . ($is_aprobado == 1 ? "'$g_fecha'" : "NULL") . ",
                     codigogel_valorizado_usuarioregistro = " . ($is_aprobado == 1 ? "'$usuario_registro'" : "NULL") . "
                     WHERE lote_cod_lote IN (SELECT cod_lote FROM valorizacion_compramineral_detalle WHERE id_valorizacion = $id_registro)";
-                
+
                 mysqli_query($enlace, $q_update3);
             }
 
             mysqli_commit($enlace);
-            
         } catch (Exception $e) {
             mysqli_rollback($enlace);
             $msg = $e->getMessage();
@@ -75452,25 +75568,17 @@ case "actualizar_CampoTexto_ComprobantePago":
             unset($ant["fecha_registro_formateada"]); // Limpieza
 
             if (isset($proveedores_con_anticipos_map[$id_proveedor])) {
-                $proveedores_con_anticipos_map[$id_proveedor][
-                    "anticipos"
-                ][] = $ant;
-                $proveedores_con_anticipos_map[$id_proveedor][
-                    "cantidad_anticipos"
-                ]++;
+                $proveedores_con_anticipos_map[$id_proveedor]["anticipos"][] = $ant;
+                $proveedores_con_anticipos_map[$id_proveedor]["cantidad_anticipos"]++;
                 $response["cantidad_anticipos"]++;
 
                 if ($ant["estado"] === "A") {
                     // Asumo 'A' para CON SALDO
-                    $proveedores_con_anticipos_map[$id_proveedor][
-                        "anticipos_con_saldo"
-                    ]++;
+                    $proveedores_con_anticipos_map[$id_proveedor]["anticipos_con_saldo"]++;
                     $response["anticipos_con_saldo"]++;
                 } else {
                     // Asumo 'B' para SALDO AGOTADO / SIN SALDO
-                    $proveedores_con_anticipos_map[$id_proveedor][
-                        "anticipos_sin_saldo"
-                    ]++;
+                    $proveedores_con_anticipos_map[$id_proveedor]["anticipos_sin_saldo"]++;
                     $response["anticipos_sin_saldo"]++;
                 }
             }
@@ -75490,7 +75598,6 @@ case "actualizar_CampoTexto_ComprobantePago":
         header("Content-Type: application/json");
         echo json_encode(["estado" => 1, "data" => $response]);
         break;
-
     case "registerNewAnticipo":
         // Validaciones (simples)
         $id_proveedor = intval($_POST["id_proveedor"] ?? 0);
@@ -75599,7 +75706,11 @@ case "actualizar_CampoTexto_ComprobantePago":
 
         if ($id_proveedor == 0) {
             header("Content-Type: application/json");
-            echo json_encode(["estado" => 0, "msg" => "ID de proveedor inválido.", "data" => []]);
+            echo json_encode([
+                "estado" => 0,
+                "msg" => "ID de proveedor inválido.",
+                "data" => [],
+            ]);
             exit();
         }
 
@@ -75623,10 +75734,10 @@ case "actualizar_CampoTexto_ComprobantePago":
                         ant.created_at ASC;
                 ";
         $response_query = mysqli_query($enlace, $sql_query);
-        
+
         $anticipos = [];
         while ($row = mysqli_fetch_assoc($response_query)) {
-            $row['saldo_actual'] = floatval($row['saldo_actual']);
+            $row["saldo_actual"] = floatval($row["saldo_actual"]);
             $anticipos[] = $row;
         }
 
@@ -75662,11 +75773,14 @@ case "actualizar_CampoTexto_ComprobantePago":
             FROM proveedor_anticipo_transaccion trans
             INNER JOIN proveedor_anticipo ant ON ant.id = trans.id_proveedor_anticipo
             WHERE trans.id_valorizacion_compramineral = '$id_valorizacion'
+            AND(
+                trans.estado = 'A' OR trans.estado = 'B'
+            )
             ORDER BY trans.created_at ASC;
         ";
-        
+
         $response_query = mysqli_query($enlace, $sql_query);
-        
+
         $transacciones = [];
         while ($row = mysqli_fetch_assoc($response_query)) {
             $row['monto_retirado'] = floatval($row['monto_retirado']);
@@ -75827,72 +75941,74 @@ case "eliminarAnticipo":
     case "reabrir_Valorizacion":
         $estado = 0;
         $msg = "";
-        
+
         $id_valorizacion = intval($_POST["id_valorizacion"]);
         $usuario_registro = $_SESSION["usu_usuario"];
-        
+
         if ($id_valorizacion == 0) {
             echo json_encode(["estado" => 0, "msg" => "ID de valorización inválido."]);
             exit();
         }
-        
+
         mysqli_begin_transaction($enlace);
-        
+
         try {
             // Verificar si la valorización existe y está aprobada
             $q_check = "SELECT 
                 V.Id,
                 V.is_aprobado,
-                V.usa_anticipo,
-                V.es_pago_mixto
+                V.usa_anticipo
             FROM valorizacion_compramineral V
             WHERE V.Id = $id_valorizacion
             AND V.estado = 'A'
             AND V.is_aprobado = 1";
-            
+
             $res_check = mysqli_query($enlace, $q_check);
-            
+
             if (mysqli_num_rows($res_check) == 0) {
                 throw new Exception("La valorización no existe, no está activa o no está aprobada.");
             }
-            
+
             $row_val = mysqli_fetch_assoc($res_check);
             $usa_anticipo = $row_val['usa_anticipo'] == 1;
-            $es_pago_mixto = $row_val['es_pago_mixto'] == 1;
-            
+
             // Revertir aprobación
             $q_update = "UPDATE valorizacion_compramineral 
                         SET is_aprobado = 0,
                             is_aprobado_fechahoraregistro = NULL,
                             is_aprobado_usuarioregistro = NULL
                         WHERE Id = $id_valorizacion";
-            
+
             if (!mysqli_query($enlace, $q_update)) {
                 throw new Exception("Error al actualizar la valorización.");
             }
-            
+
             // Revertir transacciones de anticipos si corresponde
             if ($usa_anticipo) {
                 // Obtener transacciones confirmadas para revertir
-                $q_transacciones = "SELECT 
-                    trans.id,
-                    trans.id_proveedor_anticipo,
-                    trans.monto_retirado,
-                    trans.saldo_actual
-                FROM proveedor_anticipo_transaccion trans
-                WHERE trans.id_valorizacion_compramineral = $id_valorizacion 
-                AND trans.estado = 'A'";
-                
+                $q_transacciones = "
+                    SELECT
+                        trans.id,
+                        trans.id_proveedor_anticipo,
+                        trans.monto_retirado,
+                        pa.saldo_actual
+                    FROM
+                        proveedor_anticipo_transaccion trans
+                    INNER JOIN proveedor_anticipo pa on pa.id = trans.id_proveedor_anticipo
+                    WHERE
+                        trans.id_valorizacion_compramineral = $id_valorizacion AND trans.estado = 'A';
+                    ";
+
                 $res_trans = mysqli_query($enlace, $q_transacciones);
-                
+
                 while ($row = mysqli_fetch_assoc($res_trans)) {
                     $id_anticipo = $row['id_proveedor_anticipo'];
                     $monto_retirado = floatval($row['monto_retirado']);
                     $saldo_actual = floatval($row['saldo_actual']);
-                    
+
                     // Restaurar saldo del anticipo
                     $saldo_nuevo = $saldo_actual + $monto_retirado;
-                    
+
                     // Actualizar el anticipo
                     $q_actualizar_anticipo = "UPDATE proveedor_anticipo 
                                     SET saldo_actual = $saldo_nuevo,
@@ -75900,19 +76016,19 @@ case "eliminarAnticipo":
                                         estado = 'A', -- Volver a estado con saldo
                                         updated_at = '$g_fecha'
                                     WHERE id = $id_anticipo";
-                    
+
                     mysqli_query($enlace, $q_actualizar_anticipo);
-                    
+
                     // Cambiar estado de transacción a 'B' (Por confirmar)
                     $q_update_trans = "UPDATE proveedor_anticipo_transaccion 
                                     SET estado = 'B',
                                         updated_at = '$g_fecha'
                                     WHERE id = {$row['id']}";
-                    
+
                     mysqli_query($enlace, $q_update_trans);
                 }
             }
-            
+
             // Actualizar tablas relacionadas
             $q_update_leyes = "UPDATE import_resultadosleyes_detalle 
                             SET is_valorizado = 0,
@@ -75923,9 +76039,9 @@ case "eliminarAnticipo":
                                 FROM valorizacion_compramineral_detalle 
                                 WHERE id_valorizacion = $id_valorizacion
                             )";
-            
+
             mysqli_query($enlace, $q_update_leyes);
-            
+
             $q_update_validacion = "UPDATE despachos_primertramo_validaciondatos 
                                 SET codigogel_valorizado = 0,
                                     codigogel_valorizado_fechahoraregistro = NULL,
@@ -75935,33 +76051,32 @@ case "eliminarAnticipo":
                                     FROM valorizacion_compramineral_detalle 
                                     WHERE id_valorizacion = $id_valorizacion
                                 )";
-            
+
             mysqli_query($enlace, $q_update_validacion);
-            
+
             mysqli_commit($enlace);
             $estado = 1;
             $msg = "Valorización reabierta correctamente. Las transacciones han sido revertidas a estado 'Por confirmar'.";
-            
         } catch (Exception $e) {
             mysqli_rollback($enlace);
             $msg = $e->getMessage();
         }
-        
+
         echo json_encode(["estado" => $estado, "msg" => $msg]);
-        break;     
-    case "get_info_cuenta_banco_valorizacion":
+        break; 
+case "get_info_cuenta_banco_valorizacion":
         $estado = 0;
         $data = []; // Usaremos 'data' en lugar de 'msg' para los resultados
-        
+
         // Obtener y validar el ID del Comprobante de Pago
         $id_comprobante = isset($_POST["id_comprobante_pago"]) ? intval($_POST["id_comprobante_pago"]) : 0;
-        
+
         if ($id_comprobante == 0) {
             // Devolver error si el ID no es válido
             echo json_encode(["estado" => 0, "msg" => "ID de Comprobante de Pago inválido."]);
             exit();
         }
-        
+
         // La consulta SQL solicitada
         $q_data_pago = "
             SELECT
@@ -75991,16 +76106,16 @@ case "eliminarAnticipo":
             WHERE
                 cp.Id = $id_comprobante;
         "; // Se agrega LIMIT 1 ya que se espera una cuenta bancaria única por comprobante
-        
+
         $res_data_pago = mysqli_query($enlace, $q_data_pago);
-        
+
         if ($res_data_pago === false) {
             // Manejo de error de consulta SQL
             $msg = "Error al ejecutar la consulta: " . mysqli_error($enlace);
             echo json_encode(["estado" => 0, "msg" => $msg]);
             exit();
         }
-        
+
         if (mysqli_num_rows($res_data_pago) > 0) {
             // Si se encuentra información, se lee la primera fila
             $row = mysqli_fetch_assoc($res_data_pago);
@@ -76012,7 +76127,7 @@ case "eliminarAnticipo":
             $msg = "No se encontraron datos bancarios asociados al Comprobante de Pago ID $id_comprobante.";
         }
         echo json_encode([
-            "estado" => $estado, 
+            "estado" => $estado,
             "msg" => $msg ?? "", // Asegura que 'msg' exista
             "data" => $data
         ]);
@@ -76021,15 +76136,15 @@ case "eliminarAnticipo":
     case "get_monto_total_valorizacion":
         $estado = 0;
         $data = [];
-        
+
         // Obtener y validar el ID de la Valorización
         $id_valorizacion = isset($_POST["id_valorizacion"]) ? intval($_POST["id_valorizacion"]) : 0;
-        
+
         if ($id_valorizacion == 0) {
             echo json_encode(["estado" => 0, "msg" => "ID de Valorizacion inválida."]);
             exit();
         }
-        
+
         // 1. Consulta para obtener el monto total de la valorización
         $q_monto_total_valorizacion = "
             SELECT
@@ -76041,15 +76156,15 @@ case "eliminarAnticipo":
             WHERE
                 vc.Id = $id_valorizacion AND vc.estado = 'A';
         ";
-        
+
         $res_monto_total = mysqli_query($enlace, $q_monto_total_valorizacion);
-        
+
         if ($res_monto_total === false) {
             $msg = "Error al ejecutar la consulta del monto total: " . mysqli_error($enlace);
             echo json_encode(["estado" => 0, "msg" => $msg]);
             exit();
         }
-        
+
         // 2. Consulta para obtener el monto usado de anticipos
         $q_monto_anticipos = "
             SELECT
@@ -76063,51 +76178,50 @@ case "eliminarAnticipo":
                 AND vc.estado = 'A' 
                 AND pat.estado = 'A';
         ";
-        
+
         $res_monto_anticipos = mysqli_query($enlace, $q_monto_anticipos);
-        
+
         if ($res_monto_anticipos === false) {
             $msg = "Error al ejecutar la consulta de anticipos: " . mysqli_error($enlace);
             echo json_encode(["estado" => 0, "msg" => $msg]);
             exit();
         }
-        
+
         // Obtener resultados
         $row_monto_total = mysqli_fetch_assoc($res_monto_total);
         $row_monto_anticipos = mysqli_fetch_assoc($res_monto_anticipos);
-        
+
         if ($row_monto_total) {
             $monto_total_valorizacion = floatval($row_monto_total['monto_total_valorizacion']);
             $monto_total_anticipos = floatval($row_monto_anticipos['monto_total_anticipos']);
-            
+
             // Calcular saldo por transferencia
             $saldo_transferencia = $monto_total_valorizacion - $monto_total_anticipos;
-            
+
             // Asegurarse de que no sea negativo (por si acaso)
             if ($saldo_transferencia < 0) {
                 $saldo_transferencia = 0;
             }
-            
+
             // Preparar los datos para la respuesta
             $data = [
                 "monto_total_valorizacion" => $monto_total_valorizacion,
                 "monto_total_anticipos" => $monto_total_anticipos,
                 "saldo_transferencia" => $saldo_transferencia
             ];
-            
+
             $estado = 1;
             $msg = "Montos obtenidos correctamente.";
         } else {
             $msg = "No se encontraron datos para la valorización ID $id_valorizacion.";
         }
-        
+
         echo json_encode([
-            "estado" => $estado, 
+            "estado" => $estado,
             "msg" => $msg ?? "",
             "data" => $data
         ]);
         break;
-
     case "getReporteAnticiposTransacciones":
         $id_proveedor = intval($_POST["id_proveedor"] ?? 0);
         $fecha_desde = $_POST["fecha_desde"] ?? null;
@@ -76119,124 +76233,8 @@ case "eliminarAnticipo":
             exit();
         }
 
-        // 1. Obtener Anticipos del Proveedor
-        // Regla: Estado 'B' o 'A'. Si es 'A', debe tener transacciones confirmadas.
-        $q_anticipos = "
-            SELECT 
-                ant.id,
-                ant.serie_factura,
-                ant.numero_factura,
-                ant.saldo_inicial,
-                ant.saldo_actual,
-                ant.created_at as fecha_registro,
-                ant.estado
-            FROM proveedor_anticipo ant
-            WHERE ant.id_proveedor = $id_proveedor
-              AND ant.estado != 'X'
-              AND (
-                  ant.estado = 'B' 
-                  OR (ant.estado = 'A' AND ant.cantidad_transacciones > 0)
-              )
-            ORDER BY ant.created_at DESC
-        ";
+        $data_final = getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta);
 
-        $res_anticipos = mysqli_query($enlace, $q_anticipos);
-        $data_final = [];
-
-        while ($ant = mysqli_fetch_assoc($res_anticipos)) {
-            $anticipo_id = $ant['id'];
-            
-            // 2. Obtener Transacciones para este Anticipo
-            // Solo estado 'A' (Confirmado)
-            $q_trans = "
-                SELECT 
-                    tr.id,
-                    tr.monto_retirado,
-                    tr.saldo_actual as saldo_antes_transaccion,
-                    tr.saldo_restante,
-                    tr.created_at as fecha_transaccion,
-                    
-                    -- Valorización Info
-                    val.Id as id_valorizacion,
-                    val.codigo_unico,
-                    val.correlativo as nro_valorizacion,
-                    val.estado as estado_val,
-                    
-                    -- Comprobante Info
-                    cp.serie_comprobante,
-                    cp.numero_comprobante,
-                    cp.fecha_emision_comprobante,
-                    cp.total_comprobante as importe_factura_usd,
-                    cp.estado as estado_comprobante,
-                    
-                    -- Detalle Valorización (Lotes)
-                    (
-                        SELECT GROUP_CONCAT(DISTINCT IFNULL(vd.cod_gel, vd.cod_lote) SEPARATOR ', ')
-                        FROM valorizacion_compramineral_detalle vd
-                        WHERE vd.id_valorizacion = val.Id
-                    ) as lotes
-                    
-                FROM proveedor_anticipo_transaccion tr
-                INNER JOIN valorizacion_compramineral val ON tr.id_valorizacion_compramineral = val.Id
-                LEFT JOIN comprobante_pago cp ON cp.id_valorizacion = val.Id AND cp.estado = 'A' -- Solo comprobantes activos
-                WHERE tr.id_proveedor_anticipo = $anticipo_id
-                  AND tr.estado = 'A'
-                ORDER BY tr.created_at ASC
-            ";
-            
-            $res_trans = mysqli_query($enlace, $q_trans);
-            $transacciones = [];
-            
-            while ($tr = mysqli_fetch_assoc($res_trans)) {
-                // Filtro fecha transaccion (opcional)
-                if ($fecha_desde && $tr['fecha_transaccion'] < $fecha_desde) continue;
-                if ($fecha_hasta && $tr['fecha_transaccion'] > $fecha_hasta . ' 23:59:59') continue;
-
-                // Calculo de porcentajes y montos
-                $monto_retirado = floatval($tr['monto_retirado']);
-                $saldo_inicial_anticipo = floatval($ant['saldo_inicial']);
-                
-                $porcentaje_aplicado = 0;
-                if ($saldo_inicial_anticipo > 0) {
-                     $porcentaje_aplicado = ($monto_retirado / $saldo_inicial_anticipo) * 100;
-                }
-                
-                $transacciones[] = [
-                    "id_transaccion" => $tr['id'],
-                    "lotes" => $tr['lotes'], 
-                    "porcentaje_aplicado" => number_format($porcentaje_aplicado, 2) . '%',
-                    "monto_aplicado" => $monto_retirado,
-                    
-                    // Factura Venta Info
-                    "factura_amortiza_serie" => $tr['serie_comprobante'] ? $tr['serie_comprobante'] . '-' . $tr['numero_comprobante'] : 'S/N',
-                    "fecha_factura" => $tr['fecha_emision_comprobante'] ? $tr['fecha_emision_comprobante'] : $tr['fecha_transaccion'],
-                    "importe_factura_usd" => $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0,
-                    
-                    "importe_amortiza_adelanto_usd" => $monto_retirado,
-                    
-                    "saldo_factura_amortiza" => "", 
-                    "saldo_neto_factura_amortiza" => "", 
-                    
-                    "saldo_deuda_usd" => floatval($tr['saldo_restante']), 
-                    
-                    "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Confirmado' : 'Pendiente') : 'Pendiente',
-                    "nro_valorizacion" => $tr['nro_valorizacion']
-                ];
-            }
-
-            if (count($transacciones) > 0 || $ant['estado'] == 'B') {
-                $data_final[] = [
-                    "anticipo_info" => [
-                        "factura" => $ant['serie_factura'] . '-' . $ant['numero_factura'],
-                        "fecha" => $ant['fecha_registro'],
-                        "importe_inicial" => floatval($ant['saldo_inicial']),
-                        "id" => $ant['id']
-                    ],
-                    "transacciones" => $transacciones
-                ];
-            }
-        }
-        
         header("Content-Type: application/json");
         echo json_encode(["estado" => 1, "data" => $data_final]);
         break;
@@ -76245,17 +76243,31 @@ case "eliminarAnticipo":
         $id = intval($_POST["id"]);
 
         try {
-            $query = "SELECT 
-                        aprobo_contabilidad, aprobo_comercial, aprobo_documentaria,
-                        total_sin_detraccion, total_detraccion_soles, 
-                        pago_sin_detraccion, pago_detraccion 
-                    FROM comprobante_pago WHERE Id = $id";
+            $query = "
+                SELECT
+                    cp.aprobo_contabilidad,
+                    cp.aprobo_comercial,
+                    cp.aprobo_documentaria,
+                    cp.total_sin_detraccion,
+                    cp.total_detraccion_soles,
+                    cp.pago_sin_detraccion,
+                    cp.pago_detraccion,
+                    CASE WHEN vc.id_cuentabancaria = NULL AND vc.usa_anticipo THEN 1 ELSE 0
+                END AS solo_anticipo
+                FROM
+                    comprobante_pago cp
+                INNER JOIN valorizacion_compramineral vc ON
+                    vc.Id = cp.id_valorizacion
+                WHERE
+                    cp.Id = $id
+            ";
 
             $result = mysqli_query($enlace, $query);
             $cp = mysqli_fetch_assoc($result);
 
             if (!$cp) throw new Exception("Comprobante no encontrado.");
 
+            $solo_anticipo = $cp["solo_anticipo"];
             $aprobado = ($cp["aprobo_contabilidad"] == 1 && 
                         $cp["aprobo_comercial"] == 1 && 
                         $cp["aprobo_documentaria"] == 1);
@@ -76271,7 +76283,8 @@ case "eliminarAnticipo":
 
             echo json_encode([
                 "estado" => 1,
-                "totalmente_pagado" => ($aprobado && $pagado_completamente)
+                "totalmente_pagado" => ($aprobado && $pagado_completamente),
+                "solo_anticipo" => $solo_anticipo
             ]);
 
         } catch (Exception $e) {
@@ -76279,11 +76292,536 @@ case "eliminarAnticipo":
             echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
         }
         break;
+case "exportExcelResumenTransacciones":
+        // 0. Limpiar buffers y suprimir errores al inicio absoluto
+        error_reporting(0);
+        ini_set('display_errors', 0);
+        while (ob_get_level()) ob_end_clean();
+
+        $id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+        $fecha_desde = $_POST["fecha_desde"] ?? null;
+        $fecha_hasta = $_POST["fecha_hasta"] ?? null;
+
+        if ($id_proveedor == 0) {
+            die("Error: Proveedor no seleccionado.");
+        }
+
+        // 1. Obtener Datos
+        $data_final = getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta);
+
+        // 2. Obtener Nombre Proveedor
+        $sql_prov = "SELECT razon_social, documento FROM tb_clientes WHERE Id = $id_proveedor LIMIT 1";
+        $res_prov = mysqli_query($enlace, $sql_prov);
+        $prov_data = mysqli_fetch_assoc($res_prov);
+        $nombre_proveedor = $prov_data ? $prov_data['razon_social'] : 'PROVEEDOR';
+
+        // 3. Crear Excel
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle("Transacciones");
+
+        // --- Estilos ---
+        $styleHeaderBase = [
+            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ];
+
+        $stylePrimary = array_merge($styleHeaderBase, ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF2C3E50']]]);
+        $styleSecondary = array_merge($styleHeaderBase, ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF3498DB']]]);
+        $styleSuccess = array_merge($styleHeaderBase, ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF27AE60']]]);
+        $styleWarning = array_merge($styleHeaderBase, ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF39C12']]]);
+        $styleInfo = array_merge($styleHeaderBase, ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF17A2B8']]]);
+        $styleDanger = array_merge($styleHeaderBase, ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE74C3C']]]);
+
+        $styleCellBorder = [
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['argb' => 'FFCCCCCC']]]
+        ];
+
+        $styleAnticipoRow = [
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE9ECEF']],
+            'font' => ['bold' => true]
+        ];
+
+        // --- Encabezados ---
+        // Row 1: Nombre Proveedor
+        $sheet->mergeCells('A1:O1');
+        $sheet->setCellValue('A1', $nombre_proveedor);
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            'borders' => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ]);
+
+        // Row 2: Grupos
+        // A, B, C: Factura por anticipo
+        $sheet->mergeCells('A2:C2');
+        $sheet->setCellValue('A2', 'Factura por anticipo');
+        $sheet->getStyle('A2:C2')->applyFromArray($stylePrimary);
+        // D, E, F: Acción de anticipo
+        $sheet->mergeCells('D2:F2');
+        $sheet->setCellValue('D2', 'Acción de anticipo');
+        $sheet->getStyle('D2:F2')->applyFromArray($styleSuccess);
+        // G, H, I, J: Factura de venta
+        $sheet->mergeCells('G2:J2');
+        $sheet->setCellValue('G2', 'Factura de venta');
+        $sheet->getStyle('G2:J2')->applyFromArray($styleSecondary);
+        // K: Saldo
+        $sheet->setCellValue('K2', 'SALDO');
+        $sheet->getStyle('K2')->applyFromArray($styleWarning);
+        // L: DSCT DETRACC
+        $sheet->setCellValue('L2', 'DSCT DETRACC');
+        $sheet->getStyle('L2')->applyFromArray($styleInfo);
+        // M: SALDO DEUDA
+        $sheet->setCellValue('M2', 'SALDO DEUDA');
+        $sheet->getStyle('M2')->applyFromArray($styleDanger);
+        // N: ESTADO (ROWSPAN 2)
+        $sheet->mergeCells('N2:N3');
+        $sheet->setCellValue('N2', 'ESTADO');
+        $sheet->getStyle('N2:N3')->applyFromArray($stylePrimary);
+        // O: N VAlorizacion (ROWSPAN 2)
+        $sheet->mergeCells('O2:O3');
+        $sheet->setCellValue('O2', 'N° VALORIZACIÓN');
+        $sheet->getStyle('O2:O3')->applyFromArray($stylePrimary);
+
+        // Row 3: Subtitulos
+        // Anticipo
+        $sheet->setCellValue('A3', 'Factura Número');
+        $sheet->getStyle('A3')->applyFromArray($stylePrimary);
+        $sheet->setCellValue('B3', 'Fecha');
+        $sheet->getStyle('B3')->applyFromArray($stylePrimary);
+        $sheet->setCellValue('C3', 'Importe USD $');
+        $sheet->getStyle('C3')->applyFromArray($stylePrimary);
+
+        // Accion
+        $sheet->setCellValue('D3', 'Aplicado al 100%');
+        $sheet->getStyle('D3')->applyFromArray($styleSuccess);
+        $sheet->setCellValue('E3', 'Aplicado parcialmente');
+        $sheet->getStyle('E3')->applyFromArray($styleSuccess);
+        $sheet->setCellValue('F3', 'LOTE');
+        $sheet->getStyle('F3')->applyFromArray($styleSuccess);
+
+        // Venta
+        $sheet->setCellValue('G3', 'N° Factura Amortiza');
+        $sheet->getStyle('G3')->applyFromArray($styleSecondary);
+        $sheet->setCellValue('H3', 'Fecha');
+        $sheet->getStyle('H3')->applyFromArray($styleSecondary);
+        $sheet->setCellValue('I3', 'Importe Factura USD $');
+        $sheet->getStyle('I3')->applyFromArray($styleSecondary);
+        $sheet->setCellValue('J3', 'Importe Amortiza Adelanto USD $');
+        $sheet->getStyle('J3')->applyFromArray($styleSecondary);
+
+        // Saldo
+        $sheet->setCellValue('K3', 'Saldo Factura Amortiza');
+        $sheet->getStyle('K3')->applyFromArray($styleWarning);
+
+        // Dsct
+        $sheet->setCellValue('L3', 'Saldo Neto Factura Amortiza');
+        $sheet->getStyle('L3')->applyFromArray($styleInfo);
+
+        // Saldo Deuda
+        $sheet->setCellValue('M3', 'Importe USD $');
+        $sheet->getStyle('M3')->applyFromArray($styleDanger);
+
+        // Anchos de columna
+        $sheet->getColumnDimension('A')->setWidth(15);
+        $sheet->getColumnDimension('B')->setWidth(12);
+        $sheet->getColumnDimension('C')->setWidth(18);
+        $sheet->getColumnDimension('D')->setWidth(12);
+        $sheet->getColumnDimension('E')->setWidth(18);
+        $sheet->getColumnDimension('F')->setWidth(15);
+        $sheet->getColumnDimension('G')->setWidth(15);
+        $sheet->getColumnDimension('H')->setWidth(12);
+        $sheet->getColumnDimension('I')->setWidth(15);
+        $sheet->getColumnDimension('J')->setWidth(18);
+        $sheet->getColumnDimension('K')->setWidth(15);
+        $sheet->getColumnDimension('L')->setWidth(15);
+        $sheet->getColumnDimension('M')->setWidth(15);
+        $sheet->getColumnDimension('N')->setWidth(12);
+        $sheet->getColumnDimension('O')->setWidth(12);
+
+        $row = 4;
+
+        foreach ($data_final as $group) {
+            $ant = $group['anticipo_info'];
+
+            // Fila de encabezado de Anticipo
+            $sheet->setCellValue('A' . $row, $ant['factura']);
+            $sheet->setCellValue('B' . $row, $ant['fecha']); // Assuming d/m/Y or similar
+            $sheet->setCellValue('C' . $row, $ant['importe_inicial']);
+            $sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+            // Aplicar estilo gris a toda la fila
+            $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleAnticipoRow);
+            $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
+
+            $row++;
+
+            foreach ($group['transacciones'] as $tr) {
+                // D: Aplicado %
+                $sheet->setCellValue('D' . $row, $tr['porcentaje_aplicado']);
+                // E: Monto Aplicado
+                $sheet->setCellValue('E' . $row, $tr['monto_aplicado']);
+                $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+                // F: Lote
+                $sheet->setCellValue('F' . $row, $tr['lotes']);
+
+                // G: Factura Amortiza
+                $sheet->setCellValue('G' . $row, $tr['factura_amortiza_serie']);
+
+                // H: Fecha Factura
+                $sheet->setCellValue('H' . $row, formatDateShort($tr['fecha_factura']));
+
+                // I: Importe Factura USD
+                $sheet->setCellValue('I' . $row, $tr['importe_factura_usd']);
+                $sheet->getStyle('I' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+                // J: Importe Amortiza Adelanto USD
+                $sheet->setCellValue('J' . $row, $tr['importe_amortiza_adelanto_usd']);
+                // Highlight yellow
+                $sheet->getStyle('J' . $row)->applyFromArray(['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFFFF00']]]);
+                $sheet->getStyle('J' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+                // K: Saldo Factura Amortiza
+                $sheet->setCellValue('K' . $row, $tr['saldo_factura_amortiza']);
+                $sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+                // L: Saldo Neto Factura
+                $sheet->setCellValue('L' . $row, $tr['saldo_neto_factura_amortiza']);
+                $sheet->getStyle('L' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+                // M: Saldo Deuda
+                $sheet->setCellValue('M' . $row, $tr['saldo_deuda_usd']);
+                $sheet->getStyle('M' . $row)->getNumberFormat()->setFormatCode('"US$ "#,##0.00');
+
+                // N: Estado
+                $sheet->setCellValue('N' . $row, $tr['estado_comprobante']);
+
+                // O: Valorizacion
+                $sheet->setCellValue('O' . $row, $tr['nro_valorizacion']);
+
+                $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
+
+                $row++;
+            }
+        }
+
+        // Descargar
+        $filename = 'Transacciones_Anticipos_' . date('Ymd_His') . '.xlsx';
+
+        // Limpiar cualquier salida previa (espacios en blanco, notices, etc)
+        while (ob_get_level()) ob_end_clean();
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        // If you're serving to IE 9, then the following may be needed
+        header('Cache-Control: max-age=1');
+
+        // If you're serving to IE over SSL, then the following may be needed
+        header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
+        header('Cache-Control: cache, must-revalidate'); // HTTP/1.1
+        header('Pragma: public'); // HTTP/1.0
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        break;
+
+    case "getTipoPagoValorizacion":
+        $estado = 0;
+        $tipo_pago = "";
+        $mensaje = "Error desconocido.";
+
+        // Sanitizar el parámetro 'id'
+        if (!isset($_POST["id_valorizacion"])) {
+            $mensaje = "Parámetro 'id_valorizacion' no recibido.";
+        } else {
+            $id_valorizacion = mysqli_real_escape_string($enlace, $_POST["id_valorizacion"]);
+
+            $q_tipo_pago = "
+                SELECT
+                    vc.usa_anticipo,
+                    vc.id_cuentabancaria
+                FROM
+                    valorizacion_compramineral vc
+                WHERE
+                    vc.id = $id_valorizacion;
+            ";
+
+            $res_tipo_pago = mysqli_query($enlace, $q_tipo_pago);
+
+            if ($res_tipo_pago && mysqli_num_rows($res_tipo_pago) > 0) {
+                $row = mysqli_fetch_assoc($res_tipo_pago);
+
+                $usa_anticipo = (int)$row['usa_anticipo'];
+                $id_cuentabancaria = $row['id_cuentabancaria'];
+                $usa_cuenta_bancaria = !empty($id_cuentabancaria);
+
+                if ($usa_anticipo === 1 && $usa_cuenta_bancaria) {
+                    $tipo_pago = "mixto";
+                } elseif ($usa_anticipo === 1 && !$usa_cuenta_bancaria) {
+                    $tipo_pago = "anticipo";
+                } elseif ($usa_anticipo === 0 && $usa_cuenta_bancaria) {
+                    $tipo_pago = "banco";
+                } else {
+                    // no habra posibilidad de que usa_anticipo y id_cuentabancaria sean nulos, pero por si acaso xd
+                    $tipo_pago = "pago no definido/invalido";
+                    $mensaje = "Combinación de pago inválida (No anticipo y No cuenta bancaria).";
+                    goto end_response;
+                }
+
+                $estado = 1;
+                $mensaje = "Tipo de pago obtenido correctamente.";
+            } else if ($res_tipo_pago && mysqli_num_rows($res_tipo_pago) === 0) {
+                $mensaje = "No se encontró registro para el ID proporcionado.";
+            } else {
+                $mensaje = "Error en la consulta a la base de datos: " . mysqli_error($enlace);
+            }
+        }
+
+        end_response:
+
+        echo json_encode([
+            "estado" => $estado,
+            "msg" => $mensaje,
+            "tipo_pago" => $tipo_pago,
+            "id_valorizacion" => $id_valorizacion ?? null
+        ]);
+        break;
+
+    case "get_montos_valorizacion":
+        $estado = 0;
+        $mensaje = "Error desconocido.";
+        $monto_total = 0.00; // Usar float para montos
+        $monto_anticipo = 0.00;
+        $monto_banco = 0.00;
+
+        // 1. Validar y Sanitizar la Entrada
+        if (!isset($_POST["id_valorizacion"])) {
+            $mensaje = "Parámetro 'id_valorizacion' no recibido.";
+            break;
+        }
+
+        $id_valorizacion = $_POST["id_valorizacion"];
+
+        if (!is_numeric($id_valorizacion) || $id_valorizacion <= 0) {
+            $mensaje = "ID de valorización inválido.";
+            break;
+        }
+
+        $id_valorizacion = (int)$id_valorizacion;
+
+        // Consulta del monto total de la valorización
+        $q_monto_total = "
+            SELECT
+                IFNULL(SUM(vcd.total), 0.00) AS monto_total
+            FROM
+                valorizacion_compramineral_detalle vcd
+            WHERE
+                vcd.id_valorizacion = {$id_valorizacion};
+        ";
+
+        // Consulta del monto de anticipo usado
+        $q_uso_anticipo = "
+            SELECT
+                IFNULL(SUM(pat.monto_retirado), 0.00) AS monto_anticipo
+            FROM
+                proveedor_anticipo_transaccion pat
+            WHERE
+                pat.id_valorizacion_compramineral = {$id_valorizacion}
+                AND pat.estado <> 'C';
+        ";
+
+        $res_monto_total = mysqli_query($enlace, $q_monto_total);
+        $res_uso_anticipo = mysqli_query($enlace, $q_uso_anticipo);
+
+        if (!$res_monto_total || !$res_uso_anticipo) {
+            $mensaje = "Error en la consulta a la base de datos: " . mysqli_error($enlace);
+        } else {
+            if ($row_monto = mysqli_fetch_assoc($res_monto_total)) {
+                $monto_total = (float)$row_monto['monto_total'];
+            }
+
+            if ($row_anticipo = mysqli_fetch_assoc($res_uso_anticipo)) {
+                $monto_anticipo = (float)$row_anticipo['monto_anticipo'];
+            }
+
+            $monto_banco = $monto_total - $monto_anticipo;
+            $monto_banco = max(0.00, $monto_banco);
+
+            $estado = 1;
+            $mensaje = "Montos de valorización obtenidos correctamente.";
+        }
+
+        echo json_encode([
+            "estado" => $estado,
+            "msg" => $mensaje,
+            "monto_total" => $monto_total,
+            "monto_anticipo" => $monto_anticipo,
+            "monto_banco" => $monto_banco,
+        ]);
+        break;
 
     default:
         # code...
 
         break;
+}
+
+
+function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
+{
+    // 1. Obtener Anticipos del Proveedor
+    $q_anticipos = "
+        SELECT 
+            ant.id,
+            ant.serie_factura,
+            ant.numero_factura,
+            ant.saldo_inicial,
+            ant.saldo_actual,
+            ant.created_at as fecha_registro,
+            ant.estado
+        FROM proveedor_anticipo ant
+        WHERE ant.id_proveedor = $id_proveedor
+          AND ant.estado != 'X'
+          AND (
+              ant.estado = 'B' 
+              OR (ant.estado = 'A' AND ant.cantidad_transacciones > 0)
+          )
+        ORDER BY ant.created_at DESC
+    ";
+
+    $res_anticipos = mysqli_query($enlace, $q_anticipos);
+    $data_final = [];
+
+    while ($ant = mysqli_fetch_assoc($res_anticipos)) {
+        $anticipo_id = $ant['id'];
+
+        // 2. Obtener Transacciones para este Anticipo
+        $q_trans = "
+            SELECT
+                tr.id,
+                tr.monto_retirado,
+                tr.saldo_actual AS saldo_antes_transaccion,
+                tr.saldo_restante,
+                tr.created_at AS fecha_transaccion,
+                val.Id AS id_valorizacion,
+                val.codigo_unico,
+                val.correlativo AS nro_valorizacion,
+                val.estado AS estado_val,
+                cp.serie_comprobante,
+                cp.numero_comprobante,
+                cp.fecha_emision_comprobante,
+                (
+                SELECT
+                    SUM(vcd.total)
+                FROM
+                    valorizacion_compramineral_detalle vcd
+                WHERE
+                    vcd.id_valorizacion = val.Id AND vcd.estado = 'A'
+            ) AS importe_factura_usd,
+            cp.estado AS estado_comprobante,
+            (
+                SELECT
+                    GROUP_CONCAT(
+                        DISTINCT IFNULL(vd.cod_gel, vd.cod_lote) SEPARATOR ', '
+                    )
+                FROM
+                    valorizacion_compramineral_detalle vd
+                WHERE
+                    vd.id_valorizacion = val.Id
+            ) AS lotes
+            FROM
+                proveedor_anticipo_transaccion tr
+            INNER JOIN valorizacion_compramineral val ON
+                tr.id_valorizacion_compramineral = val.Id
+            LEFT JOIN comprobante_pago cp ON
+                cp.id_valorizacion = val.Id AND cp.estado = 'A'
+            WHERE
+                tr.id_proveedor_anticipo = $anticipo_id AND tr.estado = 'A'
+            ORDER BY
+                tr.created_at ASC;
+        ";
+
+        $res_trans = mysqli_query($enlace, $q_trans);
+        $transacciones = [];
+        $anticipoMatchesDate = false;
+
+        while ($tr = mysqli_fetch_assoc($res_trans)) {
+            $fecha_comprobante = $tr['fecha_emision_comprobante'];
+            $matches = true;
+            if ($fecha_desde && (!$fecha_comprobante || $fecha_comprobante < $fecha_desde)) $matches = false;
+            if ($fecha_hasta && (!$fecha_comprobante || $fecha_comprobante > $fecha_hasta)) $matches = false;
+
+            if ($matches) {
+                $anticipoMatchesDate = true;
+            }
+
+            $monto_retirado = floatval($tr['monto_retirado']);
+            $saldo_inicial_anticipo = floatval($ant['saldo_inicial']);
+
+            $porcentaje_aplicado = 0;
+            if ($saldo_inicial_anticipo > 0) {
+                $porcentaje_aplicado = ($monto_retirado / $saldo_inicial_anticipo) * 100;
+            }
+
+            $importe_factura_usd = $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0;
+            $saldo_factura_amortiza = $importe_factura_usd - $monto_retirado;
+            $saldo_neto_factura_amortiza = $saldo_factura_amortiza >= 0 ? $saldo_factura_amortiza - ($saldo_factura_amortiza * 0.1) : 0;
+
+            $transacciones[] = [
+                "id_transaccion" => $tr['id'],
+                "lotes" => $tr['lotes'],
+                "porcentaje_aplicado" => number_format($porcentaje_aplicado, 2) . '%',
+                "monto_aplicado" => round($monto_retirado, 2),
+                "factura_amortiza_serie" => $tr['serie_comprobante'] ? $tr['serie_comprobante'] . '-' . $tr['numero_comprobante'] : 'S/N',
+                "fecha_factura" => $tr['fecha_emision_comprobante'] ? $tr['fecha_emision_comprobante'] : '-',
+                "importe_factura_usd" => round($importe_factura_usd, 2),
+                "importe_amortiza_adelanto_usd" => round($monto_retirado, 2),
+                "saldo_factura_amortiza" => round($saldo_factura_amortiza, 2),
+                "saldo_neto_factura_amortiza" => round($saldo_neto_factura_amortiza, 2),
+                "saldo_deuda_usd" => round(floatval($tr['saldo_restante']), 2),
+                "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Pagado' : 'Pendiente') : 'Pendiente',
+                "nro_valorizacion" => $tr['nro_valorizacion']
+            ];
+        }
+
+        $include = false;
+        if (!$fecha_desde && !$fecha_hasta) {
+            if (count($transacciones) > 0 || $ant['estado'] == 'B') {
+                $include = true;
+            }
+        } else {
+            if ($anticipoMatchesDate) {
+                $include = true;
+            }
+        }
+
+        if ($include) {
+            // Formatear fecha anticipo
+            $fecha_ant = $ant['fecha_registro'];
+            $data_final[] = [
+                "anticipo_info" => [
+                    "factura" => $ant['serie_factura'] . '-' . $ant['numero_factura'],
+                    "fecha" => formatDateShort($fecha_ant),
+                    "importe_inicial" => round(floatval($ant['saldo_inicial']), 2),
+                    "id" => $ant['id']
+                ],
+                "transacciones" => $transacciones
+            ];
+        }
+    }
+    return $data_final;
+}
+
+function formatDateShort($dateString)
+{
+    if (!$dateString || $dateString == '-') return '';
+    $ts = strtotime($dateString);
+    if (!$ts) return $dateString;
+    return date('d/m/Y', $ts);
 }
 
 ?>

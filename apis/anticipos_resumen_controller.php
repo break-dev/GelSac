@@ -345,7 +345,7 @@ switch ($_POST["accion"]) {
         echo json_encode(["estado" => 1, "data" => $data_final]);
         break;
 
-    case "exportExcel":
+    case "exportExcelResumenTransacciones":
         // 0. Limpiar buffers y suprimir errores al inicio absoluto
         error_reporting(0);
         ini_set('display_errors', 0);
@@ -580,7 +580,6 @@ switch ($_POST["accion"]) {
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('php://output');
-        exit;
         break;
 
     default:

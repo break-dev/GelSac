@@ -1559,7 +1559,7 @@ if (!isset($_SESSION["Id"])) {
 			$("#pago_tipocambio").val(_tipo_cambio);
 			// Cargar pagos
 			f_LoadDetallePagos();
-			
+
 			console.log('Aperturando modal');
 			f_OpenModal('modal_registraradelanto');
 			console.log('Modal aperturado');
@@ -1864,7 +1864,7 @@ if (!isset($_SESSION["Id"])) {
 				accion: "verificar_pagototal_comprobante",
 				id: id_comprobante_actual,
 			}, async function(data) {
-				if (data.estado == 1 && data.totalmente_pagado) {
+				if (data.estado == 1 && data.totalmente_pagado && data.solo_anticipo == 1) {
 					$('#btn_add_pago').hide();
 					$('#pb_venta').css('width', '100%');
 					$('#pb_neto').css('width', '100%');
