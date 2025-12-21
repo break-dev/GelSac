@@ -734,6 +734,47 @@ $backendUrl = 'apis/anticipos_resumen_controller.php';
         loadReporte();
       });
 
+      $('#btn-exportar-excel').on('click', function() {
+        const idProveedor = $('#filter_proveedor').val();
+        if (!idProveedor) {
+          alert('Seleccione un proveedor para exportar.');
+          return;
+        }
+
+        const fechaDesde = $('#filter-fecha-desde').val();
+        const fechaHasta = $('#filter-fecha-hasta').val();
+
+        // Create form
+        const form = $('<form>', {
+          action: backendUrl,
+          method: 'POST',
+          target: '_blank'
+        });
+
+        $('<input>').attr({
+          type: 'hidden',
+          name: 'accion',
+          value: 'exportExcel'
+        }).appendTo(form);
+        $('<input>').attr({
+          type: 'hidden',
+          name: 'id_proveedor',
+          value: idProveedor
+        }).appendTo(form);
+        $('<input>').attr({
+          type: 'hidden',
+          name: 'fecha_desde',
+          value: fechaDesde
+        }).appendTo(form);
+        $('<input>').attr({
+          type: 'hidden',
+          name: 'fecha_hasta',
+          value: fechaHasta
+        }).appendTo(form);
+
+        form.appendTo('body').submit().remove();
+      });
+
       // Filtros cliente-side inmediatos
       $('#filter_factura_anticipo, #filter_factura_comprobante, #filter-estado').on('keyup change', function() {
         filterAndRender();
