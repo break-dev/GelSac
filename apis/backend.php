@@ -76223,11 +76223,7 @@ case "eliminarAnticipo":
                     "nro_valorizacion" => $tr['nro_valorizacion']
                 ];
             }
-            
-            // Solo agregar anticipo si tiene transacciones o si se quiere mostrar la cabecera del anticipo
-            // El usuario dijo: "Si su estado es ‘A’, debera tener al menos una transaccion confirmada."
-            // Si tiene estado 'B' (sin saldo), se lista aunque no tenga transacciones visibles?
-            // Pero un anticipo 'B' DEBE tener transacciones que lo agotaron.
+
             if (count($transacciones) > 0 || $ant['estado'] == 'B') {
                 $data_final[] = [
                     "anticipo_info" => [
@@ -76243,6 +76239,45 @@ case "eliminarAnticipo":
         
         header("Content-Type: application/json");
         echo json_encode(["estado" => 1, "data" => $data_final]);
+        break;
+
+    case "verificar_pagototal_comprobante":
+        $id = intval($_POST["id"]);
+
+        try {
+            $query = "SELECT 
+                        aprobo_contabilidad, aprobo_comercial, aprobo_documentaria,
+                        total_sin_detraccion, total_detraccion_soles, 
+                        pago_sin_detraccion, pago_detraccion 
+                    FROM comprobante_pago WHERE Id = $id";
+
+            $result = mysqli_query($enlace, $query);
+            $cp = mysqli_fetch_assoc($result);
+
+            if (!$cp) throw new Exception("Comprobante no encontrado.");
+
+            $aprobado = ($cp["aprobo_contabilidad"] == 1 && 
+                        $cp["aprobo_comercial"] == 1 && 
+                        $cp["aprobo_documentaria"] == 1);
+
+            // verificamos si lo pagado cubre el total
+            // aplicamos cierta tolerancia para evitar errores de precision
+            $total_deuda = floatval($cp["total_sin_detraccion"]) + floatval($cp["total_detraccion_soles"]);
+            $total_pagado = floatval($cp["pago_sin_detraccion"]) + floatval($cp["pago_detraccion"]);
+            
+            $pagado_completamente = ($total_pagado >= ($total_deuda - 0.01));
+
+            mysqli_commit($enlace);
+
+            echo json_encode([
+                "estado" => 1,
+                "totalmente_pagado" => ($aprobado && $pagado_completamente)
+            ]);
+
+        } catch (Exception $e) {
+            mysqli_rollback($enlace);
+            echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+        }
         break;
 
     default:

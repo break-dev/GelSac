@@ -886,7 +886,7 @@ if (!isset($_SESSION["Id"])) {
 					<hr>
 
 					<div class="d-flex justify-content-center" style="padding: 5px; margin-top: 10px;">
-						<button type="button" class="btn btn-primary" style="font-size: 14px; width: 100%;" onclick="f_AddPago('N');">+ Nuevo Pago</button>
+						<button id="btn_add_pago" type="button" class="btn btn-primary" style="font-size: 14px; width: 100%;" onclick="f_AddPago('N');">+ Nuevo Pago</button>
 					</div>
 
 					<div class="d-flex justify-content-center" style="padding: 5px;">
@@ -1518,7 +1518,10 @@ if (!isset($_SESSION["Id"])) {
 			}, 'json');
 		}
 
+		let id_comprobante_actual = '';
+
 		function f_ConfirmarPago_ComprobantePago(_id_registro, _lote, _cod_lote, _proveedor, _id_proveedor, _serie, _numero, _total, _total_detraccion, _total_detraccion_soles, _total_sin_detraccion, _total_ingresado_detraccion, _total_ingresado_sin_detraccion, _tipo_cambio, _id_moneda, _porc_detraccion) {
+			id_comprobante_actual = _id_registro;
 			// Seteando 
 			data_cuenta_valorizacion = '';
 			$("#hd_idregistro").val(_id_registro);
@@ -1553,17 +1556,13 @@ if (!isset($_SESSION["Id"])) {
 			$("#lbl_porcdetraccion").html(_porc_detraccion);
 
 			f_RenderResumenPagos();
-
-			// $("#hd_tipo_cambio").remove(); // limpia si existe
-			// $("body").append('<input id="hd_tipo_cambio" type="hidden" value="'+ _tipo_cambio +'">');
-
 			$("#pago_tipocambio").val(_tipo_cambio);
-
 			// Cargar pagos
 			f_LoadDetallePagos();
-
-			// Abrir modal
+			
+			console.log('Aperturando modal');
 			f_OpenModal('modal_registraradelanto');
+			console.log('Modal aperturado');
 		}
 
 		function f_AddPago(_modo, _id_registropago, _fecha_pago, _id_mediopago, _id_entidadbancaria, _id_entidadbancaria_cuenta, _monto, _tipocambio, _numero_operacion, _observacion) {
@@ -1680,7 +1679,8 @@ if (!isset($_SESSION["Id"])) {
 			f_OpenModal('modal_addpago');
 		}
 
-		function f_LoadDetallePagos() {
+		async function f_LoadDetallePagos() {
+			console.log('Cargando detalle de pagos...');
 			var id_recepcion = $("#hd_idregistro").val();
 			var total_venta = parseFloat($("#ins_totalventa").val()) || 0;
 
@@ -1804,6 +1804,7 @@ if (!isset($_SESSION["Id"])) {
 
 		// === Render principal ===
 		function f_RenderResumenPagos() {
+			console.log('Renderizando resumen de pagos...');
 			// 1) Leer entradas OCULTAS (ya las seteas en tu flujo)
 			const totalVentaUSD = toNum($('#ins_totalventa').val()); // USD
 			const porPagarVenta = toNum($('#ins_por_pagar_venta').val()); // USD
@@ -1859,7 +1860,21 @@ if (!isset($_SESSION["Id"])) {
 		// === Hooks recomendados ===
 		// a) Cada vez que abras/recargues el modal y setees los #ins_*:
 		$('#modal_registraradelanto').on('shown.bs.modal', function() {
-			f_RenderResumenPagos();
+			$.post("apis/backend.php", {
+				accion: "verificar_pagototal_comprobante",
+				id: id_comprobante_actual,
+			}, async function(data) {
+				if (data.estado == 1 && data.totalmente_pagado) {
+					$('#btn_add_pago').hide();
+					$('#pb_venta').css('width', '100%');
+					$('#pb_neto').css('width', '100%');
+					$('#pb_detrac').css('width', '100%');
+					$("#tbl_RegistrosPago").html('<tr><td colspan="11" style="text-align: center; font-size: 12px;">Pago completado</td></tr>');
+				} else {
+					$('#btn_add_pago').show();
+					f_RenderResumenPagos();
+				}
+			}, "json");
 		});
 
 		// b) Después de grabar un pago (ya actualizas #ins_por_pagar_*):
