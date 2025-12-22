@@ -72933,7 +72933,8 @@ switch ($_POST["accion"]) {
 
                               (SELECT IFNULL(SUM(CPP.monto_pago), 0) AS total_pagos
 																 FROM comprobante_pago_pagos CPP
-																  		LEFT JOIN tb_bancos_cuentas BC ON CPP.id_entidadbancaria = BC.Id
+																  		LEFT JOIN tb_clientes_bancos BC ON BC.id_cliente = P.Id
+                                                                            AND CPP.id_cliente_banco = BC.Id
 																WHERE CPP.estado <> 'X'
 																 	AND CPP.id_comprobante_pago = CP.Id
 																 	AND BC.id_banco = 3) AS DETRACCION_PAGOTOTAL,
@@ -76769,6 +76770,7 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
 
             $importe_factura_usd = $tr['importe_factura_usd'] ? floatval($tr['importe_factura_usd']) : 0;
             $saldo_factura_amortiza = $importe_factura_usd - $monto_retirado;
+            $saldo_factura_amortiza = $saldo_factura_amortiza == 0 ? 0 : $saldo_factura_amortiza * 1.18;
             $saldo_neto_factura_amortiza = $saldo_factura_amortiza >= 0 ? $saldo_factura_amortiza - ($saldo_factura_amortiza * 0.1) : 0;
 
             $transacciones[] = [
