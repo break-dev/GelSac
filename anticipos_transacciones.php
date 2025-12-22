@@ -754,7 +754,7 @@ $backendUrl = 'apis/backend.php';
         $('<input>').attr({
           type: 'hidden',
           name: 'accion',
-          value: 'exportExcel'
+          value: 'exportExcelResumenTransacciones'
         }).appendTo(form);
         $('<input>').attr({
           type: 'hidden',
@@ -773,6 +773,7 @@ $backendUrl = 'apis/backend.php';
         }).appendTo(form);
 
         form.appendTo('body').submit().remove();
+        $post
       });
 
       // Filtros cliente-side inmediatos
