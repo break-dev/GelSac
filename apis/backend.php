@@ -75881,8 +75881,7 @@ case "eliminarAnticipo":
         foreach ($transacciones_por_confirmar as $transaccion) {
             // Actualizar estado de transacción a 'C'
             $sql_update_trans = "
-                UPDATE proveedor_anticipo_transaccion 
-                SET estado = 'C', updated_at = NOW() 
+                DELETE FROM proveedor_anticipo_transaccion 
                 WHERE id = ?
             ";
             $stmt_upd_trans = mysqli_prepare($enlace, $sql_update_trans);
@@ -75904,10 +75903,9 @@ case "eliminarAnticipo":
             $valorizaciones_anuladas++;
         }
         
-        // 3. Cambiar estado del anticipo a 'X' (Anulado)
+        // eliminar anticipo
         $sql_update_anticipo = "
-            UPDATE proveedor_anticipo 
-            SET estado = 'X', updated_at = NOW() 
+            DELETE FROM proveedor_anticipo 
             WHERE id = ?
         ";
         $stmt_upd_anticipo = mysqli_prepare($enlace, $sql_update_anticipo);
