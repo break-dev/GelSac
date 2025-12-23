@@ -59,6 +59,74 @@ function nombre_meses($num_mes)
 }
 
 // Graba imágenes de Acompañantes en la Recepción de Unidades
+// Helper function to update Comprobante Status based on payments + advances
+function f_UpdateComprobanteStatus($enlace, $id_comprobante)
+{
+    $id_comprobante = intval($id_comprobante);
+
+    // 1. Get current totals and direct payments
+    $q = "SELECT 
+            id_valorizacion, 
+            total_sin_detraccion, 
+            total_detraccion_soles, 
+            pago_sin_detraccion, 
+            pago_detraccion 
+          FROM comprobante_pago 
+          WHERE Id = $id_comprobante";
+
+    $res = mysqli_query($enlace, $q);
+    if (!$res || mysqli_num_rows($res) == 0) {
+        return false;
+    }
+    $row = mysqli_fetch_assoc($res);
+
+    $id_valorizacion = intval($row['id_valorizacion']);
+    $total_neto = floatval($row['total_sin_detraccion']);
+    $total_det = floatval($row['total_detraccion_soles']);
+    $pago_neto = floatval($row['pago_sin_detraccion']);
+    $pago_det = floatval($row['pago_detraccion']);
+
+    // 2. Get confirmed advances linked to this valorization
+    $advances = 0.0;
+    if ($id_valorizacion > 0) {
+        $q_adv = "SELECT SUM(monto_retirado) as total_adv 
+                  FROM proveedor_anticipo_transaccion 
+                  WHERE id_valorizacion_compramineral = $id_valorizacion 
+                    AND estado = 'A'";
+        $res_adv = mysqli_query($enlace, $q_adv);
+        if ($res_adv && $row_adv = mysqli_fetch_assoc($res_adv)) {
+            $advances = floatval($row_adv['total_adv']);
+        }
+    }
+
+    // 3. Logic: Paid if (DirectNet + Advances >= TotalNet) AND (DirectDet >= TotalDet)
+    // We use a small epsilon for floating point comparisons
+    $epsilon = 0.5; // Tolerance (sometimes rounding issues of 0.01 happen)
+
+    $paid_amount_net = $pago_neto + $advances;
+
+    $is_paid_net = ($paid_amount_net >= ($total_neto - $epsilon));
+    $is_paid_det = ($pago_det >= ($total_det - $epsilon));
+
+    $new_status = ($is_paid_net && $is_paid_det) ? 'A' : 'P';
+
+    // 4. Update status
+    // Only update if it changes, or force it to ensure consistency
+    // Note: We don't change 'X' (Anulado) here, assuming we only call this on active vouchers.
+    // Ideally we should check if current status is 'X' before calling, or check here.
+    
+    // Safety check: Don't revive annulled vouchers
+    $q_status = "SELECT estado FROM comprobante_pago WHERE Id = $id_comprobante";
+    $r_status = mysqli_query($enlace, $q_status);
+    $curr_status_row = mysqli_fetch_assoc($r_status);
+    if ($curr_status_row['estado'] == 'X') {
+        return false; 
+    }
+
+    $q_update = "UPDATE comprobante_pago SET estado = '$new_status' WHERE Id = $id_comprobante";
+    return mysqli_query($enlace, $q_update);
+}
+
 function f_GrabarImagenes_RecepcionAcompanantes(
     $enlace,
     $id_registro,
@@ -70815,7 +70883,7 @@ switch ($_POST["accion"]) {
                 FROM
                     comprobante_pago cp
                 WHERE
-                    cp.id_valorizacion = V.Id AND cp.estado = 'A'
+                    cp.id_valorizacion = V.Id
             ) AS tiene_comprobante
             FROM
                 valorizacion_compramineral V
@@ -72651,7 +72719,7 @@ switch ($_POST["accion"]) {
                 FROM
                     comprobante_pago cp
                 WHERE
-                    cp.id_valorizacion = vc.Id AND cp.estado = 'A'
+                    cp.id_valorizacion = vc.Id
             )
             ORDER BY
                 vc.fechahora_registro
@@ -72721,7 +72789,7 @@ switch ($_POST["accion"]) {
 
                 // Insertar
                 $q_insert =
-                    "INSERT INTO comprobante_pago (id_proveedor, id_valorizacion, id_moneda, fecha_emision_comprobante, serie_comprobante, numero_comprobante, sub_total, igv, total_comprobante, porc_detraccion, total_detraccion, total_detraccion_soles, total_sin_detraccion, tipo_cambio, fechahora_registro, usuario_registro) VALUES (";
+                    "INSERT INTO comprobante_pago (id_proveedor, id_valorizacion, id_moneda, fecha_emision_comprobante, serie_comprobante, numero_comprobante, sub_total, igv, total_comprobante, porc_detraccion, total_detraccion, total_detraccion_soles, total_sin_detraccion, tipo_cambio, fechahora_registro, usuario_registro, estado) VALUES (";
                 $q_insert .= "$id_proveedor, ";
                 $q_insert .= "'$id_valorizacion', ";
                 $q_insert .= "$id_moneda, ";
@@ -72737,11 +72805,16 @@ switch ($_POST["accion"]) {
                 $q_insert .= "$total_sin_detraccion, ";
                 $q_insert .= "$tc_venta, ";
                 $q_insert .= "'$fechahora_actual', ";
-                $q_insert .= "'$usuario_registro')";
+                $q_insert .= "'$usuario_registro',";
+                $q_insert .= "'P')"; 
 
                 if (!mysqli_query($enlace, $q_insert)) {
-                    throw new Exception("Error al insertar el comprobante.");
+                    throw new Exception("Error al insertar el comprobante." . mysqli_error($enlace));
                 }
+                
+                // NEW: Update status immediately based on advances
+                $new_id = mysqli_insert_id($enlace);
+                f_UpdateComprobanteStatus($enlace, $new_id);
             }
 
             mysqli_commit($enlace);
@@ -72963,7 +73036,8 @@ switch ($_POST["accion"]) {
                               CP.pago_sin_detraccion_fechahora_registro,
                               CP.pago_sin_detraccion_usuario_registro,
                               CP.tipo_cambio,
-                              CP.id_moneda
+                              CP.id_moneda,
+                              CP.estado
 
                             FROM comprobante_pago CP
                             		INNER JOIN valorizacion_compramineral_detalle VD ON
@@ -73131,7 +73205,8 @@ switch ($_POST["accion"]) {
                     if (
                         intval($row_validacion["aprobo_contabilidad"]) === 1 &&
                         intval($row_validacion["aprobo_comercial"]) === 1 &&
-                        intval($row_validacion["aprobo_documentaria"]) === 1
+                        intval($row_validacion["aprobo_documentaria"]) === 1 &&
+                        $row_validacion["estado"] != 'A'
                     ) {
                         $html .=
                             '    <button id="btn_pagar_' .
@@ -73953,53 +74028,8 @@ case "actualizar_CampoTexto_ComprobantePago":
             throw new Exception("Error al actualizar el campo");
         }
 
-        // 2. Verificar si corresponde marcar como pagado
-        $q_check = "
-            SELECT
-                aprobo_contabilidad,
-                aprobo_comercial,
-                aprobo_documentaria,
-                total_sin_detraccion,
-                total_detraccion_soles,
-                pago_sin_detraccion,
-                pago_detraccion
-            FROM comprobante_pago
-            WHERE Id = $id
-            FOR UPDATE
-        ";
-
-        $r = mysqli_query($enlace, $q_check);
-        $cp = mysqli_fetch_assoc($r);
-
-        $aprobado =
-            $cp["aprobo_contabilidad"] == 1 &&
-            $cp["aprobo_comercial"] == 1 &&
-            $cp["aprobo_documentaria"] == 1;
-
-        $es_cero =
-            floatval($cp["total_sin_detraccion"]) == 0 &&
-            floatval($cp["total_detraccion_soles"]) == 0;
-
-        $no_pagado =
-            floatval($cp["pago_sin_detraccion"]) == 0 &&
-            floatval($cp["pago_detraccion"]) == 0;
-
-        if ($aprobado && $es_cero && $no_pagado) {
-            $q_pago = "
-                UPDATE comprobante_pago SET
-                    pago_sin_detraccion = 0,
-                    pago_sin_detraccion_fechahora_registro = '$fechahora_actual_raw',
-                    pago_sin_detraccion_usuario_registro = '$usuario_registro_raw',
-                    pago_detraccion = 0,
-                    pago_detraccion_fechahora_registro = '$fechahora_actual_raw',
-                    pago_detraccion_usuario_registro = '$usuario_registro_raw'
-                WHERE Id = $id
-            ";
-
-            if (!mysqli_query($enlace, $q_pago)) {
-                throw new Exception("Error al marcar comprobante como pagado");
-            }
-        }
+        // 2. Verificar si corresponde marcar como pagado (Logica Centralizada)
+        f_UpdateComprobanteStatus($enlace, $id);
 
         mysqli_commit($enlace);
 
@@ -74218,6 +74248,9 @@ case "actualizar_CampoTexto_ComprobantePago":
                 $res["total_sin_detraccion"] =
                     $row_totales["total_sin_detraccion"];
             }
+
+            // Verificar si corresponde marcar como pagado (Logica Centralizada)
+            f_UpdateComprobanteStatus($enlace, $id_comprobante_pago); // Note: using $id_comprobante_pago variable which is robust for this scope
 
             $res["estado"] = 1;
         } else {
@@ -76094,17 +76127,15 @@ case "get_info_cuenta_banco_valorizacion":
                 mon.abv AS simbolo_moneda
             FROM
                 comprobante_pago cp
-            INNER JOIN valorizacion_compramineral_detalle vcd ON
-                vcd.Id = cp.id_valorizacion
-            INNER JOIN valorizacion_compramineral vc ON
-                vc.Id = vcd.id_valorizacion
-            INNER JOIN tb_clientes cli ON
+            LEFT JOIN valorizacion_compramineral vc ON
+                vc.Id = cp.id_valorizacion
+            LEFT JOIN tb_clientes cli ON
                 cli.Id = vc.id_proveedor
-            INNER JOIN tb_clientes_bancos clb ON
+            LEFT JOIN tb_clientes_bancos clb ON
                 clb.id_cliente = cli.Id AND clb.cci = vc.infopago_cci
-            INNER JOIN tbconfig_monedas mon ON
+            LEFT JOIN tbconfig_monedas mon ON
                 clb.id_moneda = mon.Id
-            INNER JOIN tb_bancos ban ON
+            LEFT JOIN tb_bancos ban ON
                 ban.id = clb.id_banco
             WHERE
                 cp.Id = $id_comprobante;
@@ -76688,11 +76719,6 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
             ant.estado
         FROM proveedor_anticipo ant
         WHERE ant.id_proveedor = $id_proveedor
-          AND ant.estado != 'X'
-          AND (
-              ant.estado = 'B' 
-              OR (ant.estado = 'A' AND ant.cantidad_transacciones > 0)
-          )
         ORDER BY ant.created_at DESC
     ";
 
@@ -76717,16 +76743,16 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
                 cp.serie_comprobante,
                 cp.numero_comprobante,
                 cp.fecha_emision_comprobante,
+                cp.estado AS estado_comprobante,
                 (
                 SELECT
                     SUM(vcd.total)
                 FROM
                     valorizacion_compramineral_detalle vcd
                 WHERE
-                    vcd.id_valorizacion = val.Id AND vcd.estado = 'A'
-            ) AS importe_factura_usd,
-            cp.estado AS estado_comprobante,
-            (
+                    vcd.id_valorizacion = val.Id AND vcd.estado <> 'X' AND  vcd.estado <> 'R'
+                ) AS importe_factura_usd,
+                (
                 SELECT
                     GROUP_CONCAT(
                         DISTINCT IFNULL(vd.cod_gel, vd.cod_lote) SEPARATOR ', '
@@ -76738,16 +76764,17 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
             ) AS lotes
             FROM
                 proveedor_anticipo_transaccion tr
-            INNER JOIN valorizacion_compramineral val ON
+            LEFT JOIN valorizacion_compramineral val ON
                 tr.id_valorizacion_compramineral = val.Id
             LEFT JOIN comprobante_pago cp ON
-                cp.id_valorizacion = val.Id AND cp.estado = 'A'
+                cp.id_valorizacion = val.Id
             WHERE
-                tr.id_proveedor_anticipo = $anticipo_id AND tr.estado = 'A'
+                tr.id_proveedor_anticipo = $anticipo_id and val.is_aprobado = 1
             ORDER BY
                 tr.created_at ASC;
         ";
 
+        // return $q_trans;
         $res_trans = mysqli_query($enlace, $q_trans);
         $transacciones = [];
         $anticipoMatchesDate = false;
@@ -76774,6 +76801,14 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
             $saldo_factura_amortiza = $importe_factura_usd - $monto_retirado;
             $saldo_factura_amortiza = $saldo_factura_amortiza == 0 ? 0 : $saldo_factura_amortiza * 1.18;
             $saldo_neto_factura_amortiza = $saldo_factura_amortiza >= 0 ? $saldo_factura_amortiza - ($saldo_factura_amortiza * 0.1) : 0;
+            $estado_comprobante = 'Comprobante pediente';
+            if($tr['estado_comprobante'] == 'A'){
+                $estado_comprobante = 'Pagado';
+            }
+            else if ($tr['estado_comprobante'] == 'P'){
+                $estado_comprobante = 'Proceso de pago';
+            }
+            $estados[] = $tr['estado_comprobante'];
 
             $transacciones[] = [
                 "id_transaccion" => $tr['id'],
@@ -76787,7 +76822,7 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
                 "saldo_factura_amortiza" => round($saldo_factura_amortiza, 2),
                 "saldo_neto_factura_amortiza" => round($saldo_neto_factura_amortiza, 2),
                 "saldo_deuda_usd" => round(floatval($tr['saldo_restante']), 2),
-                "estado_comprobante" => $tr['serie_comprobante'] ? ($tr['estado_comprobante'] == 'A' ? 'Pagado' : 'Pendiente') : 'Pendiente',
+                "estado_comprobante" => $estado_comprobante,
                 "nro_valorizacion" => $tr['nro_valorizacion']
             ];
         }

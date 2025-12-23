@@ -1719,7 +1719,7 @@ if (!isset($_SESSION["Id"])) {
                 `;
 
             // Lógica de Aprobación
-            if (row.IS_VALORIZACIONAPROBADA == 0 && row.estado == 'A') {
+            if (row.IS_VALORIZACIONAPROBADA == 0) {
               // Solo mostrar botón "Aprobar" si el grupo NO tiene ya una aprobada
               if (!grupoTieneAprobado) {
                 _html += `<button class="btn btn-primary btn-sm" style="font-size: 13px;" onclick="event.stopPropagation(); f_AprobarValorizacion(${row.Id}, ${row.correlativo}, ${row.version});">

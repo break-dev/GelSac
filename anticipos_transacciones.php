@@ -278,9 +278,9 @@ $backendUrl = 'apis/backend.php';
               <label class="form-label small mb-1">Estado</label>
               <select class="form-select form-select-sm" id="filter-estado">
                 <option value="">Todos</option>
-                <option value="pendiente">Pendiente</option>
+                <option value="pendiente_comprobante">Comprobante pediente</option>
+                <option value="proceso_pago">Proceso de pago</option>
                 <option value="aprobado">Pagado</option>
-                <!-- <option value="anulado">Anulado</option> -->
               </select>
             </div>
 
@@ -567,10 +567,12 @@ $backendUrl = 'apis/backend.php';
           group.transacciones.forEach((tr, index) => {
             // Determinar estado badge
             let estadoBadge = '';
-            if (tr.estado_comprobante === 'Pagado' || tr.estado_comprobante === 'A') {
+            if (tr.estado_comprobante === 'Pagado') {
               estadoBadge = '<span class="badge bg-success">Pagado</span>';
-            } else if (tr.estado_comprobante === 'Pendiente') {
-              estadoBadge = '<span class="badge bg-warning text-dark">Pendiente</span>';
+            } else if (tr.estado_comprobante === 'Proceso de pago') {
+              estadoBadge = '<span class="badge bg-warning text-dark">Proceso de pago</span>';
+            } else if (tr.estado_comprobante === 'Comprobante pediente') {
+              estadoBadge = '<span class="badge bg-danger">Comprobante pediente</span>';
             } else {
               estadoBadge = `<span class="badge bg-secondary">${tr.estado_comprobante}</span>`;
             }
@@ -658,11 +660,17 @@ $backendUrl = 'apis/backend.php';
             // Filtro Estado
             let matchEstado = true;
             if (fEstado) {
-              const estadoStr = (tr.estado_comprobante === 'A' || tr.estado_comprobante === 'Pagado') ? 'aprobado' :
-                (tr.estado_comprobante === 'Pendiente' ? 'pendiente' :
-                  (tr.estado_comprobante === 'Anulado' ? 'anulado' : ''));
-              // Ajuste para coincidir con values del select
-              if (estadoStr !== fEstado) matchEstado = false;
+              // Map backend status to filter values
+              let statusKey = '';
+              if (tr.estado_comprobante === 'Pagado') {
+                statusKey = 'aprobado';
+              } else if (tr.estado_comprobante === 'Proceso de pago') {
+                statusKey = 'proceso_pago';
+              } else if (tr.estado_comprobante === 'Comprobante pediente') {
+                statusKey = 'pendiente_comprobante';
+              }
+
+              if (statusKey !== fEstado) matchEstado = false;
             }
 
             return matchComprobante && matchEstado;

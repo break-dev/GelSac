@@ -1612,6 +1612,7 @@ if (!isset($_SESSION["Id"])) {
 				$("#pago_observacion").val('');
 			}
 
+			console.log();
 			if (data_cuenta_valorizacion) {
 				// 1. Definir valores clave
 				const id_banco_a_setear = data_cuenta_valorizacion.id_banco;
