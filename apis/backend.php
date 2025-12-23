@@ -70382,7 +70382,7 @@ switch ($_POST["accion"]) {
             LEFT JOIN comprobante_pago comp ON
                 comp.id_valorizacion = CM.Id
             WHERE
-                CMD.cod_lote = V.lote_cod_lote AND CMD.id_elemento IN(33, 34) AND CM.estado <> 'X' AND CM.is_aprobado = 1
+                CMD.cod_lote = V.lote_cod_lote AND CMD.id_elemento IN(33, 34) AND CM.estado <> 'X' AND CM.estado <> 'R' 
         )
         ORDER BY
             V.Id
@@ -75119,6 +75119,10 @@ case "actualizar_CampoTexto_ComprobantePago":
 
                 while ($row = mysqli_fetch_assoc($res_trans)) {
                     $transacciones[] = $row;
+                }
+
+                if(count($transacciones) <= 0){
+                    throw new Exception("La valorizacion ya no tiene anticipos.");
                 }
 
                 // Verificar que cada anticipo tenga saldo suficiente

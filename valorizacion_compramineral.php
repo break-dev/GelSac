@@ -1994,10 +1994,11 @@ if (!isset($_SESSION["Id"])) {
           accion: 'getAnticiposByValorizacion',
           id_valorizacion: _id_valorizacion
         }, function(data) {
+          let verificar_estado = false;
           if (data.estado == 1 && data.data.length > 0) {
             // Marcar que usa anticipos
             $('#chk_usar_anticipo').prop('checked', true);
-
+            verificar_estado = true;
             // Cargar anticipos seleccionados
             anticiposSeleccionados = data.data.map(trans => ({
               id_anticipo: trans.id_proveedor_anticipo,
@@ -2035,6 +2036,11 @@ if (!isset($_SESSION["Id"])) {
                 es_mixto = true;
               }
 
+              if (!verificar_estado && (data.tipo_pago == 'anticipo' || data.tipo_pago == 'mixto')) {
+                alert("La valorización no cuenta con anticipos válidos.");
+                window.location.reload();
+              }
+
               $.post(url_api, {
                 accion: 'get_montos_valorizacion',
                 id_valorizacion: _id_valorizacion
@@ -2058,6 +2064,8 @@ if (!isset($_SESSION["Id"])) {
                     $('#txt_monto_transferencia').prop('disabled', true);
                     $('#txt_monto_transferencia').show();
                   }
+
+
                   f_OpenModal('modal_valorizacion');
 
                   return;
@@ -3670,9 +3678,11 @@ if (!isset($_SESSION["Id"])) {
           } else {
             if (data.msg) {
               alert(data.msg);
+              window.location.reload();
               return;
             }
             alert("Ocurrió un error al generar la copia.");
+            window.location.reload();
           }
         }, "json");
     }
