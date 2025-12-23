@@ -1247,7 +1247,8 @@ if (!isset($_SESSION["Id"])) {
           }
 
           // Determinar si este checkbox debe estar habilitado
-          const estaHabilitado = f_EstaCheckboxHabilitado(index);
+          // Inicialmente habilitamos todos, f_ActualizarHabilitacionCheckboxes restringirá si es necesario
+          const estaHabilitado = true;
 
           // El input de monto está habilitado solo si el checkbox está seleccionado
           const inputHabilitado = isSeleccionado;
@@ -1275,7 +1276,6 @@ if (!isset($_SESSION["Id"])) {
                                    value="${f_RedondearDecimales(montoSeleccionado, 2)}"
                                    min="0" 
                                    max="${saldoActual}"
-                                   max="${saldoActual}"
                                    step="0.01"
                                    ${inputHabilitado ? '' : 'disabled'}
                                    onchange="f_ActualizarMontoAnticipo(${idAnticipo}, this.value);">
@@ -1288,6 +1288,8 @@ if (!isset($_SESSION["Id"])) {
 
       $('#tbl_anticipos_disponibles').html(html);
       f_ActualizarTotalesModal();
+      // Ejecutar validación de checkboxes después de renderizar
+      f_ActualizarHabilitacionCheckboxes();
     }
 
     // Nueva función para actualizar el monto de un anticipo manualmente
@@ -1299,37 +1301,52 @@ if (!isset($_SESSION["Id"])) {
         a.id_anticipo == idAnticipo || a.Id == idAnticipo
       );
 
-      if (index !== -1) {
+      if (index != -1) {
         const anticipo = anticiposSeleccionados[index];
-        // Validar que no supere el saldo actual
-        if (montoNum > anticipo.saldo_actual) {
-          alert(`El monto no puede superar el saldo disponible de ${anticipo.saldo_actual}`);
-          montoNum = anticipo.saldo_actual;
-          $(`#txt_monto_${idAnticipo}`).val(montoNum.toFixed(2));
+        const montoTotalValorizacion = getMontoTotalValorizacionNumerico();
+
+        // Calcular sumatoria de LOS DEMÁS anticipos seleccionados
+        let otrosMontos = 0;
+        anticiposSeleccionados.forEach((a, i) => {
+          if (i !== index) {
+            otrosMontos += parseFloat(a.monto_a_usar || 0);
+          }
+        });
+
+        // El monto máximo que este anticipo puede tomar es:
+        // 1. Su propio saldo
+        // 2. Lo que falta para completar la valorización (Total - Otros)
+
+        let remanenteGlobal = montoTotalValorizacion - otrosMontos;
+        if (remanenteGlobal < 0) remanenteGlobal = 0;
+
+        const maximoPermitido = Math.min(anticipo.saldo_actual, remanenteGlobal);
+
+        // Validamos con un pequeño margen
+        if (montoNum > maximoPermitido + 0.01) {
+          if (maximoPermitido == anticipo.saldo_actual) {
+            alert(`El monto no puede superar el saldo disponible ($${f_RedondearDecimales(anticipo.saldo_actual, 2)})`);
+          } else {
+            alert(`La suma de anticipos no puede superar el monto total de la valorización.`);
+          }
+          montoNum = maximoPermitido;
         }
 
-        // Actualizar el monto y marcar como manual
+        // Si es menor a 0
+        if (montoNum < 0) montoNum = 0;
+
+        // Actualizar el valor en el input y en el objeto
+        $(`#txt_monto_${idAnticipo}`).val(montoNum.toFixed(2));
+
         anticipo.monto_a_usar = montoNum;
         anticipo.is_manual = true;
 
-        // Recalcular el resto para asegurar que no nos pasamos del total
         f_ReasignarMontosAutomaticamente();
-
-        // f_ActualizarTotalesModal se llama dentro de f_ReasignarMontosAutomaticamente
       }
     }
 
-    // Asegurarse de que f_EstaCheckboxHabilitado existe y funciona correctamente
-    function f_EstaCheckboxHabilitado(index) {
-      // Lógica básica: el primero siempre habilitado, los demás si el anterior está seleccionado
-      if (index === 0) return true;
+    // f_EstaCheckboxHabilitado ha sido eliminada
 
-      const anteriorAnticipo = anticiposDisponibles[index - 1];
-      const idAnteriorAnticipo = anteriorAnticipo.id_anticipo || anteriorAnticipo.Id;
-      const checkboxAnterior = $(`#chk_anticipo_${idAnteriorAnticipo}`);
-
-      return checkboxAnterior.length > 0 ? checkboxAnterior.is(':checked') : false;
-    }
 
     function getMontoTotalValorizacionNumerico() {
       let total = 0;
@@ -1350,24 +1367,24 @@ if (!isset($_SESSION["Id"])) {
       anticiposDisponibles.forEach((anticipo, index) => {
         if (montoRestante <= 0) return;
 
-        const montoDisponible = anticipo.saldo_actual;
+        const montoDisponible = parseFloat(anticipo.saldo_actual);
         const montoAUsar = Math.min(montoDisponible, montoRestante);
 
         if (montoAUsar > 0) {
           anticiposSeleccionados.push({
-            id_anticipo: anticipo.id_anticipo,
+            id_anticipo: anticipo.id_anticipo || anticipo.Id,
             factura: anticipo.factura,
             saldo_actual: anticipo.saldo_actual,
-            monto_a_usar: montoAUsar
+            monto_a_usar: montoAUsar,
+            is_manual: false
           });
 
           montoRestante -= montoAUsar;
         }
       });
 
-      // Actualizar UI
-      f_ActualizarMontosEnUI();
-      f_ActualizarTotalesModal();
+      // Actualizar toda la tabla para reflejar los cambios
+      f_RenderizarTablaAnticipos();
     }
 
     // Reemplazar f_CalcularTotalSeleccionado() por:
@@ -1377,136 +1394,96 @@ if (!isset($_SESSION["Id"])) {
     }
 
     // Función para seleccionar/deseleccionar un anticipo
+    // Función para seleccionar/deseleccionar un anticipo
     function f_ToggleAnticipo(idAnticipo, saldoActual) {
-      const montoTotal = getMontoTotalValorizacionNumerico();
-      const totalSeleccionado = f_CalcularTotalSeleccionadoNumerico();
-      const restante = montoTotal - totalSeleccionado;
-
       const checkbox = $(`#chk_anticipo_${idAnticipo}`);
       const inputMonto = $(`#txt_monto_${idAnticipo}`);
 
       if (checkbox.is(':checked')) {
-        // Calcular cuánto asignar
-        const montoAsignar = Math.min(saldoActual, restante);
-
+        // Añadir a seleccionados
+        // Se añade con monto 0 o calculado, y luego Reasignar se encarga de darle valor
         anticiposSeleccionados.push({
           id_anticipo: idAnticipo,
           factura: anticiposDisponibles.find(a => a.id_anticipo == idAnticipo)?.factura || '',
           saldo_actual: saldoActual,
-          monto_a_usar: montoAsignar
+          monto_a_usar: 0,
+          is_manual: false
         });
 
-        inputMonto.val(montoAsignar.toFixed(2));
-        inputMonto.prop('disabled', false); // Habilitar para edición
-        // inputMonto.prop('readonly', true); // ¡Importante! No editable manualmente -> AHORA SI EDITABLE
+        inputMonto.prop('disabled', false);
       } else {
         // Remover
         anticiposSeleccionados = anticiposSeleccionados.filter(a => a.id_anticipo != idAnticipo);
         inputMonto.val('0.00');
-        inputMonto.prop('disabled', true); // Deshabilitar
-        // inputMonto.prop('readonly', true);
+        inputMonto.prop('disabled', true);
       }
 
-      // Recalcular automáticamente todos los montos
+      // Recalcular montos (esto asignará valor al nuevo check si hay espacio)
       f_ReasignarMontosAutomaticamente();
-      f_ActualizarHabilitacionCheckboxes();
     }
 
     function f_ReasignarMontosAutomaticamente() {
       const montoTotal = getMontoTotalValorizacionNumerico();
       let montoAsignado = 0;
 
-      // Ordenar anticipos seleccionados por fecha (más antiguo primero)
-      const seleccionadosOrdenados = [...anticiposSeleccionados].sort((a, b) => {
-        const aIndex = anticiposDisponibles.findIndex(x => x.id_anticipo == a.id_anticipo);
-        const bIndex = anticiposDisponibles.findIndex(x => x.id_anticipo == b.id_anticipo);
-        return aIndex - bIndex;
-      });
+      // Separamos manuales y automáticos
+      // Queremos mantener el orden de la lista original para asignación automática (FIFO)
+      // Pero primero respetamos los manuales.
 
-      // Redistribuir montos
-      seleccionadosOrdenados.forEach((anticipo, idx) => {
-        // Si el anticipo fue editado manualmente, respetamos su monto (siempre que no supere el saldo, validado antes)
-        // PERO debemos validar que SUMA(manuales) <= MontoTotal
-        // La logica sera:
-        // 1. Asignar manuales primero
-        // 2. Asignar automaticos con lo que sobre
-      });
-
-      // Paso 1: Respetar manuales
-      seleccionadosOrdenados.forEach(anticipo => {
+      // 1. Sumar manuales
+      anticiposSeleccionados.forEach(anticipo => {
         if (anticipo.is_manual) {
-          // Ya tiene un monto asignado manualmente
-          // Solo validamos que no supere el saldo (ya hecho)
-          // Y restamos del total global? No, vamos a sumar todo al final.
-          // Simplemente lo dejamos como está, pero validando que sea logico.
-          let monto = parseFloat(anticipo.monto_a_usar || 0);
-          montoAsignado += monto;
+          montoAsignado += parseFloat(anticipo.monto_a_usar || 0);
         }
       });
 
-      // Paso 2: Rellenar con los automaticos
-      seleccionadosOrdenados.forEach(anticipo => {
-        if (!anticipo.is_manual) {
-          const disponible = parseFloat(anticipo.saldo_actual);
-          // Cuanto falta para llegar al monto total de la valorizacion?
-          // OJO: Si es pago MIXTO, montoTotal es el total de la valorizacion.
-          // Si el usuario quiere cubrir MENOS, deberia poder editar manual.
-          // La logica automatica intenta cubrir TODO lo que falta.
+      // 2. Asignar automáticos
+      // Ordenamos por indice en disponible para mantener orden visual/cronológico
+      const seleccionadosAuto = anticiposSeleccionados.filter(a => !a.is_manual).sort((a, b) => {
+        const idxA = anticiposDisponibles.findIndex(x => x.id_anticipo == a.id_anticipo);
+        const idxB = anticiposDisponibles.findIndex(x => x.id_anticipo == b.id_anticipo);
+        return idxA - idxB;
+      });
 
-          let restantePorAsignar = montoTotal - montoAsignado;
-          if (restantePorAsignar < 0) restantePorAsignar = 0;
+      seleccionadosAuto.forEach(anticipo => {
+        let disponibleAnticipo = parseFloat(anticipo.saldo_actual);
+        let faltaPorCubrir = montoTotal - montoAsignado;
+        if (faltaPorCubrir < 0) faltaPorCubrir = 0;
 
-          const montoAsignar = Math.min(disponible, restantePorAsignar);
+        let aUsar = Math.min(disponibleAnticipo, faltaPorCubrir);
+        anticipo.monto_a_usar = aUsar;
+        montoAsignado += aUsar;
+      });
 
-          anticipo.monto_a_usar = montoAsignar;
-          montoAsignado += montoAsignar;
-        }
-
-        // Actualizar input SIEMPRE
-        // A MENOS que sea el que acabamos de editar (para no perder el foco si fuera typing, pero aqui es onchange)
-        // Mejor actualizamos todos para asegurar consistencia
+      // 3. Actualizar inputs en la UI
+      anticiposSeleccionados.forEach(anticipo => {
         $(`#txt_monto_${anticipo.id_anticipo}`).val(parseFloat(anticipo.monto_a_usar).toFixed(2));
       });
 
       f_ActualizarTotalesModal();
+      f_ActualizarHabilitacionCheckboxes();
     }
-
 
     // Nueva función para actualizar habilitación de checkboxes
     function f_ActualizarHabilitacionCheckboxes() {
-      const totalSeleccionado = f_CalcularTotalSeleccionado();
-      const restanteValorizacion = getMontoTotalValorizacionNumerico() - totalSeleccionado;
-      // console.log("montoTotalValorizacion: ", montoTotalValorizacion);
-      // console.log("totalSeleccionado: ", totalSeleccionado);
-      // console.log("restanteValorizacion: ", restanteValorizacion);
-      // Si ya se cubrió el monto total, deshabilitar todos los no seleccionados
-      if (restanteValorizacion <= 0) {
-        anticiposDisponibles.forEach((anticipo, index) => {
-          const checkbox = $(`#chk_anticipo_${anticipo.id_anticipo}`);
-          if (!checkbox.is(':checked')) {
-            checkbox.prop('disabled', true);
-          }
-        });
-        return;
-      }
+      // Usar f_CalcularTotalSeleccionadoNumerico si existe y es consistente
+      const totalSeleccionado = f_CalcularTotalSeleccionadoNumerico();
+      const montoTotal = getMontoTotalValorizacionNumerico();
 
-      // Habilitar checkboxes en orden
-      anticiposDisponibles.forEach((anticipo, index) => {
-        const checkbox = $(`#chk_anticipo_${anticipo.id_anticipo}`);
+      // Si ya cubrimos el total (con un pequeño margen de error), deshabilitamos los NO seleccionados
+      const estaCompleto = totalSeleccionado >= (montoTotal - 0.01);
 
-        if (index === 0) {
-          // El primero siempre habilitado
+      anticiposDisponibles.forEach((anticipo) => {
+        // Compatibilidad de ID
+        const id = anticipo.id_anticipo || anticipo.Id;
+        const checkbox = $(`#chk_anticipo_${id}`);
+
+        if (checkbox.is(':checked')) {
+          // Seleccionados siempre habilitados
           checkbox.prop('disabled', false);
         } else {
-          // Los demás se habilitan si el anterior está seleccionado
-          const anteriorAnticipo = anticiposDisponibles[index - 1];
-          const checkboxAnterior = $(`#chk_anticipo_${anteriorAnticipo.id_anticipo}`);
-
-          if (checkboxAnterior.is(':checked')) {
-            checkbox.prop('disabled', false);
-          } else {
-            checkbox.prop('disabled', true);
-          }
+          // No seleccionados: deshabilitados si ya está completo
+          checkbox.prop('disabled', estaCompleto);
         }
       });
     }
@@ -1546,10 +1523,23 @@ if (!isset($_SESSION["Id"])) {
         return;
       }
 
+      if (totalSeleccionado > montoTotal) {
+        alert('El total seleccionado supera el monto total de la valorización.');
+        return;
+      }
+
       // Actualizar el campo de anticipos seleccionados
       let html = '';
       if (anticiposSeleccionados.length > 0) {
         anticiposSeleccionados.forEach(anticipo => {
+          if (anticipo.monto_a_usar > anticipo.saldo_actual) {
+            alert(`El monto no puede superar el saldo disponible del anticipo ${anticipo.factura}`);
+            return;
+          }
+          if (anticipo.monto_a_usar > montoTotal) {
+            alert(`El monto no puede superar el monto total de la valorización`);
+            return;
+          }
           if (anticipo.monto_a_usar > 0) {
             html += `<div class="mb-1">
                         <span class="badge bg-primary me-2">${anticipo.factura}</span>
@@ -2331,6 +2321,11 @@ if (!isset($_SESSION["Id"])) {
           let _html = '<option value="">[Seleccione]</option>';
 
           $.each(data.registros, function(i, v) {
+            // si el lote ya lo eligio, lo saltamos
+            let lotesSeleccionados = getLotesSeleccionados();
+            if (lotesSeleccionados.some(lote => lote.cod_lote == v.lote_cod_lote)) {
+              return;
+            }
             _html += `<option value="${v.Id}"
                                 data-idcodlote="${v.ID_CODLOTE}"
                                 data-codgel="${v.CODIGO_GEL}"
@@ -3247,6 +3242,45 @@ if (!isset($_SESSION["Id"])) {
 
       // Llamar a f_AdminLotes pasando los valores necesarios
       f_AdminLotes('E', index_fila, id_lote, id_elemento, lote_txt, elemento_txt, inter, desc_inter, maquila, reactivo, rec, incentivo, proveedor_ruc, ley);
+    }
+
+    function getLotesSeleccionados() {
+      let detalle = [];
+
+      $('#tbody_lotes_valorizacion tr').each(function(idx, tr) {
+        if ($(tr).attr("id") === "tr_TotalValorizacion") {
+          return;
+        }
+
+        let fila = $(tr);
+        let id_elemento = fila.attr('data-elemento');
+        let id_lote = fila.attr('data-lote');
+
+        detalle.push({
+          id_elemento,
+          cod_lote: $(`#lote_${idx}`).text().trim(),
+          cod_gel: $(`#gel_${idx}`).text().trim(),
+          grr: $(`#grr_${idx}`).text().trim(),
+          grt: $(`#grt_${idx}`).text().trim(),
+          fecha_ingreso: $(`#ingreso_${idx}`).text().trim(),
+          tmh: $(`#tmh_${idx}`).text().trim().replace(/,/g, ''),
+          h2o: $(`#h2o_${idx}`).text().trim().replace(/,/g, ''),
+          tms: $(`#tms_${idx}`).text().trim().replace(/,/g, ''),
+          ley: $(`#ley_${idx}`).text().trim().replace(/,/g, ''),
+          rec: $(`#rec_${idx}`).text().trim().replace(/,/g, ''),
+          inter: $(`#inter_${idx}`).text().trim().replace(/,/g, ''),
+          descint: $(`#descint_${idx}`).text().trim().replace(/,/g, ''),
+          maquila: $(`#maquila_${idx}`).text().trim().replace(/,/g, ''),
+          react: $(`#react_${idx}`).text().trim().replace(/,/g, ''),
+          factor: $(`#factor_${idx}`).text().trim().replace(/,/g, ''),
+          ptn: $(`#ptn_${idx}`).text().trim().replace(/,/g, ''),
+          incent: $(`#incent_${idx}`).text().trim().replace(/,/g, ''),
+          ptnf: $(`#ptnf_${idx}`).text().trim().replace(/,/g, ''),
+          total: $(`#total_${idx}`).text().replace(/[^0-9.-]/g, '').replace(/,/g, '')
+        });
+      });
+
+      return detalle;
     }
 
     function f_GrabarValorizacion() {
