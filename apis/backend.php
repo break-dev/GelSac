@@ -75520,7 +75520,7 @@ case "actualizar_CampoTexto_ComprobantePago":
                 tr.saldo_actual,
                 tr.monto_retirado,
                 tr.saldo_restante,
-                val.codigo_unico,
+                val.correlativo as codigo_unico,
                 val.procedencia,
                 val.concesion,
                 tr.created_at AS fecha_registro
