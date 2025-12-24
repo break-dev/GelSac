@@ -278,9 +278,11 @@ $backendUrl = 'apis/backend.php';
               <label class="form-label small mb-1">Estado</label>
               <select class="form-select form-select-sm" id="filter-estado">
                 <option value="">Todos</option>
-                <option value="pendiente_comprobante">Comprobante pediente</option>
+                <option value="pendiente_comprobante">Comprobante pendiente</option>
                 <option value="proceso_pago">Proceso de pago</option>
-                <option value="aprobado">Pagado</option>
+                <option value="pagado_mixto">Pagado - Mixto</option>
+                <option value="pagado_anticipos">Pagado - Anticipos</option>
+                <option value="pagado_banco">Pagado - Banco</option>
               </select>
             </div>
 
@@ -567,12 +569,16 @@ $backendUrl = 'apis/backend.php';
           group.transacciones.forEach((tr, index) => {
             // Determinar estado badge
             let estadoBadge = '';
-            if (tr.estado_comprobante === 'Pagado') {
-              estadoBadge = '<span class="badge bg-success">Pagado</span>';
+            if (tr.estado_comprobante === 'Pagado - Mixto') {
+              estadoBadge = '<span class="badge bg-success">Pagado - Mixto</span>';
+            } else if (tr.estado_comprobante === 'Pagado - Anticipos') {
+              estadoBadge = '<span class="badge bg-success">Pagado - Anticipos</span>';
+            } else if (tr.estado_comprobante === 'Pagado - Banco') {
+              estadoBadge = '<span class="badge bg-success">Pagado - Banco</span>';
             } else if (tr.estado_comprobante === 'Proceso de pago') {
               estadoBadge = '<span class="badge bg-warning text-dark">Proceso de pago</span>';
-            } else if (tr.estado_comprobante === 'Comprobante pediente') {
-              estadoBadge = '<span class="badge bg-danger">Comprobante pediente</span>';
+            } else if (tr.estado_comprobante === 'Comprobante pendiente') {
+              estadoBadge = '<span class="badge bg-danger">Comprobante pendiente</span>';
             } else {
               estadoBadge = `<span class="badge bg-secondary">${tr.estado_comprobante}</span>`;
             }
@@ -662,11 +668,15 @@ $backendUrl = 'apis/backend.php';
             if (fEstado) {
               // Map backend status to filter values
               let statusKey = '';
-              if (tr.estado_comprobante === 'Pagado') {
-                statusKey = 'aprobado';
+              if (tr.estado_comprobante === 'Pagado - Mixto') {
+                statusKey = 'pagado_mixto';
+              } else if (tr.estado_comprobante === 'Pagado - Anticipos') {
+                statusKey = 'pagado_anticipos';
+              } else if (tr.estado_comprobante === 'Pagado - Banco') {
+                statusKey = 'pagado_banco';
               } else if (tr.estado_comprobante === 'Proceso de pago') {
                 statusKey = 'proceso_pago';
-              } else if (tr.estado_comprobante === 'Comprobante pediente') {
+              } else if (tr.estado_comprobante === 'Comprobante pendiente') {
                 statusKey = 'pendiente_comprobante';
               }
 

@@ -73254,7 +73254,9 @@ switch ($_POST["accion"]) {
                         intval($row_validacion["aprobo_contabilidad"]) === 1 &&
                         intval($row_validacion["aprobo_comercial"]) === 1 &&
                         intval($row_validacion["aprobo_documentaria"]) === 1 &&
-                        $row_validacion["estado"] != 'A'
+                        $row_validacion["estado"] != 'A' &&
+                        $row_validacion["estado"] != 'B' &&
+                        $row_validacion["estado"] != 'C'
                     ) {
                         $html .=
                             '    <button id="btn_pagar_' .
@@ -76849,14 +76851,28 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
             $saldo_factura_amortiza = $importe_factura_usd - $monto_retirado;
             $saldo_factura_amortiza = $saldo_factura_amortiza == 0 ? 0 : $saldo_factura_amortiza * 1.18;
             $saldo_neto_factura_amortiza = $saldo_factura_amortiza >= 0 ? $saldo_factura_amortiza - ($saldo_factura_amortiza * 0.1) : 0;
-            $estado_comprobante = 'Comprobante pediente';
-            if($tr['estado_comprobante'] == 'A'){
-                $estado_comprobante = 'Pagado';
+            
+            // Mapeo de estados del comprobante
+            $estado_comprobante = 'Comprobante pendiente';
+            if (!empty($tr['estado_comprobante'])) {
+                switch ($tr['estado_comprobante']) {
+                    case 'P':
+                        $estado_comprobante = 'Proceso de pago';
+                        break;
+                    case 'A':
+                        $estado_comprobante = 'Pagado - Mixto';
+                        break;
+                    case 'B':
+                        $estado_comprobante = 'Pagado - Anticipos';
+                        break;
+                    case 'C':
+                        $estado_comprobante = 'Pagado - Banco';
+                        break;
+                    default:
+                        $estado_comprobante = 'Comprobante pendiente';
+                        break;
+                }
             }
-            else if ($tr['estado_comprobante'] == 'P'){
-                $estado_comprobante = 'Proceso de pago';
-            }
-            $estados[] = $tr['estado_comprobante'];
 
             $transacciones[] = [
                 "id_transaccion" => $tr['id'],
