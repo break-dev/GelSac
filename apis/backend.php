@@ -58,21 +58,60 @@ function nombre_meses($num_mes)
     }
 }
 
-// Graba imágenes de Acompañantes en la Recepción de Unidades
-// Helper function to update Comprobante Status based on payments + advances
+function f_getTipoPagoValorizacion($enlace, $id_valorizacion){
+    $q_tipo_pago = "
+                SELECT
+                    vc.usa_anticipo,
+                    vc.id_cuentabancaria
+                FROM
+                    valorizacion_compramineral vc
+                WHERE
+                    vc.id = $id_valorizacion;
+            ";
+
+    $res_tipo_pago = mysqli_query($enlace, $q_tipo_pago);
+    $tipo_pago = "";
+    if ($res_tipo_pago && mysqli_num_rows($res_tipo_pago) > 0) {
+        $row = mysqli_fetch_assoc($res_tipo_pago);
+
+        $usa_anticipo = (int)$row['usa_anticipo'];
+        $id_cuentabancaria = $row['id_cuentabancaria'];
+        $usa_cuenta_bancaria = !empty($id_cuentabancaria);
+
+        if ($usa_anticipo === 1 && $usa_cuenta_bancaria) {
+            $tipo_pago = "mixto";
+        } elseif ($usa_anticipo === 1 && !$usa_cuenta_bancaria) {
+            $tipo_pago = "anticipo";
+        } elseif ($usa_anticipo === 0 && $usa_cuenta_bancaria) {
+            $tipo_pago = "banco";
+        }
+    }
+
+    return $tipo_pago;
+}
+
 function f_UpdateComprobanteStatus($enlace, $id_comprobante)
 {
     $id_comprobante = intval($id_comprobante);
 
-    // 1. Get current totals and direct payments
-    $q = "SELECT 
-            id_valorizacion, 
-            total_sin_detraccion, 
-            total_detraccion_soles, 
-            pago_sin_detraccion, 
-            pago_detraccion 
-          FROM comprobante_pago 
-          WHERE Id = $id_comprobante";
+    // obtener los pagos totales
+    // solo realizar este proceso para aquellos comprobantes que 
+    // ya hayan sido aprobados por las 3 partes
+    $q = "
+        SELECT
+            id_valorizacion,
+            total_sin_detraccion,
+            total_detraccion_soles,
+            pago_sin_detraccion,
+            pago_detraccion
+        FROM
+            comprobante_pago cp
+        WHERE
+            cp.aprobo_contabilidad = 1 AND 
+            cp.aprobo_comercial = 1 AND 
+            cp.aprobo_documentaria = 1 AND 
+            cp.Id = $id_comprobante
+    ";
 
     $res = mysqli_query($enlace, $q);
     if (!$res || mysqli_num_rows($res) == 0) {
@@ -85,8 +124,9 @@ function f_UpdateComprobanteStatus($enlace, $id_comprobante)
     $total_det = floatval($row['total_detraccion_soles']);
     $pago_neto = floatval($row['pago_sin_detraccion']);
     $pago_det = floatval($row['pago_detraccion']);
+    $tipo_pago = f_getTipoPagoValorizacion($enlace, $id_valorizacion);
 
-    // 2. Get confirmed advances linked to this valorization
+    // obtener avances de los pagos de la valorizacion
     $advances = 0.0;
     if ($id_valorizacion > 0) {
         $q_adv = "SELECT SUM(monto_retirado) as total_adv 
@@ -99,23 +139,31 @@ function f_UpdateComprobanteStatus($enlace, $id_comprobante)
         }
     }
 
-    // 3. Logic: Paid if (DirectNet + Advances >= TotalNet) AND (DirectDet >= TotalDet)
-    // We use a small epsilon for floating point comparisons
-    $epsilon = 0.5; // Tolerance (sometimes rounding issues of 0.01 happen)
+    // si ya se pago, aplicando una pequeña tolerancia aprox de 0.01
+    $epsilon = 0.5;
 
     $paid_amount_net = $pago_neto + $advances;
 
     $is_paid_net = ($paid_amount_net >= ($total_neto - $epsilon));
     $is_paid_det = ($pago_det >= ($total_det - $epsilon));
 
-    $new_status = ($is_paid_net && $is_paid_det) ? 'A' : 'P';
+    // 
+    $new_status = '';
+    if($is_paid_net && $is_paid_det){ // si ya esta pagado
+        if($tipo_pago == 'mixto'){
+            $new_status = 'A'; // pago mixto: anticipos y transferencias
+        }
+        else if($tipo_pago == 'anticipo'){
+            $new_status = 'B'; // pago solo por anticipos
+        }
+        else if($tipo_pago == 'banco'){
+            $new_status = 'C'; // pago solo por banco
+        }
+    }else{
+        $new_status = 'P'; // pago en proceso
+    }
 
-    // 4. Update status
-    // Only update if it changes, or force it to ensure consistency
-    // Note: We don't change 'X' (Anulado) here, assuming we only call this on active vouchers.
-    // Ideally we should check if current status is 'X' before calling, or check here.
-    
-    // Safety check: Don't revive annulled vouchers
+    // actualizamos el estado
     $q_status = "SELECT estado FROM comprobante_pago WHERE Id = $id_comprobante";
     $r_status = mysqli_query($enlace, $q_status);
     $curr_status_row = mysqli_fetch_assoc($r_status);
