@@ -73638,7 +73638,18 @@ switch ($_POST["accion"]) {
                         $row_validacion["pago_sin_detraccion"];
 
                     if ($neto_saldo == 0 && $aprobado_total) {
-                        $neto_estado = "PAGADO";
+                        // pago mixto
+                        if($row_validacion["estado"] == 'A'){
+                            $neto_estado = "PAGADO - Mixto";
+                        }
+                        // solo por banco
+                        else if($row_validacion["estado"] == 'B'){
+                            $neto_estado = "PAGADO - Banco";
+                        }
+                        // solo por anticipo
+                        else if($row_validacion["estado"] == 'C'){
+                            $neto_estado = "PAGADO - Anticipo";
+                        }
                         $neto_bg = "bg-success";
                     } else {
                         $neto_estado = "PENDIENTE";
@@ -73727,6 +73738,18 @@ switch ($_POST["accion"]) {
 
                     if ($detraccion_saldo == 0 && $aprobado_total) {
                         $detraccion_estado = "PAGADO";
+                        // // pago mixto
+                        // if($row_validacion["estado"] == 'A'){
+                        //     $detraccion_estado = "PAGADO - Mixto";
+                        // }
+                        // // solo por banco
+                        // else if($row_validacion["estado"] == 'B'){
+                        //     $detraccion_estado = "PAGADO - Banco";
+                        // }
+                        // // solo por anticipo
+                        // else if($row_validacion["estado"] == 'C'){
+                        //     $detraccion_estado = "PAGADO - Anticipo";
+                        // }
                         $detraccion_bg = "bg-success";
                     } else {
                         $detraccion_estado = "PENDIENTE";

@@ -599,11 +599,11 @@ $backendUrl = 'apis/backend.php';
                 <td class="text-center fw-bold">${tr.factura_amortiza_serie}</td>
                 <td class="text-center">${formatDate(tr.fecha_factura)}</td>
                 <td class="text-end">${formatCurrency(tr.importe_factura_usd)}</td>
-                <td class="text-end text-danger">${formatCurrency(tr.importe_amortiza_adelanto_usd)}</td>
+                <td class="text-end bg-warning fw-bold">${formatCurrency(tr.importe_amortiza_adelanto_usd)}</td>
                 
                 <!-- Vacíos solicitados -->
-                <td class="text-end">${tr.saldo_factura_amortiza || ''}</td>
-                <td class="text-end">${tr.saldo_neto_factura_amortiza || ''}</td>
+                <td class="text-end">${tr.saldo_factura_amortiza || '-'}</td>
+                <td class="text-end">${tr.saldo_neto_factura_amortiza || '-'}</td>
                 
                 <!-- Saldo Deuda (Saldo Restante del Anticipo) -->
                 <td class="text-end fw-bold text-primary">${formatCurrency(tr.saldo_deuda_usd)}</td>
