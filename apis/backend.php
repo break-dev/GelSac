@@ -74,20 +74,24 @@ function f_getTipoPagoValorizacion($enlace, $id_valorizacion){
     if ($res_tipo_pago && mysqli_num_rows($res_tipo_pago) > 0) {
         $row = mysqli_fetch_assoc($res_tipo_pago);
 
-        $usa_anticipo = (int)$row['usa_anticipo'];
-        $id_cuentabancaria = $row['id_cuentabancaria'];
-        $usa_cuenta_bancaria = !empty($id_cuentabancaria);
+        $usa_anticipo = (is_null($row['usa_anticipo'])) ? 0 : $row['usa_anticipo'];
+        $id_cuentabancaria = (is_null($row['id_cuentabancaria'])) ? 0 : $row['id_cuentabancaria'];
+        // return var_dump("Usa anticipo: $usa_anticipo  |  ID Cuenta: $id_cuentabancaria");
 
-        if ($usa_anticipo === 1 && $usa_cuenta_bancaria) {
+        // si usa anticipoy tiene id de cuenta bancaria, es mixto
+        if ($usa_anticipo == 1 && $id_cuentabancaria != 0) {
             $tipo_pago = "mixto";
-        } elseif ($usa_anticipo === 1 && !$usa_cuenta_bancaria) {
+        // si usa anticipo y no tiene una cuenta bancaria, es anticipo
+        } elseif ($usa_anticipo == 1 && $id_cuentabancaria == 0) {
             $tipo_pago = "anticipo";
-        } elseif ($usa_anticipo === 0 && $usa_cuenta_bancaria) {
+        // si no usa anticipo pero tiene cuenta bancaria, entonces es banco
+        } elseif ($usa_anticipo == 0 && $id_cuentabancaria != 0) {
             $tipo_pago = "banco";
         }
+        return $tipo_pago;
     }
 
-    return $tipo_pago;
+    throw new Exception("No se encontro informacion del tipo de pago de la valorizacion.");
 }
 
 function f_UpdateComprobanteStatus($enlace, $id_comprobante)
@@ -154,10 +158,10 @@ function f_UpdateComprobanteStatus($enlace, $id_comprobante)
             $new_status = 'A'; // pago mixto: anticipos y transferencias
         }
         else if($tipo_pago == 'anticipo'){
-            $new_status = 'B'; // pago solo por anticipos
+            $new_status = 'C'; // pago solo por anticipos
         }
         else if($tipo_pago == 'banco'){
-            $new_status = 'C'; // pago solo por banco
+            $new_status = 'B'; // pago solo por banco
         }
     }else{
         $new_status = 'P'; // pago en proceso
@@ -73038,7 +73042,7 @@ switch ($_POST["accion"]) {
                               CP.total_detraccion,
                               CP.total_detraccion_soles,
                               CP.total_sin_detraccion,
-							                P.Id AS PROVEEDOR_ID,
+							  P.Id AS PROVEEDOR_ID,
                               P.documento AS PROVEEDOR_RUC,
                               P.razon_social AS PROVEEDOR_RAZON_SOCIAL,
                               V.correlativo AS COD_VALORIZACION,
@@ -73089,7 +73093,7 @@ switch ($_POST["accion"]) {
 
                             FROM comprobante_pago CP
                             		INNER JOIN valorizacion_compramineral_detalle VD ON
-                                    cp.id_valorizacion = VD.id_valorizacion
+                                    CP.id_valorizacion = VD.id_valorizacion
                             		 INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
 																 LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
 																 LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
@@ -73626,9 +73630,9 @@ switch ($_POST["accion"]) {
 
                     // 
                     $aprobado_total =
-                        intval($row_validacion["aprobo_contabilidad"]) === 1 &&
-                        intval($row_validacion["aprobo_comercial"]) === 1 &&
-                        intval($row_validacion["aprobo_documentaria"]) === 1;
+                        intval($row_validacion["aprobo_contabilidad"]) == 1 &&
+                        intval($row_validacion["aprobo_comercial"]) == 1 &&
+                        intval($row_validacion["aprobo_documentaria"]) == 1;
 
                     // Obteniendo Saldo (Netoo)
                     $neto_estado = "";
@@ -74101,10 +74105,11 @@ case "actualizar_CampoTexto_ComprobantePago":
             throw new Exception("Error al actualizar el campo");
         }
 
+        
+        mysqli_commit($enlace);
+        
         // 2. Verificar si corresponde marcar como pagado (Logica Centralizada)
         f_UpdateComprobanteStatus($enlace, $id);
-
-        mysqli_commit($enlace);
 
         echo json_encode([
             "estado" => 1,
@@ -74323,7 +74328,7 @@ case "actualizar_CampoTexto_ComprobantePago":
             }
 
             // Verificar si corresponde marcar como pagado (Logica Centralizada)
-            f_UpdateComprobanteStatus($enlace, $id_comprobante_pago); // Note: using $id_comprobante_pago variable which is robust for this scope
+            f_UpdateComprobanteStatus($enlace, $id_comprobante_pago); 
 
             $res["estado"] = 1;
         } else {
@@ -74341,6 +74346,7 @@ case "actualizar_CampoTexto_ComprobantePago":
         $res["total_pagos"] = 0;
 
         $id_comprobante_pago = intval($_POST["id_comprobante_pago"]);
+        f_UpdateComprobanteStatus($enlace, $id_comprobante_pago); 
 
         $q = "SELECT P.Id,
                   DATE_FORMAT(P.fechahora_registro, '%d/%m/%Y %H:%i') AS fecha_registro,
