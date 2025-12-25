@@ -76087,6 +76087,21 @@ case "eliminarAnticipo":
             $row_val = mysqli_fetch_assoc($res_check);
             $usa_anticipo = $row_val['usa_anticipo'] == 1;
 
+            // Validar si existe comprobante asociado
+            $q_check_comprobante = "SELECT 
+                cp.Id as id_comprobante
+            FROM
+                comprobante_pago cp
+            WHERE
+                cp.id_valorizacion = $id_valorizacion
+            LIMIT 1";
+
+            $res_check_comprobante = mysqli_query($enlace, $q_check_comprobante);
+
+            if (mysqli_num_rows($res_check_comprobante) > 0) {
+                throw new Exception("La valorización ya tiene un comprobante asociado, no se puede reabrir.");
+            }
+
             // Revertir aprobación
             $q_update = "UPDATE valorizacion_compramineral 
                         SET is_aprobado = 0,
@@ -76892,10 +76907,10 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
                         $estado_comprobante = 'Pagado - Mixto';
                         break;
                     case 'B':
-                        $estado_comprobante = 'Pagado - Anticipos';
+                        $estado_comprobante = 'Pagado - Banco';
                         break;
                     case 'C':
-                        $estado_comprobante = 'Pagado - Banco';
+                        $estado_comprobante = 'Pagado - Anticipos';
                         break;
                     default:
                         $estado_comprobante = 'Comprobante pendiente';
