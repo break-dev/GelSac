@@ -139,9 +139,9 @@ if ($usa_anticipo == 1) {
         FROM proveedor_anticipo_transaccion pat
         INNER JOIN proveedor_anticipo pa ON pat.id_proveedor_anticipo = pa.id
         WHERE pat.id_valorizacion_compramineral = $id_valorizacion
-          AND pat.estado = 'A'
+          
         ORDER BY pat.id ASC
-      ";
+      "; // AND pat.estado = 'A' para valorizaciones confirmadas
 
   if ($res_anticipos = mysqli_query($enlace, $q_anticipos)) {
     while ($row_ant = mysqli_fetch_assoc($res_anticipos)) {
