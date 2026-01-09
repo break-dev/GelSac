@@ -39988,7 +39988,7 @@ switch ($_POST["accion"]) {
 		$estado = 0;
 
 		// Recupera variables
-		$id_lote = $_POST["id_lote"];
+		$id_lote = (int) ($_POST["id_lote"] ?? 0);
 		$usuario_registro = $_SESSION["usu_usuario"];
 
 		// Guarda Log del registro original
@@ -74959,9 +74959,9 @@ switch ($_POST["accion"]) {
 		$estado = 0;
 
 		// Recupera parámetros
-		$id_moneda = $_POST["id_moneda"];
-		$id_proveedor = $_POST["id_proveedor"];
-		$is_detraccion = $_POST["is_detraccion"];
+		$id_moneda = (int) ($_POST["id_moneda"] ?? 0);
+		$id_proveedor = (int) ($_POST["id_proveedor"] ?? 0);
+		$is_detraccion = (int) ($_POST["is_detraccion"] ?? 0);
 
 		$q_datos = "SELECT CB.Id,
 												 B.descripcion AS BANCO,

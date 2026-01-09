@@ -69,7 +69,7 @@ function nombre_meses($num_mes)
 }
 
 // Ruta imágenes
-$ruta_images_x = 'https://' . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"];
+$ruta_images_x = 'http://' . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"];
 $ruta_images = substr($ruta_images_x, 0, strpos($ruta_images_x, 'print_valorizacion_compramineral.php')) . 'images/';
 $ruta_images_qr = substr($ruta_images_x, 0, strpos($ruta_images_x, 'print_valorizacion_compramineral.php')) . '/';
 
