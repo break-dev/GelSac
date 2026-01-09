@@ -119,8 +119,9 @@ if ($res_datos = mysqli_query($enlace, $q_datos)) {
 
 // 1.1 Verificar si usa anticipos
 $usa_anticipo = 0;
+$anticipos_data = [];
 $total_anticipos = 0;
-// (Lógica de anticipos simplificada a lo existente)
+
 $q_usa_anticipo = "SELECT usa_anticipo FROM valorizacion_compramineral WHERE Id = $id_valorizacion";
 if ($res_usa = mysqli_query($enlace, $q_usa_anticipo)) {
   if ($row_usa = mysqli_fetch_assoc($res_usa)) {
@@ -129,11 +130,35 @@ if ($res_usa = mysqli_query($enlace, $q_usa_anticipo)) {
 }
 
 if ($usa_anticipo == 1) {
-  $q_anticipos = "SELECT monto_retirado FROM proveedor_anticipo_transaccion WHERE id_valorizacion_compramineral = $id_valorizacion AND estado = 'A'";
+  // Obteniendo detalle de anticipos
+  $q_anticipos = "
+        SELECT 
+          pat.id,
+          pat.monto_retirado,
+          CONCAT(pa.serie_factura, '-', pa.numero_factura) as correlativo
+        FROM proveedor_anticipo_transaccion pat
+        INNER JOIN proveedor_anticipo pa ON pat.id_proveedor_anticipo = pa.id
+        WHERE pat.id_valorizacion_compramineral = $id_valorizacion
+          AND pat.estado = 'A'
+        ORDER BY pat.id ASC
+      ";
+
   if ($res_anticipos = mysqli_query($enlace, $q_anticipos)) {
     while ($row_ant = mysqli_fetch_assoc($res_anticipos)) {
+      $anticipos_data[] = [
+        'correlativo' => $row_ant['correlativo'],
+        'monto' => floatval($row_ant['monto_retirado'])
+      ];
       $total_anticipos += floatval($row_ant['monto_retirado']);
     }
+  }
+}
+
+// Zona logic
+$zona_texto = "HUANCHACO";
+if (isset($_SESSION["prefijo_sucursal"])) {
+  if ($_SESSION["prefijo_sucursal"] == "BL") {
+    $zona_texto = "LAREDO";
   }
 }
 
@@ -200,7 +225,7 @@ $html = '
                      <span style="font-size: 16px; font-weight: bold; text-decoration: underline;">VALORIZACIÓN DE MINERAL</span>
                 </td>
                 <td style="width: 25%; text-align: right; vertical-align: bottom; padding-bottom: 5px;">
-                     <span style="font-size: 10px; font-weight: bold; text-decoration: underline;">ZONA: HUANCHACO</span>
+                     <span style="font-size: 10px; font-weight: bold; text-decoration: underline;">ZONA: ' . $zona_texto . '</span>
                 </td>
             </tr>
         </table>
@@ -248,7 +273,8 @@ $html = '
         <thead>
             <tr>
                 <th>TIPO DE<br>MINERAL</th>
-                <th>LOTE</th>
+                <th>COD. Lote</th>
+                <th>COD. GEL</th>
                 <th>G.R.R.</th>
                 <th>G.R.T.</th>
                 <th>FECHA DE<br>INGRESO</th>
@@ -282,6 +308,7 @@ if ($res_detalle = mysqli_query($enlace, $q_detalle)) {
     $html .= '<tr>
                     <td>' . $row_detalle["abv_valorizacion"] . '</td>
                     <td>' . $row_detalle["cod_lote"] . '</td>
+                    <td>' . $row_detalle["cod_gel"] . '</td>
                     <td>' . $row_detalle["guiaremision_remitente"] . '</td>
                     <td>' . $row_detalle["guiaremision_transportista"] . '</td>
                     <td>' . $row_detalle["fecha_ingreso"] . '</td>
@@ -302,71 +329,146 @@ if ($res_detalle = mysqli_query($enlace, $q_detalle)) {
 }
 
 // Calculos finales
-$valor_neto = $sum_total;
-$anticipos = $total_anticipos;
-$sub_total = $sum_total - $anticipos;
-$igv = $sub_total * 0.18;
-$valor_total = $sub_total + $igv;
+$valor_neto_mineral = $sum_total - $total_anticipos;
+$igv = $valor_neto_mineral * 0.18;
+$valor_total = $valor_neto_mineral + $igv;
 $detraccion = $valor_total * 0.10;
-$neto_pagar = $valor_total - $detraccion;
+$neto_a_pagar = $valor_total - $detraccion;
 
 $html .= '</tbody>
     </table>
+    <br>';
 
-    <br>
+$html .= '    <div style="width: 100%; margin-top: 20px; text-align: center;">
+                      <table style="width: 100%; border-spacing: 0px;">';
 
-    <!-- Provider Data & Final Calculations -->
-    <div style="width: 100%;">
-        <div style="display: inline-block; width: 60%; vertical-align: top;">
-            <div style="font-weight: bold; text-decoration: underline; font-size: 10px; margin-bottom: 5px;">DATOS DEL PROVEEDOR</div>
-            <table style="width: 100%; font-size: 9px;">
-                <tr><td style="font-weight: bold; width: 80px;">Banco</td><td>: ' . $nom_banco . '</td></tr>
-                <tr><td style="font-weight: bold;">N° Cuenta</td><td>: ' . $num_cuenta . '</td></tr>
-                 <tr><td style="font-weight: bold;">N° Cta. CCI</td><td>: ' . ((strlen($cci) == 0) ? '---' : $cci) . '</td></tr>
-                 <tr><td style="font-weight: bold;">N° Cta. Detraccion</td><td>: ---</td></tr>
-                 <tr><td style="font-weight: bold;">Modo de pago</td><td>: ' . $medio_pago . '</td></tr>
-                 <tr><td style="font-weight: bold;">Tipo de pago</td><td>: ' . $moneda . '</td></tr>
-            </table>
-        </div>
-        <div style="display: inline-block; width: 38%; vertical-align: top;">
-             <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
-                <!-- Valor Neto -->
-                 <tr>
-                        <td style="padding: 3px; font-weight: bold; text-align: right;">Valor Neto de Mineral</td>
-                        <td style="padding: 3px; text-align: right; width: 80px;">$ ' . number_format($valor_neto, 2) . '</td>
-                </tr>
-                 <tr>
-                        <td style="padding: 3px; font-weight: bold; text-align: right;">Anticipo A/C de Mineral</td>
-                        <td style="padding: 3px; text-align: right;">$ ' . number_format($anticipos, 2) . '</td>
-                 </tr>
-                 
-                 <!-- Espacio -->
-                 <tr><td colspan="2" style="height: 10px;"></td></tr>
+// Primera fila: Título + primer anticipo
+$html .= '
+                        <tr style="font-size: 11px;">
+                          <td colspan="2" style="font-weight: bold; height: 30px; text-align:left;">
+                            <u style="margin-left:5px;">DATOS DEL PROVEEDOR</u>
+                          </td>';
 
-                 <!-- Subtotales -->
-                <tr>
-                    <td style="padding: 3px; font-weight: bold; text-align: right;">Sub Total</td>
-                    <td style="padding: 3px; text-align: right;">$ ' . number_format($sub_total, 2) . '</td>
-                </tr>
-                <tr>
-                    <td style="padding: 3px; font-weight: bold; text-align: right;">I.G.V. 18%</td>
-                    <td style="padding: 3px; text-align: right;">$ ' . number_format($igv, 2) . '</td>
-                </tr>
-                <tr>
-                    <td style="padding: 3px; font-weight: bold; text-align: right;">Valor Total</td>
-                    <td style="padding: 3px; text-align: right;">$ ' . number_format($valor_total, 2) . '</td>
-                </tr>
-                <tr>
-                    <td style="padding: 3px; font-weight: bold; text-align: right;">Detracción 10%</td>
-                    <td style="padding: 3px; text-align: right;">$ ' . number_format($detraccion, 2) . '</td>
-                </tr>
-                <tr>
-                    <td style="padding: 3px; font-weight: bold; text-align: right;">Neto a pagar</td>
-                    <td style="border-top: 1px solid #000; padding: 3px; text-align: right; font-weight: bold;">$ ' . number_format($neto_pagar, 2) . '</td>
-                </tr>
-             </table>
-        </div>
-    </div>
+if ($usa_anticipo == 1 && count($anticipos_data) > 0) {
+  $primer_anticipo = $anticipos_data[0];
+  $html .= '
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; min-width: 250px;">
+                            <i style="margin-left: 5px;">Anticipo ' . $primer_anticipo['correlativo'] . '</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; min-width: 300px;">
+                            <label style="margin-right: 5px;">$ ' . number_format($primer_anticipo['monto'], 2, '.', ',') . '</label>
+                          </td>';
+} else {
+  $html .= '
+                          <td colspan="2"></td>';
+}
+
+$html .= '
+                        </tr>';
+
+// Filas adicionales de anticipos
+if ($usa_anticipo == 1 && count($anticipos_data) > 1) {
+  for ($i = 1; $i < count($anticipos_data); $i++) {
+    $anticipo = $anticipos_data[$i];
+    $html .= '
+                        <tr style="font-size: 11px;">
+                          <td colspan="2"></td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; min-width: 250px;">
+                            <i style="margin-left: 5px;">Anticipo ' . $anticipo['correlativo'] . '</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; min-width: 300px;">
+                            <label style="margin-right: 5px;">$ ' . number_format($anticipo['monto'], 2, '.', ',') . '</label>
+                          </td>
+                        </tr>';
+  }
+}
+
+// Valor Neto de Mineral
+$html .= '
+                        <tr style="font-size: 11px;">
+                          <td colspan="2"></td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; min-width: 250px;">
+                            <i style="margin-left: 5px;">Valor Neto de Mineral</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; min-width: 300px;">
+                            <label style="margin-right: 5px;">$ ' . number_format($valor_neto_mineral, 2, '.', ',') . '</label>
+                          </td>
+                        </tr>';
+
+$html .= '                        <tr style="font-size: 11px;">
+                          <td style="font-weight: bold; height: 20px; width: 10%; text-align:left;">
+                            Banco
+                          </td>
+                          <td style="width: 75%; text-align:left;">
+                            : ' . $nom_banco . '
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; width: 15%;">
+                            <i style="margin-left: 5px;">IGV (18%)</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; width: 10%;">
+                            <label style="margin-right: 5px;">$ ' . number_format($igv, 2, '.', ',') . '</label>
+                          </td>
+                        </tr>';
+
+$html .= '
+                        <tr style="font-size: 11px;">
+                          <td style="font-weight: bold; height: 20px; text-align:left;">
+                            N° Cuenta
+                          </td>
+                          <td style="width: 80%; text-align:left;">
+                            : ' . $num_cuenta . '
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; width: 15%;">
+                            <i style="margin-left: 5px;">Valor Total</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; width: 10%;">
+                            <label style="margin-right: 5px;">$ ' . number_format($valor_total, 2, '.', ',') . '</label>
+                          </td>
+                        </tr>';
+
+$html .= '
+                        <tr style="font-size: 11px;">
+                          <td style="font-weight: bold; height: 20px; text-align:left;">
+                            CCI
+                          </td>
+                          <td colspan="3" style="width: 80%; text-align:left;">
+                            : ' . ((strlen($cci) == 0) ? '---' : $cci) . '
+                          </td>
+                        </tr>';
+
+$html .= '
+                        <tr style="font-size: 11px;">
+                          <td style="font-weight: bold; height: 20px; text-align:left;">
+                            Modo de Pago
+                          </td>
+                          <td style="width: 80%; text-align:left;">
+                            : ' . $medio_pago . '
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; width: 15%;">
+                            <i style="margin-left: 5px;">Detracción (10%)</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; width: 10%;">
+                            <label style="margin-right: 5px;">$ ' . number_format($detraccion, 2, '.', ',') . '</label>
+                          </td>
+                        </tr>';
+
+$html .= '
+                        <tr style="font-size: 11px;">
+                          <td style="font-weight: bold; height: 20px; text-align:left;">
+                            Tipo de Moneda
+                          </td>
+                          <td style="width: 80%; text-align:left;">
+                            : ' . $moneda . '
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; background-color: #ffffff; font-weight: bold; width: 15%; background-color: #FFF587;">
+                            <i style="margin-left: 5px;">Neto a pagar</i>
+                          </td>
+                          <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; font-weight: bold; width: 10%; background-color: #FFF587;">
+                            <label style="margin-right: 5px;">$ ' . number_format($neto_a_pagar, 2, '.', ',') . '</label>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
     
     <div style="margin-top: 20px; font-weight: bold; font-size: 10px; text-align: left;">
         SON: CUARENTA Y OCHO MIL NOVECIENTOS NOVENTA Y UNO 09/100 DÓLARES AMERICANOS
