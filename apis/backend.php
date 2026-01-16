@@ -76900,6 +76900,7 @@ switch ($_POST["accion"]) {
 
 	case "crear_blending":
 		$lotes = $_POST["lotes"]; // { "id_lote" : "", "peso_tomado": ""}
+		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
 
 		// calcular el nuevo correlativo
 		$nuevo_numero_correlativo = getNuevoNumeroCorrelativoBlending($enlace);
@@ -76935,6 +76936,7 @@ switch ($_POST["accion"]) {
 		// INSERTAR CABECERA
 		$q_cabecera = "
 		INSERT INTO blending (
+			id_proveedor,
 			correlativo, 
 			numero_correlativo, 
 			peso_inicial, 
@@ -76942,6 +76944,7 @@ switch ($_POST["accion"]) {
 			estado
 		) 
 		VALUES (
+			$id_proveedor,
 			'$nuevo_correlativo', 
 			$nuevo_numero_correlativo, 
 			$peso_total_tomado, 
@@ -77004,6 +77007,9 @@ switch ($_POST["accion"]) {
 		$q = "
 		SELECT
 			bl.id as id_blending,
+            prov.Id as id_proveedor,
+            prov.documento,
+            prov.razon_social,
 			bl.correlativo,
 			bl.peso_inicial,
 			bl.peso_actual,
@@ -77021,6 +77027,7 @@ switch ($_POST["accion"]) {
 			END AS estado
 		FROM
 			blending bl
+        INNER JOIN tb_clientes prov ON prov.Id = bl.id_proveedor
 		ORDER BY bl.numero_correlativo DESC;
 		";
 
