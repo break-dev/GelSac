@@ -77055,8 +77055,9 @@ switch ($_POST["accion"]) {
 			bld.id_lote,
 			lot.ccod_Lote as codigo_lote,
 			vcd.cod_gel as codigo_gel,
-			bld.peso_tomado,
 			bld.peso_actual_log as peso_actual_lote,
+			bld.peso_tomado,
+			(bld.peso_actual_log - bld.peso_tomado) as peso_restante,
 			bld.created_at as fecha_registro
 		FROM blending_detalle bld
 		INNER JOIN catalogolotes lot on lot.id_CatalogoLotes = bld.id_lote

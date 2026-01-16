@@ -153,6 +153,7 @@ $backendUrl = 'apis/backend.php';
                       <th class="header-bg-detalle text-center">Código Gel</th>
                       <th class="header-bg-detalle text-center">Peso Lote (log)</th>
                       <th class="header-bg-detalle text-center">Peso Usado</th>
+                      <th class="header-bg-detalle text-center">Peso Restante</th>
                     </tr>
                   </thead>
                   <tbody id="tbl_detalle_blending" style="font-size: 13px;">
@@ -337,6 +338,7 @@ $backendUrl = 'apis/backend.php';
                     <td>${d.codigo_gel}</td>
                     <td class="text-end text-muted">${formatNumber(d.peso_actual_lote)}</td>
                     <td class="text-end fw-bold text-primary">${formatNumber(d.peso_tomado)}</td>
+                    <td class="text-end text-muted">${formatNumber(d.peso_restante)}</td>
                   </tr>
                   `;
           });
