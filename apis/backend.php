@@ -77305,7 +77305,7 @@ switch ($_POST["accion"]) {
 			) as lotes_usados
 		FROM despacho dsp
 		INNER JOIN tb_clientes prov on dsp.id_proveedor = prov.Id
-		INNER JOIN tbconfig_plantas pln on pln.Id = dsp.id_proveedor
+		INNER JOIN tbconfig_plantas pln on pln.Id = dsp.id_planta
 		ORDER BY dsp.correlativo DESC;
 		";
 
