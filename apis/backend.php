@@ -10,6 +10,10 @@ ini_set("memory_limit", "1024M");
 
 // ini_set('display_errors', 1);
 // error_reporting(E_ALL);
+//
+// error_reporting(0);
+// ini_set('display_errors', 0);
+// ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -30228,7 +30232,7 @@ switch ($_POST["accion"]) {
 
 		// Grabando datos
 		$q_save =
-			"INSERT INTO catalogolotes(nNro_ticketsBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, nPesoHumedad, nPesoSeco, nPesoPendienteEnvio, id_transporte, id_controlIngresoVehiculo, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoNetoBalanza, id_UsuarioCreacion, dFechaCreacion, id_choferes, placa, balanza_id_tipocarga, balanza_id_zonaorigen, balanza_id_proveedorminero, balanza_id_encargadomuestra, balanza_id_producto, balanza_id_tipomineral, balanza_numcontacto) VALUES(";
+			"INSERT INTO catalogolotes(nNro_ticketsBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, nPesoHumedad, nPesoSeco, nPesoPendienteEnvio, id_transporte, id_controlIngresoVehiculo, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoNetoBalanza,peso_actual, id_UsuarioCreacion, dFechaCreacion, id_choferes, placa, balanza_id_tipocarga, balanza_id_zonaorigen, balanza_id_proveedorminero, balanza_id_encargadomuestra, balanza_id_producto, balanza_id_tipomineral, balanza_numcontacto) VALUES(";
 
 		$q_save .= "'" . $correlativo_ticket . "', ";
 		$q_save .= "'" . $correlativo_lote . "', ";
@@ -30247,6 +30251,9 @@ switch ($_POST["accion"]) {
 			"(SELECT SECUENCIA FROM (SELECT MAX(cCodSecuenciaLote) + 1 AS SECUENCIA FROM catalogolotes) AS DATOS), ";
 		$q_save .= "NULL, ";
 		$q_save .= "NULL, ";
+		// nueva columna para registrar el peso actual
+		$q_save .= "0, ";
+		//
 		$q_save .= "'" . $usuario_registro . "', ";
 		$q_save .= "'" . $g_fecha . "', ";
 		$q_save .= $id_choferes . ", ";
@@ -30384,6 +30391,9 @@ switch ($_POST["accion"]) {
 			$q_save .= "nPesoPendienteEnvio = " . $peso_inicial . ", ";
 			$q_save .= "nPesoBrutoBalanza = " . $peso_inicial . ", ";
 			$q_save .= "nPesoNetoBalanza = " . $peso_inicial . ", ";
+			// actualizamos el peso actual tambien
+			$q_save .= "peso_actual = " . $peso_inicial . ", ";
+			//
 			$q_save .= "id_UsuarioModificacion = " . $usuario_registro . ", ";
 			$q_save .= "dFechaModificacion = '" . $g_fecha . "'";
 			$q_save .= " WHERE id_CatalogoLotes = " . $id_lote;
@@ -30411,6 +30421,12 @@ switch ($_POST["accion"]) {
 				"nPesoNetoBalanza = nPeso_InicialBalanza - " .
 				$peso_final .
 				", ";
+			// actualizamos el peso actual tambien
+			$q_save .=
+				"peso_actual = nPeso_InicialBalanza - " .
+				$peso_final .
+				", ";
+			//
 			$q_save .= "id_UsuarioModificacion = " . $usuario_registro . ", ";
 			$q_save .= "dFechaModificacion = '" . $g_fecha . "'";
 			$q_save .= " WHERE id_CatalogoLotes = " . $id_lote;
@@ -39993,7 +40009,7 @@ switch ($_POST["accion"]) {
 
 		// Guarda Log del registro original
 		$q_log =
-			"INSERT INTO catalogolotes_deletelog (id_CatalogoLotes, nNro_ticketsBalanza, item_ticketbalanza, id_TramoPesaje, dFechaBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, dFechaFinalBalanza, tHoraFinalBalanza, nPeso_FinalBalanza, pesofinal_observacion, nPesoBalanza, nPorcentajeHumedad, nPesoHumedad, nPesoSeco, nPesoEnviado, nPesoPendienteEnvio, id_TipoMaterial, id_OrigenCarga, id_PlantaDestino, id_PresentacionMaterial, id_Encargado, id_cliente, id_transporte, bTramo1, bTramo2, bSolicitudDocumentacion, bRecepciondocumentacion, bEnvioDocumentacion, id_EstadoLoteDespacho, bLiberacionLoteCliente, tNotasBalanza, tNotasGerencia, tNotasDespacho, id_ModalidadEnvio, cEstado_Registro, id_ModalidadGuiasDestino, id_EstadoLoteComercializacion, id_controlIngresoVehiculo, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoTaraBalanza, nPesoNetoBalanza, id_UsuarioCreacion, dFechaCreacion, id_UsuarioModificacion, dFechaModificacion, id_choferes, placa, cEliminado, bDocumentosValidados, balanza_id_tipocarga, balanza_id_zonaorigen, balanza_id_proveedorminero, balanza_id_encargadomuestra, balanza_id_producto, balanza_id_tipomineral, balanza_observacion, balanza_id_planta, balanza_numcontacto, tObservacion_T1, preparacion_fechahoraregistro, preparacion_usuarioregistro, humedad_pesohumedad, humedad_pesohumedad_fechahoraregistro, humedad_pesohumedad_usuarioregistro, is_copiacomercializacion, is_loteaum, fechahora_log, usuario_log) ";
+			"INSERT INTO catalogolotes_deletelog (id_CatalogoLotes, nNro_ticketsBalanza, item_ticketbalanza, id_TramoPesaje, dFechaBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, dFechaFinalBalanza, tHoraFinalBalanza, nPeso_FinalBalanza, pesofinal_observacion, nPesoBalanza, nPorcentajeHumedad, nPesoHumedad, nPesoSeco, nPesoEnviado, nPesoPendienteEnvio, id_TipoMaterial, id_OrigenCarga, id_PlantaDestino, id_PresentacionMaterial, id_Encargado, id_cliente, id_transporte, bTramo1, bTramo2, bSolicitudDocumentacion, bRecepciondocumentacion, bEnvioDocumentacion, id_EstadoLoteDespacho, bLiberacionLoteCliente, tNotasBalanza, tNotasGerencia, tNotasDespacho, id_ModalidadEnvio, cEstado_Registro, id_ModalidadGuiasDestino, id_EstadoLoteComercializacion, id_controlIngresoVehiculo, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoTaraBalanza, nPesoNetoBalanza, id_UsuarioCreacion, dFechaCreacion, id_UsuarioModificacion, dFechaModificacion, id_choferes, placa, cEliminado, bDocumentosValidados, balanza_id_tipocarga, balanza_id_zonaorigen, balanza_id_proveedorminero, balanza_id_encargadomuestra, balanza_id_producto, balanza_id_tipomineral, balanza_observacion, balanza_id_planta, balanza_numcontacto, tObservacion_T1, preparacion_fechahoraregistro, preparacion_usuarioregistro, humedad_pesohumedad, humedad_pesohumedad_fechahoraregistro, humedad_pesohumedad_usuarioregistro, is_copiacomercializacion, is_loteaum, fechahora_log, usuario_log, peso_actual) ";
 		$q_log .= "SELECT *, ";
 		$q_log .= "'" . $g_fecha . "', ";
 		$q_log .= "'" . $usuario_registro . "'";
@@ -40252,7 +40268,11 @@ switch ($_POST["accion"]) {
 				$q_save2 .=
 					"			  L.nPesoPendienteEnvio = L.nPeso_InicialBalanza - L.nPeso_FinalBalanza, ";
 				$q_save2 .=
-					"			  L.nPesoNetoBalanza = L.nPeso_InicialBalanza - L.nPeso_FinalBalanza";
+					"			  L.nPesoNetoBalanza = L.nPeso_InicialBalanza - L.nPeso_FinalBalanza,";
+				// actualizamos el peso actual tambien
+				$q_save2 .=
+					"			  L.peso_actual = L.nPeso_InicialBalanza - L.nPeso_FinalBalanza";
+				//
 				$q_save2 .= " WHERE L.id_CatalogoLotes = " . $id_registro;
 
 				if ($res_save2 = mysqli_query($enlace, $q_save2)) {
@@ -44338,7 +44358,7 @@ switch ($_POST["accion"]) {
 
 		// Creando Lote AUM
 		$q_save =
-			"INSERT INTO catalogolotes(nNro_ticketsBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, nPesoHumedad, nPesoSeco, nPesoPendienteEnvio, id_transporte, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoNetoBalanza, id_UsuarioCreacion, dFechaCreacion, id_choferes, placa, is_loteaum, id_controlIngresoVehiculo) VALUES(";
+			"INSERT INTO catalogolotes(nNro_ticketsBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, nPesoHumedad, nPesoSeco, nPesoPendienteEnvio, id_transporte, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoNetoBalanza, peso_actual,id_UsuarioCreacion, dFechaCreacion, id_choferes, placa, is_loteaum, id_controlIngresoVehiculo) VALUES(";
 
 		$q_save .= "NULL, ";
 		$q_save .= "'" . $correlativo_lote . "', ";
@@ -44356,6 +44376,9 @@ switch ($_POST["accion"]) {
 			"(SELECT SECUENCIA FROM (SELECT MAX(cCodSecuenciaLote) + 1 AS SECUENCIA FROM catalogolotes) AS DATOS), ";
 		$q_save .= "NULL, ";
 		$q_save .= "NULL, ";
+		// guardamos el peso actual
+		$q_save .= "0, ";
+		//
 		$q_save .= "'" . $usuario_registro . "', ";
 		$q_save .= "'" . $g_fecha . "', ";
 		$q_save .= "NULL, ";
@@ -73443,14 +73466,15 @@ switch ($_POST["accion"]) {
 					) {
 						$html .= "    " . $row_validacion["serie_comprobante"];
 					} else {
-						$html .= '		<div class="d-flex justify-content-center">';
-						$html .=
-							'			<input type="text" class="form-control form-control-sm" style="text-align: center;" value="' .
-							$row_validacion["serie_comprobante"] .
-							'" onblur="f_UpdateDatos(1, this.value, ' .
-							$row_validacion["id_comprobante_pago"] .
-							')">';
-						$html .= "		</div>";
+						// $html .= '		<div class="d-flex justify-content-center">';
+						// $html .=
+						// 	'			<input type="text" class="form-control form-control-sm" style="text-align: center;" value="' .
+						// 	$row_validacion["serie_comprobante"] .
+						// 	'" onblur="f_UpdateDatos(1, this.value, ' .
+						// 	$row_validacion["id_comprobante_pago"] .
+						// 	')">';
+						// $html .= "		</div>";
+                        $html .= "    " . $row_validacion["serie_comprobante"];
 					}
 
 					$html .= "	</td>";
@@ -73465,14 +73489,15 @@ switch ($_POST["accion"]) {
 					) {
 						$html .= "    " . $row_validacion["numero_comprobante"];
 					} else {
-						$html .= '		<div class="d-flex justify-content-center">';
-						$html .=
-							'			<input type="text" class="form-control form-control-sm" style="text-align: center;" value="' .
-							$row_validacion["numero_comprobante"] .
-							'" onblur="f_UpdateDatos(2, this.value, ' .
-							$row_validacion["id_comprobante_pago"] .
-							')">';
-						$html .= "		</div>";
+						// $html .= '		<div class="d-flex justify-content-center">';
+						// $html .=
+						// 	'			<input type="text" class="form-control form-control-sm" style="text-align: center;" value="' .
+						// 	$row_validacion["numero_comprobante"] .
+						// 	'" onblur="f_UpdateDatos(2, this.value, ' .
+						// 	$row_validacion["id_comprobante_pago"] .
+						// 	')">';
+						// $html .= "		</div>";
+                        $html .= "    " . $row_validacion["numero_comprobante"];
 					}
 
 					$html .= "	</td>";
