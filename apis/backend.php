@@ -77346,7 +77346,7 @@ switch ($_POST["accion"]) {
 			cp.estado IN('A', 'B', 'C') AND
 			-- que aun tenga saldo
 			ROUND(lot.peso_actual, 2) > 0 AND vc.id_proveedor = $id_proveedor
-		ORDER BY codigo DESC;
+		ORDER BY codigo;
 		";
 
 		$q_blendings = "
@@ -77364,7 +77364,7 @@ switch ($_POST["accion"]) {
 			-- que aun tenga saldo
 			ROUND(bl.peso_actual, 2) > 0 AND 
 			bl.id_proveedor = $id_proveedor
-		ORDER BY bl.numero_correlativo DESC;
+		ORDER BY bl.numero_correlativo;
 		";
 
 		$result = mysqli_query($enlace, $q_lotes);
