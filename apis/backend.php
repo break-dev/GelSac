@@ -73474,7 +73474,7 @@ switch ($_POST["accion"]) {
 						// 	$row_validacion["id_comprobante_pago"] .
 						// 	')">';
 						// $html .= "		</div>";
-                        $html .= "    " . $row_validacion["serie_comprobante"];
+						$html .= "    " . $row_validacion["serie_comprobante"];
 					}
 
 					$html .= "	</td>";
@@ -73497,7 +73497,7 @@ switch ($_POST["accion"]) {
 						// 	$row_validacion["id_comprobante_pago"] .
 						// 	')">';
 						// $html .= "		</div>";
-                        $html .= "    " . $row_validacion["numero_comprobante"];
+						$html .= "    " . $row_validacion["numero_comprobante"];
 					}
 
 					$html .= "	</td>";
@@ -76833,6 +76833,247 @@ switch ($_POST["accion"]) {
 		]);
 		break;
 
+	case "get_proveedores_to_blending":
+		$q = "
+		SELECT
+			prov.Id as id_proveedor,
+			prov.documento,
+			prov.razon_social
+		FROM tb_clientes prov
+		WHERE 
+			prov.cod_clientecondicion = 1 AND
+			prov.estado = 'A'
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$proveedores = [];
+
+		if ($result) {
+			while ($p = mysqli_fetch_assoc($result)) {
+				$proveedores[] = $p;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["proveedores" => $proveedores]
+		]);
+		break;
+
+	case "get_lotes_to_blending_by_proveedor":
+		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+		$q = "
+		SELECT
+			lot.id_CatalogoLotes AS id_lote,
+			lot.ccod_Lote AS codigo_lote,
+			vcd.cod_gel AS codigo_gel,
+			lot.nPesoNetoBalanza AS peso_inicial,
+			lot.peso_actual
+		FROM
+			catalogolotes lot
+		INNER JOIN valorizacion_compramineral_detalle vcd ON
+			vcd.cod_lote = lot.ccod_Lote
+		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+		INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
+		WHERE 
+			-- estados de PAGADO: mixto, banco, anticipos
+			cp.estado IN ('A','B','C') AND
+			-- que aun tenga saldo
+			ROUND(lot.peso_actual, 2) > 0 AND
+			vc.id_proveedor = $id_proveedor;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$lotes = [];
+
+		if ($result) {
+			while ($p = mysqli_fetch_assoc($result)) {
+				$lotes[] = $p;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["lotes" => $lotes]
+		]);
+		break;
+
+	case "crear_blending":
+		$lotes = $_POST["lotes"]; // { "id_lote" : "", "peso_tomado": ""}
+
+		// calcular el nuevo correlativo
+		$nuevo_numero_correlativo = getNuevoNumeroCorrelativoBlending($enlace);
+		$year_short = date('y');
+		$numero_con_ceros = str_pad($nuevo_numero_correlativo, 5, "0", STR_PAD_LEFT);
+		$nuevo_correlativo = "BLEND-" . $year_short . "-" . $numero_con_ceros;
+		//
+
+		$peso_total_tomado = 0;
+
+		// verificar stock y calcular peso total
+		foreach ($lotes as $lot) {
+			$id_lote = $lot['id_lote'];
+			$peso_solicitado = $lot['peso_tomado'];
+
+			$res_stock = mysqli_query($enlace, "
+			SELECT 
+				peso_actual, 
+				ccod_Lote as codigo_lote 
+			FROM catalogolotes 
+			WHERE id_CatalogoLotes = $id_lote
+			");
+			$row_stock = mysqli_fetch_assoc($res_stock);
+
+			if (!$row_stock || $row_stock['peso_actual'] < $peso_solicitado) {
+				$codigo_lote = $row_stock['codigo_lote'];
+				echo json_encode(["estado" => 0, "mensaje" => "El lote $codigo_lote no tiene peso suficiente."]);
+				exit;
+			}
+			$peso_total_tomado += $peso_solicitado;
+		}
+
+		// INSERTAR CABECERA
+		$q_cabecera = "
+		INSERT INTO blending (
+			correlativo, 
+			numero_correlativo, 
+			peso_inicial, 
+			peso_actual, 
+			estado
+		) 
+		VALUES (
+			'$nuevo_correlativo', 
+			$nuevo_numero_correlativo, 
+			$peso_total_tomado, 
+			$peso_total_tomado, 
+			'A'
+		)";
+
+		if (mysqli_query($enlace, $q_cabecera)) {
+			$nuevo_id_blending = mysqli_insert_id($enlace); // el ID generado
+
+			// Insertar detalles y actualizar stock
+			foreach ($lotes as $lot) {
+				$id_lote = $lot['id_lote'];
+				$peso = $lot['peso_tomado'];
+
+				// Obtener peso actual para log
+				$res_log = mysqli_query($enlace, "
+				SELECT 
+					peso_actual 
+				FROM catalogolotes 
+				WHERE id_CatalogoLotes = $id_lote");
+				$row_log = mysqli_fetch_assoc($res_log);
+				$peso_actual_log = $row_log['peso_actual'];
+
+				// Insertar detalle
+				$q_det = "
+				INSERT INTO blending_detalle (
+					id_blending, 
+					id_lote, 
+					peso_tomado, 
+					peso_actual_log
+				) 
+				VALUES (
+					$nuevo_id_blending, 
+					$id_lote, 
+					$peso, 
+					$peso_actual_log
+				)";
+				mysqli_query($enlace, $q_det);
+
+				// Actualizar peso en catálogo
+				$q_upd = "
+				UPDATE catalogolotes 
+					SET peso_actual = peso_actual - $peso 
+				WHERE id_CatalogoLotes = $id_lote";
+				mysqli_query($enlace, $q_upd);
+			}
+
+			echo json_encode([
+				"estado" => 1,
+				"mensaje" => "Blending creado con éxito",
+				"data" => ["id_blending" => $nuevo_id_blending,"correlativo" => $nuevo_correlativo]
+			]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al crear cabecera"]);
+		}
+		break;
+
+	case "get_lista_blending_cabecera":
+		$q = "
+		SELECT
+			bl.id as id_blending,
+			bl.correlativo,
+			bl.peso_inicial,
+			bl.peso_actual,
+			bl.created_at as fecha_registro,
+			(
+				SELECT 
+					COUNT(bld.id)
+				FROM blending_detalle bld
+				WHERE bld.id_blending = bl.id
+			) as cantidad_lotes,
+			CASE
+				WHEN bl.estado = 'A' THEN 'Activo'
+				WHEN bl.estado = 'B' THEN 'Agotado'
+				ELSE 'Desconocido'
+			END AS estado
+		FROM
+			blending bl
+		ORDER BY bl.numero_correlativo DESC;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$blendings = [];
+
+		if ($result) {
+			while ($b = mysqli_fetch_assoc($result)) {
+				$blendings[] = $b;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["blendings" => $blendings]
+		]);
+		break;
+
+	case "get_blending_detalle_by_blending":
+		$id_blending = intval($_POST["id_blending"] ?? 0);
+		$q = "
+		SELECT 
+			bld.id as id_blending_detalle,
+			bld.id_blending,
+			bld.id_lote,
+			lot.ccod_Lote as codigo_lote,
+			vcd.cod_gel as codigo_gel,
+			bld.peso_tomado,
+			bld.peso_actual_log as peso_actual_lote,
+			bld.created_at as fecha_registro
+		FROM blending_detalle bld
+		INNER JOIN catalogolotes lot on lot.id_CatalogoLotes = bld.id_lote
+		INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
+		WHERE bld.id_blending = $id_blending
+		GROUP BY bld.id
+		ORDER BY bld.created_at DESC, codigo_gel, codigo_lote;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$detalle_blending = [];
+
+		if ($result) {
+			while ($bd = mysqli_fetch_assoc($result)) {
+				$detalle_blending[] = $bd;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["detalle_blending" => $detalle_blending]
+		]);
+		break;
+
 	default:
 		# code...
 
@@ -77014,6 +77255,23 @@ function formatDateShort($dateString)
 	if (!$ts)
 		return $dateString;
 	return date('d/m/Y', $ts);
+}
+
+function getNuevoNumeroCorrelativoBlending($enlace)
+{
+	$q = "
+    SELECT 
+        COALESCE(MAX(bl.numero_correlativo), 0) + 1 AS nuevo_numero
+    FROM 
+        blending bl
+    WHERE 
+        YEAR(bl.created_at) = YEAR(CURRENT_DATE)
+    ";
+
+	$res = mysqli_query($enlace, $q);
+	$row = mysqli_fetch_assoc($res);
+
+	return $row['nuevo_numero'] ?? 1;
 }
 
 ?>
