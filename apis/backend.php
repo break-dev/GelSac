@@ -76993,7 +76993,7 @@ switch ($_POST["accion"]) {
 			echo json_encode([
 				"estado" => 1,
 				"mensaje" => "Blending creado con éxito",
-				"data" => ["id_blending" => $nuevo_id_blending,"correlativo" => $nuevo_correlativo]
+				"data" => ["id_blending" => $nuevo_id_blending, "correlativo" => $nuevo_correlativo]
 			]);
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al crear cabecera"]);
@@ -77071,6 +77071,147 @@ switch ($_POST["accion"]) {
 		echo json_encode([
 			"estado" => 1,
 			"data" => ["detalle_blending" => $detalle_blending]
+		]);
+		break;
+
+	case "asociar_proveedor_to_planta":
+		$asociaciones = $_POST["asociaciones"]; // { "id_proveedor": X, "id_planta": Y }
+		$ids_generados = [];
+		$errores = [];
+
+		foreach ($asociaciones as $asoc) {
+			$id_p = intval($asoc['id_proveedor']);
+			$id_pl = intval($asoc['id_planta']);
+
+			// 1. Verificar si la asociación ya existe
+			$q_verificar = "
+			SELECT 
+				COUNT(*) as total 
+			FROM planta_proveedor 
+            WHERE id_proveedor = $id_p AND id_planta = $id_pl
+			";
+			$res_verificar = mysqli_query($enlace, $q_verificar);
+			$row = mysqli_fetch_assoc($res_verificar);
+
+			if ($row['total'] == 0) {
+				// 2. Insertar si no existe
+				$q_ins = "
+				INSERT INTO planta_proveedor (
+					id_proveedor, 
+					id_planta
+				) VALUES (
+					$id_p, 
+					$id_pl
+				)";
+				if (mysqli_query($enlace, $q_ins)) {
+					$ids_generados[] = mysqli_insert_id($enlace);
+				} else {
+					$errores[] = "Error al asociar Prov: $id_p con Planta: $id_pl";
+				}
+			}
+		}
+
+		echo json_encode([
+			"estado" => (count($errores) === 0) ? 1 : 2, // 1: Éxito total, 2: Éxito parcial/errores
+			"mensaje" => count($ids_generados) . " asociaciones creadas.",
+			"data" => ["ids" => $ids_generados],
+			"errores" => $errores
+		]);
+		break;
+
+	case "desvincular_proveedor_planta":
+		$desvinculaciones = $_POST["desvinculaciones"]; // { "id_proveedor": X, "id_planta": Y }
+		$total_eliminados = 0;
+		$errores = [];
+
+		foreach ($desvinculaciones as $item) {
+			$id_p = intval($item['id_proveedor']);
+			$id_pl = intval($item['id_planta']);
+
+			$q_del = "
+			DELETE FROM planta_proveedor 
+            WHERE id_proveedor = $id_p AND id_planta = $id_pl
+			";
+
+			if (mysqli_query($enlace, $q_del)) {
+				$total_eliminados += mysqli_affected_rows($enlace);
+			} else {
+				$errores[] = "Error al desvincular Prov: $id_p y Planta: $id_pl";
+			}
+		}
+
+		echo json_encode([
+			"estado" => (count($errores) === 0) ? 1 : 2,
+			"mensaje" => "Se eliminaron $total_eliminados registros.",
+			"data" => ["total_eliminados" => $total_eliminados],
+			"errores" => $errores
+		]);
+		break;
+
+	case "get_proveedores_to_asociar_planta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$q = "
+		SELECT
+			prov.Id AS id_proveedor,
+			prov.documento,
+			prov.razon_social
+		FROM
+			tb_clientes prov
+		WHERE
+			prov.estado = 'A'
+			AND prov.cod_clientecondicion = 1
+			AND NOT EXISTS (
+				SELECT 1 
+				FROM planta_proveedor plp 
+				WHERE plp.id_proveedor = prov.Id 
+				AND plp.id_planta = $id_planta
+			)
+		ORDER BY 
+			prov.razon_social;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$proveedores = [];
+
+		if ($result) {
+			while ($p = mysqli_fetch_assoc($result)) {
+				$proveedores[] = $p;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["proveedores" => $proveedores]
+		]);
+		break;
+
+	case "get_asociaciones_by_planta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$q = "
+		SELECT
+			plp.id as id_asociacion,
+			pr.Id as id_proveedor,
+			plp.id_planta,
+			pr.documento,
+			pr.razon_social
+		FROM planta_proveedor plp
+		INNER JOIN tb_clientes pr ON pr.Id = plp.id_proveedor
+		WHERE plp.id_planta = $id_planta
+		ORDER BY pr.razon_social;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$proveedores = [];
+
+		if ($result) {
+			while ($p = mysqli_fetch_assoc($result)) {
+				$proveedores[] = $p;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["proveedores" => $proveedores]
 		]);
 		break;
 
