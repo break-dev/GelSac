@@ -77223,6 +77223,350 @@ switch ($_POST["accion"]) {
 		]);
 		break;
 
+	case "get_plantas_to_despachos":
+		$q = "
+		SELECT
+			pln.Id as id_planta,
+			pln.ruc,
+			pln.descripcion,
+			pln.direccionguia_segundotramo
+		FROM
+			tbconfig_plantas pln
+		WHERE pln.para_despacho = 1
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$plantas = [];
+
+		if ($result) {
+			while ($p = mysqli_fetch_assoc($result)) {
+				$plantas[] = $p;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["plantas" => $plantas]
+		]);
+		break;
+
+	case "get_proveedores_by_planta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$q = "
+		SELECT
+			prov.Id AS id_proveedor,
+			prov.documento,
+			prov.razon_social
+		FROM
+			tb_clientes prov
+		INNER JOIN planta_proveedor plv ON
+			plv.id_proveedor = prov.Id AND plv.id_planta = $id_planta
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$proveedores = [];
+
+		if ($result) {
+			while ($p = mysqli_fetch_assoc($result)) {
+				$proveedores[] = $p;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["proveedores" => $proveedores]
+		]);
+		break;
+
+	case "get_lista_despacho_cabecera":
+		$q = "
+		SELECT
+			dsp.id as id_despacho,
+			dsp.id_proveedor,
+			dsp.id_planta,
+			dsp.correlativo,
+			prov.documento as documento_proveedor,
+			prov.razon_social,
+			pln.descripcion as descripcion_planta,
+			pln.ruc as ruc_planta,
+			pln.direccionguia_segundotramo as direccion_planta,
+			dsp.created_at as fecha_registro,
+			(
+				SELECT 
+					COUNT(dsd.id) 
+				FROM despacho_detalle dsd 
+				WHERE dsp.id = dsd.id_despacho AND dsd.is_blending = 1
+			) as blending_usados,
+			(
+				SELECT 
+					COUNT(dsd.id) 
+				FROM despacho_detalle dsd 
+				WHERE dsp.id = dsd.id_despacho AND dsd.is_blending = 0
+			) as lotes_usados
+		FROM despacho dsp
+		INNER JOIN tb_clientes prov on dsp.id_proveedor = prov.Id
+		INNER JOIN tbconfig_plantas pln on pln.Id = dsp.id_proveedor
+		ORDER BY dsp.correlativo DESC;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$despachos = [];
+
+		if ($result) {
+			while ($d = mysqli_fetch_assoc($result)) {
+				$despachos[] = $d;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["despachos" => $despachos]
+		]);
+		break;
+
+	case "get_minerales_to_despacho_by_proveedor":
+		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+		$q_lotes = "
+		SELECT
+			lot.id_CatalogoLotes AS id_mineral,
+			vcd.cod_gel AS codigo,
+			lot.nPesoNetoBalanza AS peso_inicial,
+			lot.peso_actual,
+			FALSE as is_blending
+		FROM
+			catalogolotes lot
+		INNER JOIN valorizacion_compramineral_detalle vcd ON
+			vcd.cod_lote = lot.ccod_Lote
+		INNER JOIN valorizacion_compramineral vc ON
+			vc.Id = vcd.id_valorizacion
+		INNER JOIN comprobante_pago cp ON
+			cp.id_valorizacion = vc.Id
+		WHERE
+			-- estados de PAGADO: mixto, banco, anticipos
+			cp.estado IN('A', 'B', 'C') AND
+			-- que aun tenga saldo
+			ROUND(lot.peso_actual, 2) > 0 AND vc.id_proveedor = $id_proveedor
+		ORDER BY codigo DESC;
+		";
+
+		$q_blendings = "
+		SELECT
+			bl.id as id_mineral,
+			bl.correlativo as codigo,
+			bl.peso_inicial,
+			bl.peso_actual,
+			TRUE as is_blending
+		FROM
+			blending bl
+		WHERE
+			-- activo
+			bl.estado = 'A' AND
+			-- que aun tenga saldo
+			ROUND(bl.peso_actual, 2) > 0 AND 
+			bl.id_proveedor = $id_proveedor
+		ORDER BY bl.numero_correlativo DESC;
+		";
+
+		$result = mysqli_query($enlace, $q_lotes);
+		$minerales = [];
+
+		if ($result) {
+			while ($l = mysqli_fetch_assoc($result)) {
+				$minerales[] = $l;
+			}
+
+			$result = mysqli_query($enlace, $q_blendings);
+
+			if ($result) {
+				while ($b = mysqli_fetch_assoc($result)) {
+					$minerales[] = $b;
+				}
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["minerales" => $minerales]
+		]);
+		break;
+
+	case "get_despacho_detalle_by_despacho":
+		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+		$q = "
+		SELECT
+			dsd.id as id_despacho_detalle,
+			CASE
+				WHEN dsd.is_blending = 1 THEN (
+					SELECT 
+						bln.correlativo 
+					FROM blending bln 
+					WHERE bln.id = dsd.id_mineral)
+				WHEN dsd.is_blending = 0 THEN (
+					SELECT 
+						vcd.cod_gel
+					FROM catalogolotes lot 
+					INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+					INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+					INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
+					WHERE cp.estado IN('A', 'B', 'C') AND lot.id_CatalogoLotes = dsd.id_mineral
+					
+				)
+			END AS codigo,
+			dsd.is_blending,
+			dsd.peso_tomado,
+			dsd.peso_actual,
+			dsd.peso_actual_log,
+			(dsd.peso_actual_log - dsd.peso_tomado) as peso_restante,
+			dsd.estado
+		FROM
+			despacho_detalle dsd
+		WHERE
+			dsd.id_despacho = $id_despacho
+		ORDER BY codigo;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$detalle_blending = [];
+
+		if ($result) {
+			while ($bd = mysqli_fetch_assoc($result)) {
+				$detalle_blending[] = $bd;
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => ["detalle_blending" => $detalle_blending]
+		]);
+		break;
+
+	case "crear_despacho":
+		$minerales = $_POST["minerales"]; // { "id_mineral" : "", "is_blending": "", "peso_tomado": ""}
+		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+
+		// calcular el nuevo correlativo
+		$nuevo_numero_correlativo = getNuevoNumeroCorrelativoDespacho($enlace);
+		$year_short = date('y');
+		$month_short = date('m');
+		$day_short = date('d');
+		$numero_con_ceros = str_pad($nuevo_numero_correlativo, 5, "0", STR_PAD_LEFT);
+		$nuevo_correlativo = "DSP-" . $year_short . "-" . $month_short . "-" . $day_short . "-" . $numero_con_ceros;
+		//
+
+		// verificar stock y calcular peso total
+		foreach ($minerales as $min) {
+			$id_mineral = intval($min['id_mineral']);
+			$peso_solicitado = floatval($min['peso_tomado']);
+			$is_blending = filter_var($min['is_blending'], FILTER_VALIDATE_BOOLEAN);
+
+			if ($is_blending) {
+				// Es un blending
+				$res_stock = mysqli_query($enlace, "
+				SELECT 
+					peso_actual, 
+					correlativo as codigo
+				FROM blending 
+				WHERE id = $id_mineral
+				");
+			} else {
+				// Es un lote
+				$res_stock = mysqli_query($enlace, "
+				SELECT 
+					peso_actual, 
+					ccod_Lote as codigo 
+				FROM catalogolotes 
+				WHERE id_CatalogoLotes = $id_mineral
+				");
+			}
+
+			$row_stock = mysqli_fetch_assoc($res_stock);
+
+			if (!$row_stock || round($row_stock['peso_actual'], 2) < round($peso_solicitado, 2)) {
+				$codigo = $row_stock ? $row_stock['codigo'] : "ID: $id_mineral";
+				echo json_encode(["estado" => 0, "mensaje" => "El mineral $codigo no tiene peso suficiente."]);
+				exit;
+			}
+		}
+
+		// INSERTAR CABECERA
+		$q_cabecera = "
+		INSERT INTO despacho(
+			id_planta,
+			id_proveedor,
+			correlativo,
+			numero_correlativo,
+			estado
+		)
+		VALUES(
+			$id_planta,
+			$id_proveedor,
+			'$nuevo_correlativo',
+			$nuevo_numero_correlativo,
+			'A'
+		)";
+
+		if (mysqli_query($enlace, $q_cabecera)) {
+			$nuevo_id_despacho = mysqli_insert_id($enlace); // el ID generado
+
+			// Insertar detalles y actualizar stock
+			foreach ($minerales as $min) {
+				$id_mineral = intval($min['id_mineral']);
+				$peso = floatval($min['peso_tomado']);
+				$is_blending = filter_var($min['is_blending'], FILTER_VALIDATE_BOOLEAN);
+				$is_blending_int = $is_blending ? 1 : 0;
+
+				// Obtener peso actual para log
+				if ($is_blending) {
+					$res_log = mysqli_query($enlace, "SELECT peso_actual FROM blending WHERE id = $id_mineral");
+				} else {
+					$res_log = mysqli_query($enlace, "SELECT peso_actual FROM catalogolotes WHERE id_CatalogoLotes = $id_mineral");
+				}
+
+				$row_log = mysqli_fetch_assoc($res_log);
+				$peso_actual_log = $row_log['peso_actual'];
+
+				// Insertar detalle
+				$q_det = "
+				INSERT INTO despacho_detalle(
+					id_mineral,
+					id_despacho,
+					is_blending,
+					peso_tomado,
+					peso_actual,
+					peso_actual_log,
+					estado
+				)
+				VALUES(
+					$id_mineral,
+					$nuevo_id_despacho,
+					$is_blending_int,
+					$peso,
+					$peso,
+					$peso_actual_log,
+					'A'
+				)";
+				mysqli_query($enlace, $q_det);
+
+				// Actualizar peso en catálogo o blending
+				if ($is_blending) {
+					$q_upd = "UPDATE blending SET peso_actual = peso_actual - $peso WHERE id = $id_mineral";
+				} else {
+					$q_upd = "UPDATE catalogolotes SET peso_actual = peso_actual - $peso WHERE id_CatalogoLotes = $id_mineral";
+				}
+				mysqli_query($enlace, $q_upd);
+			}
+
+			echo json_encode([
+				"estado" => 1,
+				"mensaje" => "Despacho creado con éxito",
+				"data" => ["id_despacho" => $nuevo_id_despacho, "correlativo" => $nuevo_correlativo]
+			]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al crear cabecera"]);
+		}
+		break;
+
 	default:
 		# code...
 
@@ -77423,4 +77767,20 @@ function getNuevoNumeroCorrelativoBlending($enlace)
 	return $row['nuevo_numero'] ?? 1;
 }
 
+function getNuevoNumeroCorrelativoDespacho($enlace)
+{
+	$q = "
+	SELECT
+		COALESCE(MAX(dsp.numero_correlativo),0) + 1 AS nuevo_numero
+	FROM
+		despacho dsp
+	WHERE
+		YEAR(dsp.created_at) = YEAR(CURRENT_DATE)
+    ";
+
+	$res = mysqli_query($enlace, $q);
+	$row = mysqli_fetch_assoc($res);
+
+	return $row['nuevo_numero'] ?? 1;
+}
 ?>
