@@ -77567,6 +77567,252 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
+	case "get_lista_transportistas":
+		$q = "
+		SELECT
+			trn.Id AS id_transportista,
+			trn.documento,
+			trn.razon_social
+		FROM
+			tb_clientes trn
+		WHERE
+			trn.cod_clientecondicion = 2 AND
+			trn.estado = 'A'
+		ORDER BY trn.razon_social
+		";
+		$result = mysqli_query($enlace, $q);
+		$transportistas = [];
+		if ($result) {
+			while ($r = mysqli_fetch_assoc($result)) {
+				$transportistas[] = $r;
+			}
+		}
+		echo json_encode(["estado" => 1, "data" => ["transportistas" => $transportistas]]);
+		break;
+
+	case "get_tipos_vehiculo":
+		$q = "
+		SELECT
+			tpv.Id AS id_tipo_vehiculo,
+			tpv.descripcion
+		FROM
+			tbconfig_tipovehiculo tpv
+		ORDER BY tpv.descripcion
+		";
+		$result = mysqli_query($enlace, $q);
+		$tipos = [];
+		if ($result) {
+			while ($r = mysqli_fetch_assoc($result)) {
+				$tipos[] = $r;
+			}
+		}
+		echo json_encode(["estado" => 1, "data" => ["tipos_vehiculo" => $tipos]]);
+		break;
+
+	case "get_unidades_transporte_to_distribucion":
+		$id_transportista = intval($_POST["id_transportista"] ?? 0);
+		$id_tipo_vehiculo = intval($_POST["id_tipo_vehiculo"] ?? 0);
+
+		$q = "
+		SELECT
+			uni.id_transporte as id_unidad,
+			uni.id_Transportista as id_transportista,
+			uni.id_tipovehiculo as id_tipo_vehiculo,
+			uni.cplaca as placa,
+			uni.nCapacidad as capacidad
+		FROM
+			transporte uni
+		WHERE 
+				uni.id_Transportista = $id_transportista AND
+			uni.id_tipovehiculo = $id_tipo_vehiculo AND
+			uni.cEstado_Registro = 'A'
+		";
+		$result = mysqli_query($enlace, $q);
+		$unidades = [];
+		if ($result) {
+			while ($r = mysqli_fetch_assoc($result)) {
+				$unidades[] = $r;
+			}
+		}
+		echo json_encode(["estado" => 1, "data" => ["unidades" => $unidades]]);
+		break;
+
+	case "get_minerales_of_despacho_to_distribucion":
+		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+
+		$q = "
+		SELECT
+			dsd.id as id_despacho_detalle,
+			dsd.id_despacho,
+			dsd.id_mineral,
+			CASE
+				-- si es un blending
+				WHEN dsd.is_blending = 1 THEN (
+					SELECT
+						bl.correlativo
+					FROM blending bl where bl.id = dsd.id_mineral
+					LIMIT 1
+				)
+				-- si es un lote
+				WHEN dsd.is_blending = 0 THEN (
+					SELECT
+						vcd.cod_gel
+					FROM catalogolotes lot
+					INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
+					LIMIT 1
+				)
+			END as codigo,
+			dsd.is_blending,
+			dsd.peso_actual_log,
+			dsd.peso_tomado,
+			dsd.peso_actual
+		FROM
+			despacho_detalle dsd
+		WHERE
+			dsd.id_despacho = $id_despacho AND 
+			dsd.peso_actual > 0 AND
+			dsd.estado = 'A'
+		";
+		$result = mysqli_query($enlace, $q);
+		$minerales = [];
+		if ($result) {
+			while ($r = mysqli_fetch_assoc($result)) {
+				$minerales[] = $r;
+			}
+		}
+		echo json_encode(["estado" => 1, "data" => ["minerales" => $minerales]]);
+		break;
+
+	case "crear_distribucion":
+		$id_unidad = intval($_POST["id_unidad"] ?? 0);
+		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+		$segunda_placa = mysqli_real_escape_string($enlace, $_POST["segunda_placa"] ?? '');
+		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
+		$detalle = $_POST["detalle"];
+
+		if ($id_unidad <= 0 || $id_despacho <= 0 || empty($detalle)) {
+			echo json_encode(["estado" => 0, "mensaje" => "Datos incompletos"]);
+			exit;
+		}
+
+		foreach ($detalle as $item) {
+			$id_dd = intval($item['id_despacho_detalle']);
+			$peso = floatval($item['peso_tomado']);
+			$res_chk = mysqli_query($enlace, "SELECT peso_actual FROM despacho_detalle WHERE id = $id_dd");
+			$row_chk = mysqli_fetch_assoc($res_chk);
+			if (!$row_chk || round($row_chk['peso_actual'], 2) < round($peso, 2)) {
+				echo json_encode(["estado" => 0, "mensaje" => "Peso insuficiente."]);
+				exit;
+			}
+		}
+
+		$q_cabecera = "INSERT INTO distribucion(id_unidad, id_despacho, segunda_placa, fecha_estimada, estado) VALUES($id_unidad, $id_despacho, '$segunda_placa', '$fecha_estimada', 'A')";
+
+		if (mysqli_query($enlace, $q_cabecera)) {
+			$id_distribucion = mysqli_insert_id($enlace);
+			foreach ($detalle as $item) {
+				$id_dd = intval($item['id_despacho_detalle']);
+				$peso = floatval($item['peso_tomado']);
+				$res_log = mysqli_query($enlace, "SELECT peso_actual FROM despacho_detalle WHERE id = $id_dd");
+				$row_log = mysqli_fetch_assoc($res_log);
+				$peso_actual_log = $row_log['peso_actual'];
+
+				$res_parte = mysqli_query($enlace, "SELECT COUNT(id) + 1 as num FROM distribucion_detalle WHERE id_despacho_detalle = $id_dd");
+				$row_parte = mysqli_fetch_assoc($res_parte);
+				$num_parte = $row_parte['num'] ?? 1;
+
+				$q_det = "INSERT INTO distribucion_detalle(id_despacho_detalle, id_distribucion, numero_parte, peso_tomado, peso_actual_log) VALUES($id_dd, $id_distribucion, $num_parte, $peso, $peso_actual_log)";
+				mysqli_query($enlace, $q_det);
+				mysqli_query($enlace, "UPDATE despacho_detalle SET peso_actual = peso_actual - $peso WHERE id = $id_dd");
+			}
+			echo json_encode(["estado" => 1, "mensaje" => "Distribución creada con éxito"]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al crear cabecera"]);
+		}
+		break;
+
+	case "get_distribuciones_by_despacho":
+		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+		$q = "
+		SELECT
+			dist.id as id_distribucion,
+			dist.id_unidad,
+			dist.id_despacho,
+			trn.documento as documento_transportista,
+			trn.razon_social as nombre_transportista,
+			tpv.descripcion as tipo_vehiculo,
+			uni.cplaca as placa,
+			dist.segunda_placa,
+			uni.nCapacidad as capacidad,
+			(
+				SELECT 
+					SUM(dstd.peso_tomado)
+				FROM distribucion_detalle dstd
+				WHERE dstd.id_distribucion = dist.id
+			) as peso_acumulado,
+			dist.fecha_estimada,
+			dist.created_at as fecha_registro
+		FROM
+			distribucion dist
+		INNER JOIN transporte uni on uni.id_transporte = dist.id_unidad
+		INNER JOIN tb_clientes trn on trn.Id = uni.id_Transportista
+		INNER JOIN tbconfig_tipovehiculo tpv on tpv.Id = uni.id_tipovehiculo
+		WHERE dist.estado = 'A' AND dist.id_despacho = $id_despacho
+		ORDER BY dist.id DESC
+		";
+		$result = mysqli_query($enlace, $q);
+		$distribuciones = [];
+		if ($result) {
+			while ($r = mysqli_fetch_assoc($result)) {
+				$distribuciones[] = $r;
+			}
+		}
+		echo json_encode(["estado" => 1, "data" => ["distribuciones" => $distribuciones]]);
+		break;
+
+	case "get_detalle_distribucion_by_distribucion":
+		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+		$q = "
+		SELECT
+			dst.id_distribucion,
+			dst.id_despacho_detalle,
+			CASE
+				WHEN dsd.is_blending = 1 THEN (
+					SELECT
+						bl.correlativo
+					FROM blending bl
+					WHERE bl.id = dsd.id_mineral
+				)
+				WHEN dsd.is_blending = 0 THEN (
+					SELECT
+						vcd.cod_gel
+					FROM catalogolotes lot
+					INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
+					WHERE lot.id_CatalogoLotes = dsd.id_mineral
+					LIMIT 1
+				)
+			END AS codigo,
+			dsd.is_blending,
+			dst.peso_actual_log,
+			dst.peso_tomado,
+			(dst.peso_actual_log - dst.peso_tomado) as peso_restante,
+			dst.numero_parte,
+			dst.created_at as fecha_registro
+		FROM
+			distribucion_detalle dst
+		INNER JOIN despacho_detalle dsd on dsd.id = dst.id_despacho_detalle
+		WHERE dst.id_distribucion = $id_distribucion
+		";
+		$result = mysqli_query($enlace, $q);
+		$detalles = [];
+		if ($result) {
+			while ($r = mysqli_fetch_assoc($result)) {
+				$detalles[] = $r;
+			}
+		}
+		echo json_encode(["estado" => 1, "data" => ["detalles" => $detalles]]);
+		break;
+
 	default:
 		# code...
 

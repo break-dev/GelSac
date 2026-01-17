@@ -199,13 +199,32 @@ $backendUrl = 'apis/backend.php';
                 </div>
               </div>
 
-              <!-- Panel Inferior: Distribuciones (Placeholder) -->
-              <div class="bg-white shadow-sm p-3 rounded flex-grow-1 footer-panel">
-                <h5 class="text-muted"><i class="bi bi-diagram-3"></i> Distribuciones (Próximamente)</h5>
+              <!-- Panel Inferior: Distribuciones -->
+              <div class="bg-white shadow-sm p-3 rounded flex-grow-1 footer-panel d-flex flex-column">
+                <h5 class="d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-diagram-3"></i> Distribuciones</span>
+                  <button class="btn btn-sm btn-primary" id="btn_open_new_distribucion" disabled>
+                    <i class="bi bi-plus-lg"></i> Asignar Distribución
+                  </button>
+                </h5>
                 <hr class="my-2" />
-                <div class="text-center p-4 text-muted bg-light border border-dashed rounded">
-                  <i class="bi bi-cone-striped fs-1 d-block mb-2"></i>
-                  Esta sección permitirá gestionar las distribuciones asociadas al despacho seleccionado.
+                <div class="table-responsive flex-grow-1" style="overflow-y: auto;">
+                  <table class="table table-bordered table-sm table-hover align-middle">
+                    <thead class="bg-light sticky-top">
+                      <tr style="font-size: 13px;">
+                        <th class="text-center">Trans. / Unidad</th>
+                        <th class="text-center">Fecha Est.</th>
+                        <th class="text-end">Peso Total</th>
+                        <th class="text-center" width="50">Ver</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbl_distribuciones" style="font-size: 13px;">
+                      <tr>
+                        <td colspan="4" class="text-center text-muted p-3">Seleccione un despacho para ver sus
+                          distribuciones.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -284,6 +303,114 @@ $backendUrl = 'apis/backend.php';
     </div>
   </div>
 
+  <!-- Modal Nueva Distribucion -->
+  <div class="modal fade" id="modal_nueva_distribucion" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="bi bi-truck"></i> Nueva Distribución de Carga</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">1. Transportista</label>
+              <select id="dist_transportista" class="form-select" data-bs-theme="bootstrap-5"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">2. Tipo de Vehículo</label>
+              <select id="dist_tipo_vehiculo" class="form-select" data-bs-theme="bootstrap-5"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-muted">3. Unidad (Placa)</label>
+              <select id="dist_unidad" class="form-select" data-bs-theme="bootstrap-5" disabled></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-muted">Datos Adicionales</label>
+              <input type="text" class="form-control" id="dist_segunda_placa" placeholder="Segunda Placa / Carreta">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-muted">Fecha Estimada Llegada</label>
+              <input type="date" class="form-control" id="dist_fecha">
+            </div>
+          </div>
+
+          <h6 class="border-bottom pb-2 mb-2 text-success">Seleccione Items del Despacho a Cargar</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th width="40" class="text-center"><i class="bi bi-check2-square"></i></th>
+                  <th>Código Mineral</th>
+                  <th class="text-center">Tipo</th>
+                  <th class="text-end">Peso Restante</th>
+                  <th class="text-end" width="180">A Distribuir</th>
+                </tr>
+              </thead>
+              <tbody id="tbl_items_distribucion"></tbody>
+            </table>
+          </div>
+
+        </div>
+        <div class="modal-footer bg-light d-flex justify-content-between">
+          <div class="fw-bold fs-5">
+            Total Asignado: <span id="lbl_total_dist_modal" class="text-success">0.00</span>
+          </div>
+          <div>
+            <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success" id="btn_guardar_distribucion" disabled>
+              <i class="bi bi-save"></i> Guardar Distribución
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Modal Ver Detalle Distribucion -->
+  <div class="modal fade" id="modal_detalle_distribucion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-eye"></i> Detalle de Distribución</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-6">
+              <strong>Transportista:</strong> <br> <span id="view_dist_transportista" class="text-muted">...</span>
+            </div>
+            <div class="col-6">
+              <strong>Unidad / Placa:</strong> <br> <span id="view_dist_placa" class="text-muted">...</span>
+            </div>
+            <div class="col-6 mt-2">
+              <strong>Fecha Estimada:</strong> <br> <span id="view_dist_fecha" class="text-muted">...</span>
+            </div>
+            <div class="col-6 mt-2">
+              <strong>Peso Total:</strong> <br> <span id="view_dist_total" class="fw-bold text-success">...</span>
+            </div>
+          </div>
+
+          <h6 class="border-bottom pb-2">Minerales Distribuidos</h6>
+          <table class="table table-sm table-bordered table-striped">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th class="text-center">Tipo</th>
+                <th class="text-end">Peso</th>
+              </tr>
+            </thead>
+            <tbody id="tbl_view_dist_items"></tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <?php include('global/auxiliares_js.php'); ?>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -299,9 +426,12 @@ $backendUrl = 'apis/backend.php';
       // VARIABLES GLOBALES
       const backendUrl = '<?php echo $backendUrl; ?>';
       const modalNuevoDespacho = new bootstrap.Modal(document.getElementById("modal_nuevo_despacho"));
+      const modalNuevaDistribucion = new bootstrap.Modal(document.getElementById("modal_nueva_distribucion"));
 
       let allDespachos = [];
       let mineralesDisponibles = [];
+      let itemsDespachoDistribucion = [];
+      let selectedDespachoId = 0;
 
       // FUNCIONES AUXILIARES
       function f_callBackend(accion, data) {
@@ -393,7 +523,94 @@ $backendUrl = 'apis/backend.php';
         f_callBackend('get_despacho_detalle_by_despacho', { id_despacho: id })
           .done(function (r) {
             if (r.estado === 1) {
-              renderDetalleDespacho(r.data.detalle_blending); // reusing name from backend response structure
+              renderDetalleDespacho(r.data.detalle_blending);
+              selectedDespachoId = id;
+              $("#btn_open_new_distribucion").prop('disabled', false);
+              loadDistribuciones(id); // Cargar distribuciones
+            }
+          });
+      };
+
+      function loadDistribuciones(idDespacho) {
+        $("#tbl_distribuciones").html('<tr><td colspan="4" class="text-center p-3">Cargando distribuciones...</td></tr>');
+
+        f_callBackend('get_distribuciones_by_despacho', { id_despacho: idDespacho })
+          .done(function (r) {
+            let html = '';
+            if (r.estado === 1 && r.data && r.data.distribuciones) {
+              let dists = r.data.distribuciones;
+              if (dists.length === 0) {
+                html = '<tr><td colspan="4" class="text-center text-muted p-2">Sin distribuciones registradas.</td></tr>';
+              } else {
+                dists.forEach(d => {
+                  // Store full object in data attribute for easy access (or just refetch)
+                  // We will refetch details, but header info is here.
+                  let meta = encodeURIComponent(JSON.stringify(d));
+
+                  html += `
+                    <tr>
+                      <td>
+                        <div class="fw-bold text-truncate" style="max-width: 180px;" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
+                        <div class="small text-muted">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''}</div>
+                      </td>
+                      <td class="text-center small">${d.fecha_estimada}</td>
+                      <td class="text-end fw-bold text-success">${formatNumber(d.peso_acumulado)}</td>
+                      <td class="text-center">
+                          <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')">
+                            <i class="bi bi-eye-fill"></i>
+                          </button>
+                      </td>
+                    </tr>`;
+                });
+              }
+            } else {
+              html = '<tr><td colspan="4" class="text-center text-muted p-2">No se encontraron datos.</td></tr>';
+            }
+            $("#tbl_distribuciones").html(html);
+          });
+      }
+
+      window.viewDistribucion = function (id, metaStr) {
+        const modalView = new window.bootstrap.Modal(document.getElementById("modal_detalle_distribucion"));
+        let meta = JSON.parse(decodeURIComponent(metaStr));
+
+        // Set Header Info
+        $("#view_dist_transportista").text(meta.nombre_transportista);
+        $("#view_dist_placa").text(`${meta.tipo_vehiculo} - ${meta.placa} ${meta.segunda_placa ? '/ ' + meta.segunda_placa : ''}`);
+        $("#view_dist_fecha").text(meta.fecha_estimada);
+        $("#view_dist_total").text(formatNumber(meta.peso_acumulado));
+
+        $("#tbl_view_dist_items").html('<tr><td colspan="3" class="text-center">Cargando detalles...</td></tr>');
+
+        modalView.show();
+
+        // Fetch Details
+        f_callBackend('get_detalle_distribucion_by_distribucion', { id_distribucion: id })
+          .done(function (r) {
+            if (r.estado === 1) {
+              let html = '';
+              let items = r.data.detalles || [];
+              if (items.length === 0) {
+                html = '<tr><td colspan="3" class="text-center">Sin items.</td></tr>';
+              } else {
+                items.forEach(i => {
+                  let isBlending = (i.is_blending == 1);
+                  let badge = isBlending
+                    ? '<span class="badge-mineral-type badge-blending">B</span>'
+                    : '<span class="badge-mineral-type badge-lote">L</span>';
+
+                  html += `
+                            <tr>
+                                <td>${i.codigo}</td>
+                                <td class="text-center">${badge}</td>
+                                <td class="text-end font-monospace">${formatNumber(i.peso_tomado)}</td>
+                            </tr>
+                          `;
+                });
+              }
+              $("#tbl_view_dist_items").html(html);
+            } else {
+              $("#tbl_view_dist_items").html('<tr><td colspan="3" class="text-center text-danger">Error al cargar.</td></tr>');
             }
           });
       };
@@ -644,6 +861,223 @@ $backendUrl = 'apis/backend.php';
           .always(function () {
             $btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> Crear Despacho');
           });
+      });
+
+
+      // --------------------------------------------------------------------------------
+      // MODAL LOGIC: NUEVA DISTRIBUCION
+      // --------------------------------------------------------------------------------
+
+      $("#btn_open_new_distribucion").click(function () {
+        if (!selectedDespachoId) return;
+
+        // Limpiar UI
+        $("#dist_transportista, #dist_tipo_vehiculo").empty().append('<option value="">Cargando...</option>');
+        $("#dist_unidad").empty().prop('disabled', true);
+        $("#dist_segunda_placa").val('');
+        $("#dist_fecha").val(new Date().toISOString().split('T')[0]); // Default today
+        $("#tbl_items_distribucion").html('<tr><td colspan="5" class="text-center p-3">Cargando items...</td></tr>');
+        $("#lbl_total_dist_modal").text("0.00");
+        $("#btn_guardar_distribucion").prop('disabled', true);
+
+        modalNuevaDistribucion.show();
+
+        // Load Initial Data
+        $.when(
+          f_callBackend('get_lista_transportistas', {}),
+          f_callBackend('get_tipos_vehiculo', {}),
+          f_callBackend('get_minerales_of_despacho_to_distribucion', { id_despacho: selectedDespachoId })
+        ).done(function (rTr, rTv, rMin) {
+          // Normalize responses (jQuery .when returns [data, status, xhr] for multiple calls)
+          let r1 = rTr[0];
+          let r2 = rTv[0];
+          let r3 = rMin[0];
+
+          if (r1.estado === 1) {
+            let opts = r1.data.transportistas.map(t => ({ id: t.id_transportista, text: t.razon_social + ' (' + t.documento + ')' }));
+            $("#dist_transportista").empty().select2({
+              dropdownParent: $('#modal_nueva_distribucion'),
+              theme: "bootstrap-5",
+              placeholder: "Seleccione Transportista",
+              data: opts,
+              width: '100%'
+            }).val('').trigger('change');
+          }
+
+          if (r2.estado === 1) {
+            let types = r2.data.tipos_vehiculo || [];
+            $("#dist_tipo_vehiculo").empty().select2({
+              dropdownParent: $('#modal_nueva_distribucion'),
+              theme: "bootstrap-5",
+              placeholder: "Seleccione Tipo",
+              data: types.map(t => ({ id: t.id_tipo_vehiculo, text: t.descripcion })),
+              width: '100%'
+            }).val('').trigger('change');
+          }
+
+          if (r3.estado === 1) {
+            itemsDespachoDistribucion = r3.data.minerales || [];
+            renderItemsDistribucion();
+          }
+        });
+      });
+
+      // Cascading Dropdowns
+      function loadUnidades() {
+        let idTr = $("#dist_transportista").val();
+        let idTv = $("#dist_tipo_vehiculo").val();
+
+        $("#dist_unidad").empty().prop('disabled', true);
+
+        if (idTr && idTv) {
+          f_callBackend('get_unidades_transporte_to_distribucion', { id_transportista: idTr, id_tipo_vehiculo: idTv })
+            .done(function (r) {
+              if (r.estado === 1) {
+                let units = r.data.unidades || [];
+                if (units.length > 0) {
+                  let opts = units.map(u => ({ id: u.id_unidad, text: `${u.placa} (Cap: ${u.capacidad})` }));
+                  $("#dist_unidad").prop('disabled', false).select2({
+                    dropdownParent: $('#modal_nueva_distribucion'),
+                    theme: "bootstrap-5",
+                    placeholder: "Seleccione Unidad",
+                    data: opts,
+                    width: '100%'
+                  });
+                } else {
+                  // No units
+                }
+              }
+            });
+        }
+      }
+
+      $("#dist_transportista, #dist_tipo_vehiculo").on("change", function () {
+        loadUnidades();
+      });
+
+      function renderItemsDistribucion() {
+        let html = '';
+        if (itemsDespachoDistribucion.length === 0) {
+          html = '<tr><td colspan="5" class="text-center">No hay saldo disponible en este despacho.</td></tr>';
+        } else {
+          itemsDespachoDistribucion.forEach((m, idx) => {
+            let isBlending = (m.is_blending == 1);
+            let badge = isBlending
+              ? '<span class="badge-mineral-type badge-blending">B</span>'
+              : '<span class="badge-mineral-type badge-lote">L</span>';
+
+            // Using peso_actual as remaining since creation updates it
+            let restante = parseFloat(m.peso_actual);
+            let uid = `dist_item_${m.id_despacho_detalle}`;
+
+            html += `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input chk-dist-item" id="${uid}" data-idx="${idx}">
+                        </td>
+                        <td><label class="cursor-pointer w-100" for="${uid}">${m.codigo}</label></td>
+                        <td class="text-center">${badge}</td>
+                        <td class="text-end text-muted font-monospace">${formatNumber(restante)}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm text-end input-dist-peso" 
+                                data-idx="${idx}" data-max="${restante}" disabled placeholder="0.00" step="0.01">
+                        </td>
+                    </tr>
+                   `;
+          });
+        }
+        $("#tbl_items_distribucion").html(html);
+      }
+
+      // Checkbox / Input Logic
+      $(document).on('change', '.chk-dist-item', function () {
+        let idx = $(this).data('idx');
+        let chk = $(this).is(':checked');
+        let $inp = $(`.input-dist-peso[data-idx='${idx}']`);
+
+        $inp.prop('disabled', !chk);
+        if (chk) $inp.focus(); else $inp.val('');
+
+        updateTotalDist();
+      });
+
+      $(document).on('input', '.input-dist-peso', function () {
+        let max = parseFloat($(this).data('max'));
+        let val = parseFloat($(this).val());
+        if (val < 0) $(this).val(0);
+        if (val > max) {
+          alert("Excede el peso restante: " + max);
+          $(this).val(max);
+        }
+        updateTotalDist();
+      });
+
+      function updateTotalDist() {
+        let total = 0;
+        $(".input-dist-peso:enabled").each(function () {
+          let v = parseFloat($(this).val());
+          if (!isNaN(v)) total += v;
+        });
+        $("#lbl_total_dist_modal").text(formatNumber(total));
+        $("#btn_guardar_distribucion").prop('disabled', total <= 0);
+      }
+
+      // Guardar Distribucion
+      $("#btn_guardar_distribucion").click(function () {
+        let idUnidad = $("#dist_unidad").val();
+        let idTr = $("#dist_transportista").val();
+        let idTv = $("#dist_tipo_vehiculo").val();
+
+        if (!idUnidad) {
+          alert("Seleccione una unidad. Si no hay unidades disponibles, verifique el transportista y tipo de vehículo.");
+          return;
+        }
+
+        let payload = {
+          id_despacho: selectedDespachoId,
+          id_unidad: idUnidad,
+          segunda_placa: $("#dist_segunda_placa").val(),
+          fecha_estimada: $("#dist_fecha").val(),
+          detalle: []
+        };
+
+        $(".input-dist-peso:enabled").each(function () {
+          let val = parseFloat($(this).val());
+          let idx = $(this).data('idx');
+          if (val > 0) {
+            payload.detalle.push({
+              id_despacho_detalle: itemsDespachoDistribucion[idx].id_despacho_detalle,
+              peso_tomado: val
+            });
+          }
+        });
+
+        if (payload.detalle.length === 0) return;
+
+        if (!confirm("¿Registrar Distribución?")) return;
+
+        let $btn = $(this);
+        $btn.prop('disabled', true).text('Guardando...');
+
+        f_callBackend('crear_distribucion', payload)
+          .done(function (r) {
+            if (r.estado === 1) {
+              alert("Distribución Guardada");
+              modalNuevaDistribucion.hide();
+              loadDistribuciones(selectedDespachoId);
+              // Refresh display of despatch details because stock changed
+              // We can trigger the current row click again
+              if (selectedDespachoId) {
+                selectDespacho(selectedDespachoId, $(`tr[data-id='${selectedDespachoId}']`));
+              }
+            } else {
+              alert("Error: " + r.mensaje);
+            }
+          })
+          .always(function () {
+            $btn.prop('disabled', false).html('<i class="bi bi-save"></i> Guardar Distribución');
+          });
+
       });
 
 
