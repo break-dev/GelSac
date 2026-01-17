@@ -149,8 +149,8 @@ $backendUrl = 'apis/backend.php';
                   <thead>
                     <tr style="font-size: 13px;">
                       <!-- <th class="header-bg-detalle text-center">ID Lote</th> -->
-                      <th class="header-bg-detalle text-center">Código Lote</th>
-                      <th class="header-bg-detalle text-center">Código Gel</th>
+                      <!-- <th class="header-bg-detalle text-center">Código Lote</th> -->
+                      <th class="header-bg-detalle text-center">Código Gel</th> 
                       <th class="header-bg-detalle text-center">Peso Lote (log)</th>
                       <th class="header-bg-detalle text-center">Peso Usado</th>
                       <th class="header-bg-detalle text-center">Peso Restante</th>
@@ -203,7 +203,7 @@ $backendUrl = 'apis/backend.php';
               <thead class="table-light">
                 <tr>
                   <th class="text-center" width="50">Sel.</th>
-                  <th>Lote</th>
+                  <!-- <th>Lote</th> -->
                   <th>Código Gel</th>
                   <th class="text-end">Peso Inicial</th>
                   <th class="text-end">Peso Actual (Disp.)</th>
@@ -334,7 +334,7 @@ $backendUrl = 'apis/backend.php';
             html += `
                   <tr>
                     <!-- <td class="text-center">${d.id_lote}</td> -->
-                    <td>${d.codigo_lote}</td>
+                    <!-- <td>${d.codigo_lote}</td> -->
                     <td>${d.codigo_gel}</td>
                     <td class="text-end text-muted">${formatNumber(d.peso_actual_lote)}</td>
                     <td class="text-end fw-bold text-primary">${formatNumber(d.peso_tomado)}</td>
@@ -381,7 +381,7 @@ $backendUrl = 'apis/backend.php';
                     <td class="text-center">
                         <input type="checkbox" class="chk-lote form-check-input" data-id="${l.id_lote}">
                     </td>
-                    <td>${l.codigo_lote}</td>
+                    <!-- <td>${l.codigo_lote}</td> -->
                     <td>${l.codigo_gel}</td>
                     <td class="text-end">${formatNumber(l.peso_inicial)}</td>
                     <td class="text-end text-success fw-bold">${formatNumber(l.peso_actual)}</td>
