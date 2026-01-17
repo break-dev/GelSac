@@ -468,10 +468,6 @@ $backendUrl = 'apis/backend.php';
         if (allDespachos.length === 0) {
           html = '<tr><td colspan="6" class="text-center text-muted p-3">No hay despachos registrados.</td></tr>';
         } else {
-          // Group by Provider for visual clarity if needed, or straight list
-          // Let's verify if we need grouping. The user asked for "buen estilado".
-          // Grouping by Date or Provider is nice. Let's stick to simple list ordered by ID desc as per query for now but distinct rows.
-
           allDespachos.forEach(d => {
             let totalItems = parseInt(d.blending_usados) + parseInt(d.lotes_usados);
             let estadoBadge = '<span class="badge bg-success">Activo</span>';
@@ -543,8 +539,6 @@ $backendUrl = 'apis/backend.php';
                 html = '<tr><td colspan="4" class="text-center text-muted p-2">Sin distribuciones registradas.</td></tr>';
               } else {
                 dists.forEach(d => {
-                  // Store full object in data attribute for easy access (or just refetch)
-                  // We will refetch details, but header info is here.
                   let meta = encodeURIComponent(JSON.stringify(d));
 
                   html += `
