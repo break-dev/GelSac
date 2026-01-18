@@ -77062,8 +77062,11 @@ switch ($_POST["accion"]) {
 		FROM blending_detalle bld
 		INNER JOIN catalogolotes lot on lot.id_CatalogoLotes = bld.id_lote
 		INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
-		WHERE bld.id_blending = $id_blending
-		GROUP BY bld.id
+		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+		INNER JOIN comprobante_pago comp on comp.id_valorizacion = vc.Id
+		WHERE
+			comp.estado IN ('A','B','C') AND
+			bld.id_blending = $id_blending
 		ORDER BY bld.created_at DESC, codigo_gel, codigo_lote;
 		";
 

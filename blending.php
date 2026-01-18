@@ -207,7 +207,7 @@ $backendUrl = 'apis/backend.php';
   <!-- Modal Nuevo Blending -->
   <div class="modal fade" id="modal_nuevo_blending" tabindex="-1" aria-labelledby="modal_nuevo_blending_Label"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl" style="position: fixed; top: 10%; left: 50%; transform: translate(-50%, 0);">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title" id="modal_nuevo_blending_Label"><i class="bi bi-box-seam"></i> Crear Nuevo Blending
@@ -244,12 +244,12 @@ $backendUrl = 'apis/backend.php';
               </thead>
               <tbody id="tbl_lotes_disponibles">
                 <tr>
-                  <td colspan="6" class="text-center text-muted">Seleccione un proveedor para ver sus lotes.</td>
+                  <td colspan="5" class="text-center text-muted">Seleccione un proveedor para ver sus lotes.</td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr class="table-secondary fw-bold">
-                  <td colspan="5" class="text-end">TOTAL PESO BLENDING:</td>
+                  <td colspan="4" class="text-end">TOTAL PESO BLENDING:</td>
                   <td class="text-end" id="lbl_total_tomado">0.00</td>
                 </tr>
               </tfoot>
