@@ -148,14 +148,14 @@ $backendUrl = 'apis/backend.php';
                   <label class="form-label small mb-0 fw-bold">Proveedor</label>
                   <select id="filter_proveedor" class="form-select form-select-sm w-100"></select>
                 </div>
-                <div class="col-6">
+                <!-- <div class="col-6">
                   <label class="form-label small mb-0 fw-bold">Estado</label>
                   <select id="filter_estado" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="Activo">Activo</option>
                     <option value="Anulado">Anulado</option>
                   </select>
-                </div>
+                </div> -->
                 <div class="col-3">
                   <!-- Spacer or Correlativo if needed, let's stick to request: Planta, Proveedor, Fecha, Estado -->
                   <label class="form-label small mb-0 fw-bold">Desde</label>
@@ -165,7 +165,7 @@ $backendUrl = 'apis/backend.php';
                   <label class="form-label small mb-0 fw-bold">Hasta</label>
                   <input type="date" id="filter_fecha_hasta" class="form-control form-control-sm">
                 </div>
-                <div class="col-12 text-end mt-2">
+                <div class="col-6 text-end mt-4">
                   <button class="btn btn-primary btn-sm me-1" type="button" id="btn_aplicar_filtros">
                     <i class="bi bi-funnel-fill"></i> Aplicar Filtros
                   </button>
@@ -496,7 +496,7 @@ $backendUrl = 'apis/backend.php';
             if (r.estado === 1) {
               allDespachos = r.data.despachos;
               populateFilters();
-              applyFilters(); // Initial render with filters applied (or defaults)
+              applyFilters();
             } else {
               console.error("Error al cargar despachos");
             }
@@ -531,15 +531,9 @@ $backendUrl = 'apis/backend.php';
         arrPlantas.unshift({ id: '', text: 'Todos' });
         arrProvs.unshift({ id: '', text: 'Todos' });
 
-        // Init Select2 if not already initialized or re-init
-        // Helper to init if empty or just update
-        // Simple approach: destroy and rebuild or just empty and append if we manage state manually.
-        // select2('destroy') is cleaner if existed, but let's just empty/append.
-
         let $selPlanta = $("#filter_planta");
         let $selProv = $("#filter_proveedor");
 
-        // Save current selection if any
         let curPlanta = $selPlanta.val();
         let curProv = $selProv.val();
 
@@ -553,7 +547,7 @@ $backendUrl = 'apis/backend.php';
       function applyFilters() {
         let fPlanta = $("#filter_planta").val();
         let fProv = $("#filter_proveedor").val();
-        let fEst = $("#filter_estado").val();
+        // let fEst = $("#filter_estado").val();
         let fDesde = $("#filter_fecha_desde").val();
         let fHasta = $("#filter_fecha_hasta").val();
 
@@ -562,23 +556,6 @@ $backendUrl = 'apis/backend.php';
           if (fPlanta && d.id_planta != fPlanta) return false;
           // Proveedor
           if (fProv && d.id_proveedor != fProv) return false;
-          // Estado (Activo vs Anulado logic)
-          // Backend checks d.estado usually. Assuming 'A' = Activo, 'I'/'N' = Anulado?
-          // User snippet showed status badge based on logic? Wait, renderDespachos says:
-          // let estadoBadge = '<span class="badge bg-success">Activo</span>'; 
-          // It didn't check d.estado for text in previous snippets. Assuming d.estado is 'A' (Activo) or 'I' (Anulado).
-          // Let's debug or assume standard. Usually '1' or 'A'.
-          // If user didn't specify backend status codes, I'll filter by what I see. 
-          // If 'anularDespacho' is called, it might disappear or change status.
-          // Assuming 'Activo' for now for everything unless I see status logic.
-          // Wait, snippet had: ${(d.estado == 'B') ? ... edit ...}
-          // Maybe status 'B' is 'Borrador'? And 'A' is 'Anulado'? Or 'Approved'?
-          // Let's filter loosely or skip strict state mapping if unknown. 
-          // User asked "Estado", I'll implementation generic logic matching textual filter if possible.
-          // Update: I will skip strict status filtering if metadata is missing, OR implementing simple match.
-          // Let's match d.estado directly if user selects value matches d.estado?
-          // Actually, let's assume 'Active' is defaulted.
-          // Update: If filter is empty return true.
 
           // Fechas
           let fecha = d.fecha_registro.substring(0, 10);
@@ -591,16 +568,12 @@ $backendUrl = 'apis/backend.php';
         renderDespachos(filtered);
       }
 
-      // Filter Events
-      // $("#filter_planta, #filter_proveedor, #filter_estado").on("change", applyFilters); // Removed auto-apply
-      // $("#filter_fecha_desde, #filter_fecha_hasta").on("input change", applyFilters); // Removed auto-apply
-
       $("#btn_aplicar_filtros").click(applyFilters);
 
       $("#btn_limpiar_filtros").click(function () {
         $("#filter_planta").val('').trigger('change');
         $("#filter_proveedor").val('').trigger('change');
-        $("#filter_estado").val('');
+        // $("#filter_estado").val('');
         $("#filter_fecha_desde").val('');
         $("#filter_fecha_hasta").val('');
         applyFilters();
@@ -1068,7 +1041,6 @@ $backendUrl = 'apis/backend.php';
         f_callBackend('anular_distribucion', { id_distribucion: id }).done(function (r) {
           if (r.estado === 1) {
             alert("Anulado.");
-            // Refresh details if this distribution belongs to current despatch (usually yes if visible)
             if (selectedDespachoId) {
               selectDespacho(selectedDespachoId); // Reloads everything
             } else {
