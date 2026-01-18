@@ -308,7 +308,10 @@ $backendUrl = 'apis/backend.php';
       }
 
       function formatNumber(num) {
-        return parseFloat(num).toFixed(2);
+        return parseFloat(num).toLocaleString('es-PE', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
       }
 
       // -------------------------

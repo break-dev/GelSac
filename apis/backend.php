@@ -77820,223 +77820,6 @@ switch ($_POST["accion"]) {
 		echo json_encode(["estado" => 1, "data" => ["detalles" => $detalles]]);
 		break;
 
-	case "editar_despacho":
-		$id_despacho = intval($_POST["id_despacho"] ?? 0);
-		$minerales = $_POST["minerales"] ?? [];
-		// Estructura esperada de minerales: 
-		// [ { "id_mineral": ..., "is_blending": ..., "peso_tomado": ... }, ... ]
-
-		// 1. Verificamos que se pueda editar (Estado 'B' o 'A' segun regla de negocio)
-		// Regla usuario: Confimado (A) no puede editar. Inactivo (B) puede editar.
-		$q_chk = "SELECT estado FROM despacho WHERE id = $id_despacho";
-		$row_chk = mysqli_fetch_assoc(mysqli_query($enlace, $q_chk));
-		if ($row_chk['estado'] == 'A') {
-			echo json_encode(["estado" => 0, "mensaje" => "No se puede editar un despacho Confirmado (A)."]);
-			exit;
-		}
-
-		// 2. Obtener lista actual de base de datos para comparar (Diff)
-		$q_cur = "SELECT id, id_mineral, is_blending, peso_tomado FROM despacho_detalle WHERE id_despacho = $id_despacho AND estado != 'X'";
-		$res_cur = mysqli_query($enlace, $q_cur);
-		$actuales = [];
-		while ($r = mysqli_fetch_assoc($res_cur)) {
-			// Clave compuesta para identificar unico: is_blending + id_mineral
-			$key = $r['is_blending'] . '_' . $r['id_mineral'];
-			$actuales[$key] = $r;
-		}
-
-		// 3. Procesar lista entrante (Nuevos o Actualizados)
-		$ids_procesados = [];
-
-		foreach ($minerales as $min) {
-			$id_mineral = intval($min['id_mineral']);
-			$is_blending = filter_var($min['is_blending'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-			$peso_nuevo = floatval($min['peso_tomado']);
-
-			$key = $is_blending . '_' . $id_mineral;
-			$ids_procesados[] = $key;
-
-			if (isset($actuales[$key])) {
-				// EXISTE: Verificar si cambio el peso
-				$old = $actuales[$key];
-				$peso_antiguo = floatval($old['peso_tomado']);
-				$diff = $peso_nuevo - $peso_antiguo;
-
-				if (abs($diff) > 0.001) {
-					// Revertir o descontar diferencia
-					// Si diff > 0 (Aumento peso): Necesito descontar mas stock
-					// Si diff < 0 (Disminuyo peso): Necesito devolver stock (diff es negativa, resta de resta = suma)
-
-					// Verificar stock si aumenta
-					if ($diff > 0) {
-						if ($is_blending) {
-							$res_stk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT peso_actual FROM blending WHERE id=$id_mineral"));
-						} else {
-							$res_stk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT peso_actual FROM catalogolotes WHERE id_CatalogoLotes=$id_mineral"));
-						}
-						// Validar
-						if ($res_stk['peso_actual'] < $diff) {
-							echo json_encode(["estado" => 0, "mensaje" => "Stock insuficiente para aumentar peso."]);
-							exit; // Rollback idealmente
-						}
-					}
-
-					// Actualizar stock
-					if ($is_blending) {
-						mysqli_query($enlace, "UPDATE blending SET peso_actual = peso_actual - ($diff) WHERE id=$id_mineral");
-					} else {
-						mysqli_query($enlace, "UPDATE catalogolotes SET peso_actual = peso_actual - ($diff) WHERE id_CatalogoLotes=$id_mineral");
-					}
-
-					// Actualizar detalle
-					mysqli_query($enlace, "UPDATE despacho_detalle SET peso_tomado = $peso_nuevo, peso_actual = $peso_nuevo WHERE id = " . $old['id']);
-				}
-			} else {
-				// NUEVO: Insertar
-				// Validar Stock
-				if ($is_blending) {
-					$res_stk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT peso_actual, peso_actual as log FROM blending WHERE id=$id_mineral"));
-				} else {
-					$res_stk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT peso_actual, peso_actual as log FROM catalogolotes WHERE id_CatalogoLotes=$id_mineral"));
-				}
-
-				if ($res_stk['peso_actual'] < $peso_nuevo) {
-					echo json_encode(["estado" => 0, "mensaje" => "Stock insuficiente para nuevo item."]);
-					exit;
-				}
-				$peso_log = $res_stk['log'];
-
-				// Insertar
-				$q_ins = "INSERT INTO despacho_detalle(id_mineral, id_despacho, is_blending, peso_tomado, peso_actual, peso_actual_log, estado) 
-						VALUES($id_mineral, $id_despacho, $is_blending, $peso_nuevo, $peso_nuevo, $peso_log, 'A')";
-				mysqli_query($enlace, $q_ins);
-
-				// Descontar Stock
-				if ($is_blending) {
-					mysqli_query($enlace, "UPDATE blending SET peso_actual = peso_actual - $peso_nuevo WHERE id=$id_mineral");
-				} else {
-					mysqli_query($enlace, "UPDATE catalogolotes SET peso_actual = peso_actual - $peso_nuevo WHERE id_CatalogoLotes=$id_mineral");
-				}
-			}
-		}
-
-		// 4. Identificar ELIMINADOS (Estaban en base de datos pero no en lista entrante)
-		foreach ($actuales as $key => $old) {
-			if (!in_array($key, $ids_procesados)) {
-				// Eliminar (Estado X y Revertir Stock)
-				$id_min = $old['id_mineral'];
-				$peso = $old['peso_tomado'];
-				$is_bl = $old['is_blending'];
-
-				if ($is_bl) {
-					mysqli_query($enlace, "UPDATE blending SET peso_actual = peso_actual + $peso WHERE id=$id_min");
-				} else {
-					mysqli_query($enlace, "UPDATE catalogolotes SET peso_actual = peso_actual + $peso WHERE id_CatalogoLotes=$id_min");
-				}
-
-				mysqli_query($enlace, "UPDATE despacho_detalle SET estado='X' WHERE id=" . $old['id']);
-			}
-		}
-
-		// 5. Actualizar estado cabecera si se envía
-		if (isset($_POST["estado"])) {
-			$new_est = mysqli_real_escape_string($enlace, $_POST["estado"]); // A or B
-			mysqli_query($enlace, "UPDATE despacho SET estado='$new_est' WHERE id=$id_despacho");
-		}
-
-		echo json_encode(["estado" => 1, "mensaje" => "Despacho actualizado correctamente."]);
-		break;
-
-	case "editar_distribucion":
-		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
-		$detalle = $_POST["detalle"] ?? [];
-
-		// 1. Verificar si es editable (Estado B)
-		// Regla: A no edita, B edita.
-		$row_chk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT estado FROM distribucion WHERE id=$id_distribucion"));
-		if ($row_chk['estado'] == 'A') {
-			echo json_encode(["estado" => 0, "mensaje" => "No se puede editar una distribución Confirmada (A)."]);
-			exit;
-		}
-
-		// 2. Obtener actuales
-		$res_cur = mysqli_query($enlace, "SELECT id as id_linea, id_despacho_detalle, peso_tomado FROM distribucion_detalle WHERE id_distribucion=$id_distribucion");
-		$actuales = [];
-		while ($r = mysqli_fetch_assoc($res_cur)) {
-			$actuales[$r['id_despacho_detalle']] = $r;
-		}
-
-		$ids_procesados = [];
-
-		// 3. Procesar entrantes
-		foreach ($detalle as $item) {
-			$id_dd = intval($item['id_despacho_detalle']);
-			$peso_nuevo = floatval($item['peso_tomado']);
-			$ids_procesados[] = $id_dd;
-
-			if (isset($actuales[$id_dd])) {
-				// UPDATE
-				$old = $actuales[$id_dd];
-				$diff = $peso_nuevo - floatval($old['peso_tomado']);
-
-				if (abs($diff) > 0.001) {
-					// Validar stock si aumenta (Despacho detalle tiene el stock "peso_actual")
-					if ($diff > 0) {
-						$stk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT peso_actual FROM despacho_detalle WHERE id=$id_dd"));
-						if ($stk['peso_actual'] < $diff) {
-							echo json_encode(["estado" => 0, "mensaje" => "Stock insuficiente en despacho para aumentar peso."]);
-							exit;
-						}
-					}
-					// Update stock despacho
-					mysqli_query($enlace, "UPDATE despacho_detalle SET peso_actual = peso_actual - ($diff) WHERE id=$id_dd");
-					// Update linea
-					mysqli_query($enlace, "UPDATE distribucion_detalle SET peso_tomado = $peso_nuevo WHERE id=" . $old['id_linea']);
-				}
-			} else {
-				// INSERT
-				// Validar stock despacho
-				$stk = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT peso_actual, peso_actual as log FROM despacho_detalle WHERE id=$id_dd"));
-				if ($stk['peso_actual'] < $peso_nuevo) {
-					echo json_encode(["estado" => 0, "mensaje" => "Stock insuficiente en despacho."]);
-					exit;
-				}
-				$peso_log = $stk['log'];
-
-				// Parte
-				$res_parte = mysqli_fetch_assoc(mysqli_query($enlace, "SELECT COUNT(id) + 1 as num FROM distribucion_detalle WHERE id_despacho_detalle = $id_dd"));
-				$num_parte = $res_parte['num'];
-
-				mysqli_query($enlace, "INSERT INTO distribucion_detalle(id_despacho_detalle, id_distribucion, numero_parte, peso_tomado, peso_actual_log) VALUES($id_dd, $id_distribucion, $num_parte, $peso_nuevo, $peso_log)");
-				// Descontar
-				mysqli_query($enlace, "UPDATE despacho_detalle SET peso_actual = peso_actual - $peso_nuevo WHERE id=$id_dd");
-			}
-		}
-
-		// 4. Eliminados
-		foreach ($actuales as $key_dd => $old) {
-			if (!in_array($key_dd, $ids_procesados)) {
-				// Devolver peso
-				mysqli_query($enlace, "UPDATE despacho_detalle SET peso_actual = peso_actual + " . $old['peso_tomado'] . " WHERE id=$key_dd");
-				mysqli_query($enlace, "DELETE FROM distribucion_detalle WHERE id=" . $old['id_linea']);
-			}
-		}
-
-		// 5. Update header
-		if (isset($_POST["estado"])) {
-			$new_est = mysqli_real_escape_string($enlace, $_POST["estado"]);
-			// Update fecha estimada tambien si viene?
-			$upd_extra = "";
-			if (isset($_POST["fecha_estimada"])) {
-				$f = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"]);
-				$upd_extra .= ", fecha_estimada='$f'";
-			}
-			mysqli_query($enlace, "UPDATE distribucion SET estado='$new_est' $upd_extra WHERE id=$id_distribucion");
-		}
-
-		echo json_encode(["estado" => 1, "mensaje" => "Distribución actualizada correctamente."]);
-		break;
-
 	case "anular_blending":
 		$id_blending = intval($_POST["id_blending"] ?? 0);
 
@@ -78068,7 +77851,7 @@ switch ($_POST["accion"]) {
 			mysqli_query($enlace, $q_upd_lote);
 		}
 
-		// 3. Eliminar Blending y Detalle Fisicamente
+		// Eliminar Blending y Detalle 
 		mysqli_query($enlace, "DELETE FROM blending_detalle WHERE id_blending = $id_blending");
 		if (mysqli_query($enlace, "DELETE FROM blending WHERE id = $id_blending")) {
 			echo json_encode(["estado" => 1, "mensaje" => "Blending eliminado y stock revertido correctamente."]);
@@ -78079,10 +77862,7 @@ switch ($_POST["accion"]) {
 
 	case "anular_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
-
-		// NOTA: El usuario pidio borrar distribuciones tambien, asi que no hay bloqueo.
-
-		// 1. Revertir pesos a Origen (Blending o Lote)
+		// Revertir pesos a Origen (Blending o Lote)
 		$q_det = "SELECT id, id_mineral, is_blending, peso_tomado FROM despacho_detalle WHERE id_despacho = $id_despacho";
 		$res_det = mysqli_query($enlace, $q_det);
 
@@ -78098,7 +77878,7 @@ switch ($_POST["accion"]) {
 			}
 		}
 
-		// 2. Eliminar Distribuciones asociadas (Cascade manual)
+		// Eliminar Distribuciones asociadas
 		// Obtener IDs de distribuciones
 		$q_dists = "SELECT id FROM distribucion WHERE id_despacho = $id_despacho";
 		$r_dists = mysqli_query($enlace, $q_dists);
@@ -78108,7 +77888,7 @@ switch ($_POST["accion"]) {
 		}
 		mysqli_query($enlace, "DELETE FROM distribucion WHERE id_despacho = $id_despacho");
 
-		// 3. Eliminar Despacho y Detalle
+		// Eliminar Despacho y Detalle
 		mysqli_query($enlace, "DELETE FROM despacho_detalle WHERE id_despacho = $id_despacho");
 		if (mysqli_query($enlace, "DELETE FROM despacho WHERE id = $id_despacho")) {
 			echo json_encode(["estado" => 1, "mensaje" => "Despacho y sus distribuciones eliminados. Stock revertido."]);
@@ -78120,7 +77900,7 @@ switch ($_POST["accion"]) {
 	case "anular_distribucion":
 		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
 
-		// 1. Devolver peso al despacho_detalle
+		// Devolver peso al despacho_detalle
 		$q_det = "SELECT id_despacho_detalle, peso_tomado FROM distribucion_detalle WHERE id_distribucion = $id_distribucion";
 		$res_det = mysqli_query($enlace, $q_det);
 
@@ -78132,13 +77912,17 @@ switch ($_POST["accion"]) {
 			mysqli_query($enlace, "UPDATE despacho_detalle SET peso_actual = peso_actual + $peso WHERE id = $id_dd");
 		}
 
-		// 2. Eliminar Distribucion
+		// Eliminar Distribucion
 		mysqli_query($enlace, "DELETE FROM distribucion_detalle WHERE id_distribucion = $id_distribucion");
 		if (mysqli_query($enlace, "DELETE FROM distribucion WHERE id = $id_distribucion")) {
 			echo json_encode(["estado" => 1, "mensaje" => "Distribución eliminada y peso revertido."]);
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al eliminar distribución."]);
 		}
+		break;
+
+	default:
+		# code...
 		break;
 }
 
