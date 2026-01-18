@@ -129,7 +129,7 @@ $backendUrl = 'apis/backend.php';
           </div>
 
           <!-- Columna Izquierda: Lista de Despachos -->
-          <div class="col-md-5">
+          <div class="col-md-6">
             <div class="bg-white shadow-sm p-3 rounded h-100">
               <h5 class="d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-list-task"></i> Historial de Despachos</span>
@@ -143,11 +143,11 @@ $backendUrl = 'apis/backend.php';
                   <thead class="sticky-top">
                     <tr style="font-size: 13px;">
                       <th class="header-bg-primary text-center">Código</th>
-                      <th class="header-bg-primary text-center">Planta Destino</th>
+                      <th class="header-bg-primary text-center">Proveedor</th>
                       <th class="header-bg-primary text-center">Fecha</th>
                       <th class="header-bg-primary text-center">Items</th>
                       <th class="header-bg-primary text-center">Estado</th>
-                      <th class="header-bg-primary text-center" width="50">Ver</th>
+                      <th class="header-bg-primary text-center" width="50">Acciones</th>
                     </tr>
                   </thead>
                   <tbody id="tbl_despachos" style="font-size: 13px;">
@@ -161,7 +161,7 @@ $backendUrl = 'apis/backend.php';
           </div>
 
           <!-- Columna Derecha: Detalle del Despacho -->
-          <div class="col-md-7">
+          <div class="col-md-6">
             <div class="d-flex flex-column h-100">
 
               <!-- Panel Superior: Detalle de Minerales -->
@@ -257,9 +257,9 @@ $backendUrl = 'apis/backend.php';
                   <label class="form-label fw-bold small text-uppercase text-muted">2. Proveedor</label>
                   <select id="reg_proveedor" class="form-select" data-bs-theme="bootstrap-5" disabled></select>
                 </div>
-                <div class="col-md-12 d-flex align-items-end justify-content-end">
-                  <button class="btn btn-secondary btn-sm" id="btn_buscar_minerales" disabled>
-                    <i class="bi bi-search"></i> Listar Minerales Disponibles
+                <div class="col-md-3 d-flex align-items-end justify-content-end">
+                  <button class="btn btn-primary" id="btn_buscar_minerales" disabled>
+                    <i class="bi bi-search"></i> Listar Lotes/Blendings
                   </button>
                 </div>
               </div>
@@ -267,7 +267,7 @@ $backendUrl = 'apis/backend.php';
           </div>
 
           <!-- Paso 2: Selección de Minerales -->
-          <h6 class="border-bottom pb-2 mb-2">3. Seleccione Minerales (Lotes o Blendings) y Peso a Despachar</h6>
+          <h6 class="border-bottom pb-2 mb-2">3. Seleccione los Lotes o Blendings e ingrese su peso a Despachar</h6>
           <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
             <table class="table table-sm table-hover align-middle">
               <thead class="table-secondary sticky-top">
@@ -476,16 +476,38 @@ $backendUrl = 'apis/backend.php';
         if (allDespachos.length === 0) {
           html = '<tr><td colspan="6" class="text-center text-muted p-3">No hay despachos registrados.</td></tr>';
         } else {
+          // Sort by Plant then by ID Descending
+          allDespachos.sort((a, b) => {
+             if (a.descripcion_planta < b.descripcion_planta) return -1;
+             if (a.descripcion_planta > b.descripcion_planta) return 1;
+             return b.id_despacho - a.id_despacho;
+          });
+
+          let lastPlantId = null;
+
           allDespachos.forEach(d => {
             let totalItems = parseInt(d.blending_usados) + parseInt(d.lotes_usados);
             let estadoBadge = '<span class="badge bg-success">Activo</span>';
+
+            // Group Header
+            if (d.id_planta !== lastPlantId) {
+                html += `
+                    <tr class="table-primary">
+                        <td colspan="6" class="fw-bold text-uppercase" style="background-color: #e9ecef;">
+                            <i class="bi bi-building me-2"></i>${d.descripcion_planta} 
+                            <span class="text-muted fw-normal small">(${d.ruc_planta})</span>
+                        </td>
+                    </tr>
+                `;
+                lastPlantId = d.id_planta;
+            }
 
             html += `
                   <tr class="clickable-row" onclick="selectDespacho(${d.id_despacho}, this)" data-id="${d.id_despacho}">
                       <td class="text-center fw-bold">${d.correlativo}</td>
                       <td>
-                        <div class="fw-bold small">${d.descripcion_planta}</div>
-                        <div class="text-muted" style="font-size: 0.75em;">${d.ruc_planta}</div>
+                        <div class="fw-bold small">${d.razon_social}</div>
+                        <div class="text-muted" style="font-size: 0.75em;">${d.documento_proveedor}</div>
                       </td>
                       <td class="text-center small">${d.fecha_registro}</td>
                       <td class="text-center">
@@ -556,7 +578,7 @@ $backendUrl = 'apis/backend.php';
                   html += `
                     <tr>
                       <td>
-                        <div class="fw-bold text-truncate" style="max-width: 180px;" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
+                        <div class="fw-bold text-truncate" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
                         <div class="small text-muted">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''}</div>
                       </td>
                       <td class="text-center small">${d.fecha_estimada}</td>
@@ -565,7 +587,6 @@ $backendUrl = 'apis/backend.php';
                           <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')">
                             <i class="bi bi-eye-fill"></i>
                           </button>
-                           <!-- Edit only if logic permits, simplified to allow A? No backend logic blocked A for distribucion yet but plan said A locked. Re-check logic. Backend says: check status 'A' -> exit. So only B editable. -->
                            ${(d.estado == 'B') ? `<button class="btn btn-sm btn-link text-warning" onclick="editDistribucion(${d.id_despacho}, ${d.id_distribucion}, event)"><i class="bi bi-pencil-fill"></i></button>` : ''}
                           <button class="btn btn-sm btn-link text-danger" onclick="anularDistribucion(${d.id_distribucion}, event)">
                             <i class="bi bi-trash-fill"></i>
@@ -741,7 +762,7 @@ $backendUrl = 'apis/backend.php';
         let val = $(this).val();
         $("#btn_buscar_minerales").prop('disabled', !val);
         // Limpiar tabla si cambia proveedor
-        $("#tbl_minerales_disponibles").html('<tr><td colspan="5" class="text-center text-muted py-4">Haga clic en Listar Minerales.</td></tr>');
+        $("#tbl_minerales_disponibles").html('<tr><td colspan="5" class="text-center text-muted py-4">Haga clic en Listar Lotes/Blendings.</td></tr>');
       });
 
       // Paso 3: Click Buscar Minerales
@@ -754,7 +775,7 @@ $backendUrl = 'apis/backend.php';
 
         f_callBackend('get_minerales_to_despacho_by_proveedor', { id_proveedor: idProv })
           .done(function (r) {
-            $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Listar Minerales');
+            $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Listar Lotes/Blendings');
 
             if (r.estado === 1) {
               mineralesDisponibles = r.data.minerales;
@@ -768,7 +789,7 @@ $backendUrl = 'apis/backend.php';
       function renderMineralesTable() {
         let html = '';
         if (mineralesDisponibles.length === 0) {
-          html = '<tr><td colspan="5" class="text-center">El proveedor no tiene minerales (Lotes con saldo o Blendings activos) disponibles.</td></tr>';
+          html = '<tr><td colspan="5" class="text-center">El proveedor no tiene Lotes o Blendings disponibles.</td></tr>';
         } else {
           mineralesDisponibles.forEach((m, index) => {
             let isBlending = (m.is_blending == 1); // Ensure boolean check works with response

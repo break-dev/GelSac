@@ -77305,7 +77305,8 @@ switch ($_POST["accion"]) {
 					COUNT(dsd.id) 
 				FROM despacho_detalle dsd 
 				WHERE dsp.id = dsd.id_despacho AND dsd.is_blending = 0
-			) as lotes_usados
+			) as lotes_usados,
+			dsp.estado
 		FROM despacho dsp
 		INNER JOIN tb_clientes prov on dsp.id_proveedor = prov.Id
 		INNER JOIN tbconfig_plantas pln on pln.Id = dsp.id_planta
@@ -77756,7 +77757,8 @@ switch ($_POST["accion"]) {
 				WHERE dstd.id_distribucion = dist.id
 			) as peso_acumulado,
 			dist.fecha_estimada,
-			dist.created_at as fecha_registro
+			dist.created_at as fecha_registro,
+			dist.estado
 		FROM
 			distribucion dist
 		INNER JOIN transporte uni on uni.id_transporte = dist.id_unidad
