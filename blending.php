@@ -114,6 +114,38 @@ $backendUrl = 'apis/backend.php';
               <h5 class="d-inline-block"><i class="bi bi-list-columns-reverse"></i> Historial de Blendings</h5>
               <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
 
+              <!-- Filters Section -->
+              <div class="row g-2 mb-3 bg-light p-2 rounded border">
+                <div class="col-12">
+                  <label class="form-label small mb-0 fw-bold">Proveedor</label>
+                  <select id="filter_proveedor" class="form-select form-select-sm w-100"></select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0 fw-bold">Correlativo</label>
+                  <select id="filter_correlativo" class="form-select form-select-sm w-100"></select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0 fw-bold">Estado</label>
+                  <select id="filter_estado" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="Con peso">Con peso</option>
+                    <option value="Agotado">Agotado</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0 fw-bold">Desde</label>
+                  <input type="date" id="filter_fecha_desde" class="form-control form-control-sm">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0 fw-bold">Hasta</label>
+                  <div class="input-group input-group-sm">
+                    <input type="date" id="filter_fecha_hasta" class="form-control form-control-sm">
+                    <button class="btn btn-outline-secondary" type="button" id="btn_limpiar_filtros"
+                      title="Limpiar Filtros"><i class="bi bi-x-lg"></i></button>
+                  </div>
+                </div>
+              </div>
+
               <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
                 <table class="table table-bordered table-hover table-striped">
                   <thead>
@@ -150,7 +182,7 @@ $backendUrl = 'apis/backend.php';
                     <tr style="font-size: 13px;">
                       <!-- <th class="header-bg-detalle text-center">ID Lote</th> -->
                       <!-- <th class="header-bg-detalle text-center">Código Lote</th> -->
-                      <th class="header-bg-detalle text-center">Código Gel</th> 
+                      <th class="header-bg-detalle text-center">Código Gel</th>
                       <th class="header-bg-detalle text-center">Peso Lote (log)</th>
                       <th class="header-bg-detalle text-center">Peso Usado</th>
                       <th class="header-bg-detalle text-center">Peso Restante</th>
@@ -259,6 +291,12 @@ $backendUrl = 'apis/backend.php';
       let blendingSeleccionado = null;
       let lotesDisponibles = [];
 
+      // Filter Data
+      let filterData = {
+        proveedores: [],
+        correlativos: []
+      };
+
       // -------------------------
       // Funciones Auxiliares
       // -------------------------
@@ -277,13 +315,13 @@ $backendUrl = 'apis/backend.php';
       // Lógica de Renderizado
       // -------------------------
 
-      function renderBlendings() {
+      function renderBlendings(dataList = allBlendings) {
         let html = '';
-        if (allBlendings.length === 0) {
+        if (dataList.length === 0) {
           html = '<tr><td colspan="7" class="text-center">No se encontraron blendings registrados.</td></tr>';
         } else {
           // Ordenar por Proveedor y luego por ID descendente
-          allBlendings.sort((a, b) => {
+          dataList.sort((a, b) => {
             if (a.razon_social < b.razon_social) return -1;
             if (a.razon_social > b.razon_social) return 1;
             return b.id_blending - a.id_blending;
@@ -291,7 +329,7 @@ $backendUrl = 'apis/backend.php';
 
           let lastProviderId = null;
 
-          allBlendings.forEach(b => {
+          dataList.forEach(b => {
             let estadoClass = b.estado === 'Activo' ? 'text-success' : 'text-muted';
 
             // Verificar cambio de proveedor para insertar cabecera
@@ -322,7 +360,7 @@ $backendUrl = 'apis/backend.php';
           });
         }
         $("#tbl_blendings").html(html);
-        $("#total_blendings").text(allBlendings.length);
+        $("#total_blendings").text(dataList.length);
       }
 
       function renderDetalle(detalle) {
@@ -420,13 +458,96 @@ $backendUrl = 'apis/backend.php';
       // Eventos
       // -------------------------
 
+      // 1.1 Popular Filtros
+      function populateFilters() {
+        let uniqueProveedores = {};
+        let uniqueCorrelativos = [];
+
+        allBlendings.forEach(b => {
+          if (!uniqueProveedores[b.id_proveedor]) {
+            uniqueProveedores[b.id_proveedor] = {
+              id: b.id_proveedor,
+              text: `${b.razon_social} - ${b.documento}`
+            };
+          }
+          uniqueCorrelativos.push({
+            id: b.correlativo,
+            text: b.correlativo
+          });
+        });
+
+        // Sort arrays
+        let arrProvs = Object.values(uniqueProveedores).sort((a, b) => a.text.localeCompare(b.text));
+        let arrCorrels = uniqueCorrelativos.sort((a, b) => b.text.localeCompare(a.text)); // Descending
+
+        // Add 'Todos' option
+        arrProvs.unshift({ id: '', text: 'Todos' });
+        arrCorrels.unshift({ id: '', text: 'Todos' });
+
+        // Init Select2 Proveedor
+        $("#filter_proveedor").empty().select2({
+          theme: "bootstrap-5",
+          data: arrProvs
+        }).val('').trigger('change.select2');
+
+        // Init Select2 Correlativo
+        $("#filter_correlativo").empty().select2({
+          theme: "bootstrap-5",
+          data: arrCorrels
+        }).val('').trigger('change.select2');
+      }
+
+      // 1.2 Aplicar Filtros
+      function applyFilters() {
+        let provId = $("#filter_proveedor").val();
+        let correlativo = $("#filter_correlativo").val();
+        let estado = $("#filter_estado").val();
+        let fDesde = $("#filter_fecha_desde").val();
+        let fHasta = $("#filter_fecha_hasta").val();
+
+        let filtered = allBlendings.filter(b => {
+          // Proveedor
+          if (provId && b.id_proveedor != provId) return false;
+          // Correlativo
+          if (correlativo && b.correlativo != correlativo) return false;
+          // Estado
+          if (estado && b.estado != estado) return false;
+
+          // Fechas
+          let fechaReg = b.fecha_registro.substring(0, 10); // YYYY-MM-DD
+          if (fDesde && fechaReg < fDesde) return false;
+          if (fHasta && fechaReg > fHasta) return false;
+
+          return true;
+        });
+
+        renderBlendings(filtered);
+      }
+
+      // Event Listeners for Filters
+      $("#filter_proveedor, #filter_correlativo, #filter_estado").on("change", function () {
+        applyFilters();
+      });
+      $("#filter_fecha_desde, #filter_fecha_hasta").on("input change", function () {
+        applyFilters();
+      });
+      $("#btn_limpiar_filtros").on("click", function () {
+        $("#filter_proveedor").val(null).trigger('change');
+        $("#filter_correlativo").val(null).trigger('change');
+        $("#filter_estado").val('');
+        $("#filter_fecha_desde").val('');
+        $("#filter_fecha_hasta").val('');
+        applyFilters();
+      });
+
       // 1. Cargar datos iniciales
       function loadAllData() {
         f_callBackend('get_lista_blending_cabecera', {})
           .done(function (r) {
             if (r.estado === 1) {
               allBlendings = r.data.blendings;
-              renderBlendings();
+              populateFilters();
+              renderBlendings(allBlendings);
             } else {
               console.error("Error cargando blendings");
             }

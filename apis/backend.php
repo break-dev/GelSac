@@ -77021,8 +77021,8 @@ switch ($_POST["accion"]) {
 				WHERE bld.id_blending = bl.id
 			) as cantidad_lotes,
 			CASE
-				WHEN bl.estado = 'A' THEN 'Activo'
-				WHEN bl.estado = 'B' THEN 'Agotado'
+				WHEN bl.estado = 'A' THEN 'Con peso'
+				WHEN bl.estado = 'F' THEN 'Agotado'
 				ELSE 'Desconocido'
 			END AS estado
 		FROM
