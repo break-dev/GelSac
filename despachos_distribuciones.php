@@ -180,8 +180,9 @@ $backendUrl = 'apis/backend.php';
                       <tr style="font-size: 13px;">
                         <th class="header-bg-secondary text-center">Tipo</th>
                         <th class="header-bg-secondary text-center">Código Mineral</th>
-                        <th class="header-bg-secondary text-center">Peso Original</th>
-                        <th class="header-bg-secondary text-center">Peso Despachado</th>
+                        <th class="header-bg-secondary text-center">Peso Lote/Bleding</th>
+                        <th class="header-bg-secondary text-center">Peso en Despacho</th>
+                        <th class="header-bg-secondary text-center">Peso en Distribucion</th>
                       </tr>
                     </thead>
                     <tbody id="tbl_detalle_despacho" style="font-size: 13px;">
@@ -191,7 +192,7 @@ $backendUrl = 'apis/backend.php';
                     </tbody>
                     <tfoot id="tfoot_detalle_despacho" style="display:none;">
                       <tr class="fw-bold table-light">
-                        <td colspan="3" class="text-end">Total Despachado:</td>
+                        <td colspan="4" class="text-end">Total Despachado:</td>
                         <td class="text-end" id="lbl_total_peso_despacho">0.00</td>
                       </tr>
                     </tfoot>
@@ -252,13 +253,13 @@ $backendUrl = 'apis/backend.php';
                   <label class="form-label fw-bold small text-uppercase text-muted">1. Planta Destino</label>
                   <select id="reg_planta" class="form-select" data-bs-theme="bootstrap-5"></select>
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-4">
                   <label class="form-label fw-bold small text-uppercase text-muted">2. Proveedor</label>
                   <select id="reg_proveedor" class="form-select" data-bs-theme="bootstrap-5" disabled></select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                  <button class="btn btn-secondary w-100" id="btn_buscar_minerales" disabled>
-                    <i class="bi bi-search"></i> Listar Minerales
+                <div class="col-md-12 d-flex align-items-end justify-content-end">
+                  <button class="btn btn-secondary btn-sm" id="btn_buscar_minerales" disabled>
+                    <i class="bi bi-search"></i> Listar Minerales Disponibles
                   </button>
                 </div>
               </div>
@@ -425,13 +426,20 @@ $backendUrl = 'apis/backend.php';
 
       // VARIABLES GLOBALES
       const backendUrl = '<?php echo $backendUrl; ?>';
-      const modalNuevoDespacho = new bootstrap.Modal(document.getElementById("modal_nuevo_despacho"));
-      const modalNuevaDistribucion = new bootstrap.Modal(document.getElementById("modal_nueva_distribucion"));
+      // Use window.bootstrap to avoid ReferenceError if not in scope
+      const modalNuevoDespacho = new window.bootstrap.Modal(document.getElementById("modal_nuevo_despacho"));
+      const modalNuevaDistribucion = new window.bootstrap.Modal(document.getElementById("modal_nueva_distribucion"));
 
       let allDespachos = [];
       let mineralesDisponibles = [];
       let itemsDespachoDistribucion = [];
       let selectedDespachoId = 0;
+
+      // Control de Modo Edicion
+      let isEditingDespacho = false;
+      let editingDespachoId = 0;
+      let isEditingDistribucion = false;
+      let editingDistribucionId = 0;
 
       // FUNCIONES AUXILIARES
       function f_callBackend(accion, data) {
@@ -486,6 +494,10 @@ $backendUrl = 'apis/backend.php';
                       <td class="text-center">${estadoBadge}</td>
                       <td class="text-center">
                         <button class="btn btn-sm btn-link text-primary"><i class="bi bi-eye-fill"></i></button>
+                        ${(d.estado == 'B') ? `
+                        <button class="btn btn-sm btn-link text-warning" onclick="editDespacho(${d.id_despacho}, event)"><i class="bi bi-pencil-fill"></i></button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-link text-danger" onclick="anularDespacho(${d.id_despacho}, event)"><i class="bi bi-trash-fill"></i></button>
                       </td>
                   </tr>
                   `;
@@ -552,6 +564,11 @@ $backendUrl = 'apis/backend.php';
                       <td class="text-center">
                           <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')">
                             <i class="bi bi-eye-fill"></i>
+                          </button>
+                           <!-- Edit only if logic permits, simplified to allow A? No backend logic blocked A for distribucion yet but plan said A locked. Re-check logic. Backend says: check status 'A' -> exit. So only B editable. -->
+                           ${(d.estado == 'B') ? `<button class="btn btn-sm btn-link text-warning" onclick="editDistribucion(${d.id_despacho}, ${d.id_distribucion}, event)"><i class="bi bi-pencil-fill"></i></button>` : ''}
+                          <button class="btn btn-sm btn-link text-danger" onclick="anularDistribucion(${d.id_distribucion}, event)">
+                            <i class="bi bi-trash-fill"></i>
                           </button>
                       </td>
                     </tr>`;
@@ -628,6 +645,7 @@ $backendUrl = 'apis/backend.php';
                       <td class="fw-bold text-dark">${item.codigo}</td>
                       <td class="text-end text-muted">${formatNumber(item.peso_actual_log)}</td>
                       <td class="text-end fw-bold text-primary">${formatNumber(item.peso_tomado)}</td>
+                      <td class="text-end fw-bold text-primary">${formatNumber(item.peso_distribuido)}</td>
                   </tr>
                   `;
             totalPeso += parseFloat(item.peso_tomado);
@@ -644,11 +662,27 @@ $backendUrl = 'apis/backend.php';
       // MODAL LOGIC: NUEVO DESPACHO
       // --------------------------------------------------------------------------------
 
+      // --------------------------------------------------------------------------------
+      // MODAL LOGIC: NUEVO / EDITAR DESPACHO
+      // --------------------------------------------------------------------------------
+
       // Paso 0: Abrir Modal -> Cargar Plantas
       $("#btn_open_new_despacho_modal").click(function () {
-        // Reset UI
-        $("#reg_planta").empty().append('<option value="">Cargando...</option>');
+        f_openDespachoModal();
+      });
+
+      function f_openDespachoModal(editId = 0) {
+        // Reset Logic
+        isEditingDespacho = (editId > 0);
+        editingDespachoId = editId;
+
+        // UI Reset
+        $("#modal_nuevo_despacho .modal-title").html(isEditingDespacho ? '<i class="bi bi-pencil-square"></i> Editar Despacho' : '<i class="bi bi-send-plus"></i> Crear Nuevo Despacho');
+        $("#btn_crear_despacho").text(isEditingDespacho ? "Actualizar Despacho" : "Crear Despacho"); // Icon handled by CSS?
+
+        $("#reg_planta").empty().append('<option value="">Cargando...</option>').prop('disabled', false);
         $("#reg_proveedor").empty().prop('disabled', true);
+
         $("#btn_buscar_minerales").prop('disabled', true);
         $("#tbl_minerales_disponibles").html('<tr><td colspan="5" class="text-center text-muted py-4">Seleccione planta y proveedor.</td></tr>');
         $("#lbl_total_modal").text("0.00");
@@ -667,11 +701,16 @@ $backendUrl = 'apis/backend.php';
                 data: opts,
                 width: '100%'
               }).val('').trigger('change');
+
+              // If Edit Mode, load data
+              if (isEditingDespacho) {
+                loadDespachoForEdit(editId);
+              }
             }
           });
 
         modalNuevoDespacho.show();
-      });
+      }
 
       // Paso 1: Configurar Change de Planta -> Cargar Proveedores
       $("#reg_planta").on('change', function () {
@@ -810,42 +849,44 @@ $backendUrl = 'apis/backend.php';
         $("#btn_crear_despacho").prop('disabled', total <= 0);
       }
 
-      // Paso 5: CREAR DESPACHO
+      // Paso 5: CREAR / EDITAR DESPACHO (Unified)
       $("#btn_crear_despacho").click(function () {
-        let idPlanta = $("#reg_planta").val();
-        let idProveedor = $("#reg_proveedor").val();
+        let lista = [];
 
-        let payload = {
-          id_planta: idPlanta,
-          id_proveedor: idProveedor,
-          minerales: []
-        };
-
-        $(".input-peso-despacho:enabled").each(function () {
+        $(".chk-min:checked").each(function () {
           let idx = $(this).data('idx');
-          let val = parseFloat($(this).val());
+          let val = parseFloat($(`.input-peso-despacho[data-idx='${idx}']`).val());
+          let min = mineralesDisponibles[idx];
 
           if (val > 0) {
-            let mineralData = mineralesDisponibles[idx];
-            payload.minerales.push({
-              id_mineral: mineralData.id_mineral,
-              is_blending: mineralData.is_blending, // Ensure this passes true/false or 1/0 correctly
+            lista.push({
+              id_mineral: min.id_mineral,
+              is_blending: min.is_blending,
               peso_tomado: val
             });
           }
         });
 
-        if (payload.minerales.length === 0) return;
+        if (lista.length === 0 && !confirm("¿Guardar sin minerales? (Vacío)")) return;
 
-        if (!confirm("¿Confirmar Creación de Despacho?")) return;
+        let action = isEditingDespacho ? "editar_despacho" : "crear_despacho";
+        let payload = {
+          id_planta: $("#reg_planta").val(),
+          id_proveedor: $("#reg_proveedor").val(),
+          // estado: $("#reg_estado").val(),
+          minerales: lista
+        };
+        if (isEditingDespacho) payload.id_despacho = editingDespachoId;
+
+        if (!confirm("¿Confirmar operación?")) return;
 
         let $btn = $(this);
-        $btn.prop('disabled', true).text("Creando...");
+        $btn.prop('disabled', true).text("Procesando...");
 
-        f_callBackend('crear_despacho', payload)
+        f_callBackend(action, payload)
           .done(function (r) {
             if (r.estado === 1) {
-              alert("Despacho Creado Correctamente: " + r.data.correlativo);
+              alert(r.mensaje || "Operación exitosa.");
               modalNuevoDespacho.hide();
               loadAllDespachos();
             } else {
@@ -853,9 +894,107 @@ $backendUrl = 'apis/backend.php';
             }
           })
           .always(function () {
-            $btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> Crear Despacho');
+            $btn.prop('disabled', false).html(isEditingDespacho ? 'Actualizar' : 'Crear Despacho');
           });
       });
+
+      // ----------------------------
+      // LOGICA EDITAR DESPACHO
+      // ----------------------------
+      function loadDespachoForEdit(id) {
+        let despacho = allDespachos.find(d => d.id_despacho == id);
+        if (!despacho) return;
+
+        // $("#reg_estado").val(despacho.estado);
+        $("#reg_planta").val(despacho.id_planta).trigger('change');
+        $("#reg_planta").prop('disabled', true);
+
+        f_callBackend('get_proveedores_by_planta', { id_planta: despacho.id_planta })
+          .done(function (r) {
+            if (r.estado === 1) {
+              let opts = r.data.proveedores.map(p => ({ id: p.id_proveedor, text: `${p.razon_social} (${p.documento})` }));
+              $("#reg_proveedor").empty().select2({
+                dropdownParent: $('#modal_nuevo_despacho'),
+                theme: "bootstrap-5",
+                data: opts
+              }).val(despacho.id_proveedor).trigger('change').prop('disabled', true);
+
+              loadMineralesForEdit(despacho.id_proveedor, id);
+            }
+          });
+      }
+
+      function loadMineralesForEdit(idProv, idDespacho) {
+        $("#btn_buscar_minerales").prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        $.when(
+          f_callBackend('get_minerales_to_despacho_by_proveedor', { id_proveedor: idProv }),
+          f_callBackend('get_despacho_detalle_by_despacho', { id_despacho: idDespacho })
+        ).done(function (r1, r2) {
+          let resMin = r1[0];
+          let resDet = r2[0];
+
+          if (resMin.estado === 1 && resDet.estado === 1) {
+            let availables = resMin.data.minerales;
+            let currentItems = resDet.data.detalle_blending;
+
+            currentItems.forEach(cur => {
+              let isBl = (cur.is_blending == 1);
+              let match = availables.find(a => a.id_mineral == cur.id_mineral && a.is_blending == cur.is_blending);
+
+              if (match) {
+                match._current_taken = parseFloat(cur.peso_tomado);
+                match.peso_actual = parseFloat(match.peso_actual) + match._current_taken;
+              } else {
+                availables.push({
+                  id_mineral: cur.id_mineral,
+                  is_blending: cur.is_blending,
+                  codigo: cur.codigo,
+                  peso_actual: parseFloat(cur.peso_tomado),
+                  _current_taken: parseFloat(cur.peso_tomado)
+                });
+              }
+            });
+
+            mineralesDisponibles = availables;
+            renderMineralesTable();
+
+            $(".chk-min").each(function () {
+              let idx = $(this).data('idx');
+              let m = mineralesDisponibles[idx];
+              if (m && m._current_taken) {
+                $(this).prop('checked', true).trigger('change');
+                $(`.input-peso-despacho[data-idx='${idx}']`).val(m._current_taken);
+              }
+            });
+            updateTotalModal();
+            $("#btn_buscar_minerales").prop('disabled', true).html('<i class="bi bi-search"></i> Lista Cargada');
+          }
+        });
+      }
+
+      window.editDespacho = function (id, e) {
+        if (e) e.stopPropagation();
+        f_openDespachoModal(id);
+      };
+
+      window.anularDespacho = function (id, e) {
+        if (e) e.stopPropagation();
+        if (!confirm("¿ANULAR Despacho? Se revertirá todo el stock.")) return;
+        f_callBackend('anular_despacho', { id_despacho: id }).done(function (r) {
+          if (r.estado === 1) { alert("Anulado."); loadAllDespachos(); }
+          else alert("Error: " + r.mensaje);
+        });
+      };
+
+      window.anularDistribucion = function (id, e) {
+        if (e) e.stopPropagation();
+        if (!confirm("¿ANULAR Distribución? Se devolverá peso al Despacho.")) return;
+        f_callBackend('anular_distribucion', { id_distribucion: id }).done(function (r) {
+          if (r.estado === 1) { alert("Anulado."); loadAllDespachos(); }
+          else alert("Error: " + r.mensaje);
+        });
+      };
 
 
       // --------------------------------------------------------------------------------
@@ -949,6 +1088,170 @@ $backendUrl = 'apis/backend.php';
         loadUnidades();
       });
 
+      // --------------------------------------------------------------------------------
+      // MODAL LOGIC: NUEVA / EDITAR DISTRIBUCION
+      // --------------------------------------------------------------------------------
+
+      $("#btn_open_new_distribucion").click(function () {
+        f_openDistribucionModal();
+      });
+
+      function f_openDistribucionModal(editId = 0, idDespachoOverride = 0) {
+        if (!selectedDespachoId && !editId) return;
+
+        // Reset Logic
+        isEditingDistribucion = (editId > 0);
+        editingDistribucionId = editId;
+        let targetDespachoId = idDespachoOverride || selectedDespachoId;
+
+        // UI Reset
+        $("#modal_nueva_distribucion .modal-title").html(isEditingDistribucion ? '<i class="bi bi-pencil-square"></i> Editar Distribución' : '<i class="bi bi-truck"></i> Nueva Distribución de Carga');
+        $("#btn_guardar_distribucion").text(isEditingDistribucion ? "Actualizar" : "Guardar Distribución");
+
+        $("#dist_transportista, #dist_tipo_vehiculo").empty().append('<option value="">Cargando...</option>');
+        $("#dist_unidad").empty().prop('disabled', true);
+        $("#dist_segunda_placa").val('');
+        $("#dist_fecha").val(new Date().toISOString().split('T')[0]);
+        // $("#dist_estado").val('A');
+
+        $("#tbl_items_distribucion").html('<tr><td colspan="5" class="text-center p-3">Cargando items...</td></tr>');
+        $("#lbl_total_dist_modal").text("0.00");
+        $("#btn_guardar_distribucion").prop('disabled', true);
+
+        modalNuevaDistribucion.show();
+
+        // Load Data Chain
+        $.when(
+          f_callBackend('get_lista_transportistas', {}),
+          f_callBackend('get_tipos_vehiculo', {}),
+          idDespachoOverride ? null : f_callBackend('get_minerales_of_despacho_to_distribucion', { id_despacho: targetDespachoId })
+        ).done(function (rTr, rTv, rMin) {
+          let r1 = rTr[0];
+          let r2 = rTv[0];
+          let r3 = rMin ? rMin[0] : null;
+
+          if (r1.estado === 1) {
+            let opts = r1.data.transportistas.map(t => ({ id: t.id_transportista, text: t.razon_social + ' (' + t.documento + ')' }));
+            $("#dist_transportista").empty().select2({
+              dropdownParent: $('#modal_nueva_distribucion'),
+              theme: "bootstrap-5",
+              placeholder: "Seleccione Transportista",
+              data: opts
+            }).val('').trigger('change');
+          }
+
+          if (r2.estado === 1) {
+            let types = r2.data.tipos_vehiculo || [];
+            $("#dist_tipo_vehiculo").empty().select2({
+              dropdownParent: $('#modal_nueva_distribucion'),
+              theme: "bootstrap-5",
+              placeholder: "Seleccione Tipo",
+              data: types.map(t => ({ id: t.id_tipo_vehiculo, text: t.descripcion }))
+            }).val('').trigger('change');
+          }
+
+          if (r3 && r3.estado === 1) { // Create Mode
+            itemsDespachoDistribucion = r3.data.minerales || [];
+            renderItemsDistribucion();
+          }
+
+          if (isEditingDistribucion) {
+            loadDistribucionForEdit(editId);
+          }
+        });
+      }
+
+      window.editDistribucion = function (idDespacho, idDist, e) {
+        if (e) e.stopPropagation();
+        f_openDistribucionModal(idDist, idDespacho);
+      };
+
+      function loadDistribucionForEdit(idDist) {
+        // Need to fetch details of distribution AND details of original despatch (to know availability)
+        // Logic similar to Despatch Edit: specific endpoint or merging.
+        // Simplified: Call `get_detalle_distribucion_by_distribucion` and `get_minerales_of_despacho_to_distribucion`.
+        // But `get_minerales` returns remaining. We need remaining + taken.
+
+        // First need header info, currently not in separate endpoint, usually in list.
+        // We can get header info from row click or separate call. `get_distribuciones_by_despacho`...
+        // Let's assume we can fetch header from a new endpoint or reusing existing list data if available?
+        // I'll make a quick call `get_distribucion_cabecera` or similar? No, let's use what we have or assume list data is available?
+        // Using `selectedDespachoId` and `allDespachos` won't help with `distribuciones`.
+        // Let's assume we fetch `get_distribuciones_by_despacho` filtered?
+        // Easier: Add `get_distribucion_cabecera` to backend? Avoiding backend changes.
+        // Use `get_detalle_distribucion_by_distribucion`, hoping it returns header? It usually returns details.
+
+        // Workaround: We have metadata passed to `viewDistribucion`. But `editDistribucion` button has id.
+        // Let's fetch detail. 
+
+        f_callBackend('get_detalle_distribucion_by_distribucion', { id_distribucion: idDist, include_header: 1 }) // Hacky if include_header not impl
+          .done(function (r) {
+            if (r.estado === 1) {
+              // If backend doesn't return header, we are stuck on fields like Transportista.
+              // Let's assume I can't easily populate Header without backend edit.
+              // I'll proceed creating `items` merge logic first.
+              // Check recent backend edits: `get_detalle_distribucion` only returns details.
+
+              // CRITICAL: We need header info to edit (Placa, Fecha, etc).
+              // I will assume I can't fully edit header fields cleanly without backend update, 
+              // OR I assume the user clicks edit on a row where I have the data.
+              // The `editDistribucion` call receives `idDespacho`. 
+              // I will re-fetch `get_distribuciones_by_despacho` and find the row??
+
+              f_callBackend('get_distribuciones_by_despacho', { id_despacho: selectedDespachoId || 0 })
+                .done(function (rH) {
+                  let distHead = rH.data.distribuciones.find(x => x.id_distribucion == idDist);
+                  if (distHead) {
+                    $("#dist_transportista").val(distHead.id_transportista).trigger('change');
+                    $("#dist_tipo_vehiculo").val(distHead.id_tipo_vehiculo).trigger('change');
+                    setTimeout(() => {
+                      $("#dist_unidad").val(distHead.id_unidad).trigger('change');
+                    }, 500); // Async wait for cascading
+                    $("#dist_segunda_placa").val(distHead.segunda_placa);
+                    $("#dist_fecha").val(distHead.fecha_estimada);
+                    // $("#dist_estado").val(distHead.estado);
+                  }
+
+                  // Now Items
+                  f_callBackend('get_minerales_of_despacho_to_distribucion', { id_despacho: selectedDespachoId || distHead.id_despacho })
+                    .done(function (rMin) {
+                      let availables = rMin.data.minerales; // Remaining in dispatch
+                      let taken = r.data.detalles; // Taken in this distribution
+
+                      taken.forEach(t => {
+                        let match = availables.find(a => a.id_despacho_detalle == t.id_despacho_detalle);
+                        if (match) {
+                          match._current_taken = parseFloat(t.peso_tomado);
+                          match.peso_actual = parseFloat(match.peso_actual) + match._current_taken;
+                        } else {
+                          availables.push({
+                            id_despacho_detalle: t.id_despacho_detalle,
+                            codigo: t.codigo,
+                            is_blending: t.is_blending,
+                            peso_actual: parseFloat(t.peso_tomado),
+                            _current_taken: parseFloat(t.peso_tomado)
+                          });
+                        }
+                      });
+
+                      itemsDespachoDistribucion = availables;
+                      renderItemsDistribucion();
+
+                      $(".chk-dist-item").each(function () {
+                        let idx = $(this).data('idx');
+                        let m = itemsDespachoDistribucion[idx];
+                        if (m && m._current_taken) {
+                          $(this).prop('checked', true).trigger('change');
+                          $(`.input-dist-peso[data-idx='${idx}']`).val(m._current_taken);
+                        }
+                      });
+                      updateTotalDist();
+                    });
+                });
+            }
+          });
+      }
+
       function renderItemsDistribucion() {
         let html = '';
         if (itemsDespachoDistribucion.length === 0) {
@@ -959,8 +1262,6 @@ $backendUrl = 'apis/backend.php';
             let badge = isBlending
               ? '<span class="badge-mineral-type badge-blending">B</span>'
               : '<span class="badge-mineral-type badge-lote">L</span>';
-
-            // Using peso_actual as remaining since creation updates it
             let restante = parseFloat(m.peso_actual);
             let uid = `dist_item_${m.id_despacho_detalle}`;
 
@@ -1019,11 +1320,9 @@ $backendUrl = 'apis/backend.php';
       // Guardar Distribucion
       $("#btn_guardar_distribucion").click(function () {
         let idUnidad = $("#dist_unidad").val();
-        let idTr = $("#dist_transportista").val();
-        let idTv = $("#dist_tipo_vehiculo").val();
 
         if (!idUnidad) {
-          alert("Seleccione una unidad. Si no hay unidades disponibles, verifique el transportista y tipo de vehículo.");
+          alert("Seleccione una unidad.");
           return;
         }
 
@@ -1032,6 +1331,7 @@ $backendUrl = 'apis/backend.php';
           id_unidad: idUnidad,
           segunda_placa: $("#dist_segunda_placa").val(),
           fecha_estimada: $("#dist_fecha").val(),
+          // estado: $("#dist_estado").val(), // Logic removed
           detalle: []
         };
 
@@ -1046,33 +1346,31 @@ $backendUrl = 'apis/backend.php';
           }
         });
 
-        if (payload.detalle.length === 0) return;
+        if (payload.detalle.length === 0 && !confirm("¿Guardar sin items?")) return;
 
-        if (!confirm("¿Registrar Distribución?")) return;
+        let action = isEditingDistribucion ? "editar_distribucion" : "crear_distribucion";
+        if (isEditingDistribucion) payload.id_distribucion = editingDistribucionId;
+
+        if (!confirm("¿Confirmar Distribución?")) return;
 
         let $btn = $(this);
-        $btn.prop('disabled', true).text('Guardando...');
+        $btn.prop('disabled', true);
 
-        f_callBackend('crear_distribucion', payload)
-          .done(function (r) {
-            if (r.estado === 1) {
-              alert("Distribución Guardada");
-              modalNuevaDistribucion.hide();
-              loadDistribuciones(selectedDespachoId);
-              // Refresh display of despatch details because stock changed
-              // We can trigger the current row click again
-              if (selectedDespachoId) {
-                selectDespacho(selectedDespachoId, $(`tr[data-id='${selectedDespachoId}']`));
-              }
-            } else {
-              alert("Error: " + r.mensaje);
-            }
-          })
-          .always(function () {
-            $btn.prop('disabled', false).html('<i class="bi bi-save"></i> Guardar Distribución');
-          });
-
+        f_callBackend(action, payload).done(function (r) {
+          if (r.estado === 1) {
+            alert("Guardado correctamente.");
+            modalNuevaDistribucion.hide();
+            loadDistribuciones(selectedDespachoId);
+            // Also update despacho details since availability changed
+            // Trigger click on dispatched row to refresh details?
+            // Or just:
+            selectDespacho(selectedDespachoId);
+          } else {
+            alert("Error: " + r.mensaje);
+          }
+        }).always(() => $btn.prop('disabled', false));
       });
+      // End Guardar Distribucion
 
 
       // INIT

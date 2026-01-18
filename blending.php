@@ -185,7 +185,7 @@ $backendUrl = 'apis/backend.php';
                       <th class="header-bg-detalle text-center">Código Gel</th>
                       <th class="header-bg-detalle text-center">Peso Lote (log)</th>
                       <th class="header-bg-detalle text-center">Peso Usado</th>
-                      <th class="header-bg-detalle text-center">Peso Restante</th>
+                      <!-- <th class="header-bg-detalle text-center">Peso Restante</th> -->
                     </tr>
                   </thead>
                   <tbody id="tbl_detalle_blending" style="font-size: 13px;">
@@ -354,6 +354,9 @@ $backendUrl = 'apis/backend.php';
                         <button class="btn btn-sm btn-primary" onclick="selectBlending(${b.id_blending}, event)">
                             <i class="bi bi-eye"></i>
                         </button>
+                        <button class="btn btn-sm btn-danger" onclick="anularBlending(${b.id_blending}, event)" title="Anular Blending">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </td>
                  </tr>
                  `;
@@ -376,7 +379,7 @@ $backendUrl = 'apis/backend.php';
                     <td>${d.codigo_gel}</td>
                     <td class="text-end text-muted">${formatNumber(d.peso_actual_lote)}</td>
                     <td class="text-end fw-bold text-primary">${formatNumber(d.peso_tomado)}</td>
-                    <td class="text-end text-muted">${formatNumber(d.peso_restante)}</td>
+                    <!-- <td class="text-end text-muted">${formatNumber(d.peso_restante)}</td> -->
                   </tr>
                   `;
           });
@@ -406,6 +409,26 @@ $backendUrl = 'apis/backend.php';
               }
             });
         }
+      };
+
+      window.anularBlending = function (id, event) {
+        if (event) event.stopPropagation();
+        if (!confirm("¿Está seguro de ANULAR este blending? Esta acción revertirá el stock a los lotes originales.")) return;
+
+        f_callBackend('anular_blending', { id_blending: id })
+          .done(function (r) {
+            if (r.estado === 1) {
+              alert(r.mensaje);
+              loadAllData();
+              // Limpiar detalle si era el seleccionado
+              if ($("#blending_seleccionado_codigo").text().includes("BL-")) {
+                $("#blending_seleccionado_codigo").text("---");
+                $("#tbl_detalle_blending").html('<tr><td colspan="5" class="text-center">Seleccione un blending...</td></tr>');
+              }
+            } else {
+              alert("Error: " + r.mensaje);
+            }
+          });
       };
 
       function renderLotesDisponibles() {
