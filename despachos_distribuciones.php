@@ -436,6 +436,7 @@ $backendUrl = 'apis/backend.php';
                 <th>Código</th>
                 <th class="text-center">Tipo</th>
                 <th class="text-end">Peso</th>
+                <th class="text-end">Nro. Partición</th>
               </tr>
             </thead>
             <tbody id="tbl_view_dist_items"></tbody>
@@ -745,6 +746,7 @@ $backendUrl = 'apis/backend.php';
                                 <td>${i.codigo}</td>
                                 <td class="text-center">${badge}</td>
                                 <td class="text-end font-monospace">${formatNumber(i.peso_tomado)}</td>
+                                <td class="text-end font-monospace">${i.numero_parte != null ? i.numero_parte : 'Dis. Total'}</td>
                             </tr>
                           `;
                 });

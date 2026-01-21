@@ -77719,13 +77719,20 @@ switch ($_POST["accion"]) {
 			foreach ($detalle as $item) {
 				$id_dd = intval($item['id_despacho_detalle']);
 				$peso = floatval($item['peso_tomado']);
-				$res_log = mysqli_query($enlace, "SELECT peso_actual FROM despacho_detalle WHERE id = $id_dd");
+				$res_log = mysqli_query($enlace, "SELECT peso_tomado, peso_actual FROM despacho_detalle WHERE id = $id_dd");
 				$row_log = mysqli_fetch_assoc($res_log);
+				$peso_tomado_log = $row_log['peso_tomado'];
 				$peso_actual_log = $row_log['peso_actual'];
 
-				$res_parte = mysqli_query($enlace, "SELECT COUNT(id) + 1 as num FROM distribucion_detalle WHERE id_despacho_detalle = $id_dd");
-				$row_parte = mysqli_fetch_assoc($res_parte);
-				$num_parte = $row_parte['num'] ?? 1;
+				// solo si la distribucion_detalle NO tomara todo el peso de un despacho_detalle, el campo
+				// numero_parte tendra un numero, caso contrario sera null
+				// el que sea null significara que estara usando todo el peso del despacho_detalle
+				$num_parte = "NULL";
+				if($peso != $peso_tomado_log){
+					$res_parte = mysqli_query($enlace, "SELECT COUNT(id) + 1 as num FROM distribucion_detalle WHERE id_despacho_detalle = $id_dd");
+					$row_parte = mysqli_fetch_assoc($res_parte);
+					$num_parte = $row_parte['num'] ?? 1;	
+				}
 
 				$q_det = "INSERT INTO distribucion_detalle(id_despacho_detalle, id_distribucion, numero_parte, peso_tomado, peso_actual_log) VALUES($id_dd, $id_distribucion, $num_parte, $peso, $peso_actual_log)";
 				mysqli_query($enlace, $q_det);
