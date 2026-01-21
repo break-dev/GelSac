@@ -360,7 +360,7 @@ $backendUrl = 'apis/backend.php';
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-bold text-muted">3. Unidad (Placa)</label>
-              <select id="dist_unidad" class="form-select" data-bs-theme="bootstrap-5" disabled></select>
+              <select id="dist_unidad" class="form-select" data-bs-theme="bootstrap-5" capacidad="0" disabled></select>
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-bold text-muted">Datos Adicionales</label>
@@ -686,9 +686,9 @@ $backendUrl = 'apis/backend.php';
 
                   html += `
                     <tr>
-                      <td>
-                        <div class="fw-bold text-truncate" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
-                        <div class="small text-muted">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''}</div>
+                      <td> 
+                        <div class="fw-bold text-truncate">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''} | Cap. ${d.capacidad}</div>
+                        <div class="small text-muted" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
                       </td>
                       <td class="text-center small">${d.fecha_estimada}</td>
                       <td class="text-end fw-bold text-success">${formatNumber(d.peso_acumulado)}</td>
@@ -1122,7 +1122,11 @@ $backendUrl = 'apis/backend.php';
               if (r.estado === 1) {
                 let units = r.data.unidades || [];
                 if (units.length > 0) {
-                  let opts = units.map(u => ({ id: u.id_unidad, text: `${u.placa} (Cap: ${u.capacidad})` }));
+                  let opts = units.map(u => ({
+                    id: u.id_unidad,
+                    text: `${u.placa} (Cap: ${u.capacidad})`,
+                    capacidad: parseFloat(u.capacidad) || 0
+                  }));
                   $("#dist_unidad").prop('disabled', false).select2({
                     dropdownParent: $('#modal_nueva_distribucion'),
                     theme: "bootstrap-5",
@@ -1288,10 +1292,13 @@ $backendUrl = 'apis/backend.php';
           detalle: []
         };
 
+        let totalPesoDistribucion = 0;
+
         $(".input-dist-peso:enabled").each(function () {
           let val = parseFloat($(this).val());
           let idx = $(this).data('idx');
           if (val > 0) {
+            totalPesoDistribucion += val;
             payload.detalle.push({
               id_despacho_detalle: itemsDespachoDistribucion[idx].id_despacho_detalle,
               peso_tomado: val
@@ -1301,9 +1308,21 @@ $backendUrl = 'apis/backend.php';
 
         if (payload.detalle.length === 0 && !confirm("¿Guardar sin items?")) return;
 
+        // Validar Capacidad
+        let selectedData = $("#dist_unidad").select2('data');
+        let capacidadUnidad = (selectedData && selectedData[0]) ? (selectedData[0].capacidad || 0) : 0;
+
+        if (totalPesoDistribucion > capacidadUnidad) {
+          if (!confirm("La capacidad del vehículo (" + formatNumber(capacidadUnidad) + ") es inferior al peso total (" + formatNumber(totalPesoDistribucion) + ").\n¿Desea continuar?")) {
+            return;
+          }
+        }
+        else {
+          if (!confirm("¿Confirmar Distribución?")) return;
+        }
+
         let action = "crear_distribucion";
 
-        if (!confirm("¿Confirmar Distribución?")) return;
 
         let $btn = $(this);
         $btn.prop('disabled', true);
