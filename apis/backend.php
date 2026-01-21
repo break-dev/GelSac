@@ -77448,7 +77448,7 @@ switch ($_POST["accion"]) {
 		$minerales = $_POST["minerales"]; // { "id_mineral" : "", "is_blending": "", "peso_tomado": ""}
 		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
 		$id_planta = intval($_POST["id_planta"] ?? 0);
-		
+
 
 		// calcular el nuevo correlativo
 		$nuevo_numero_correlativo = getNuevoNumeroCorrelativoDespacho($enlace);
@@ -77728,10 +77728,10 @@ switch ($_POST["accion"]) {
 				// numero_parte tendra un numero, caso contrario sera null
 				// el que sea null significara que estara usando todo el peso del despacho_detalle
 				$num_parte = "NULL";
-				if($peso != $peso_tomado_log){
+				if ($peso != $peso_tomado_log) {
 					$res_parte = mysqli_query($enlace, "SELECT COUNT(id) + 1 as num FROM distribucion_detalle WHERE id_despacho_detalle = $id_dd");
 					$row_parte = mysqli_fetch_assoc($res_parte);
-					$num_parte = $row_parte['num'] ?? 1;	
+					$num_parte = $row_parte['num'] ?? 1;
 				}
 
 				$q_det = "INSERT INTO distribucion_detalle(id_despacho_detalle, id_distribucion, numero_parte, peso_tomado, peso_actual_log) VALUES($id_dd, $id_distribucion, $num_parte, $peso, $peso_actual_log)";
@@ -77926,6 +77926,31 @@ switch ($_POST["accion"]) {
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al eliminar distribución."]);
 		}
+		break;
+
+	case "verificar_uso_unidad_en_distribuciones":
+		$id_unidad = intval($_POST["id_unidad"] ?? 0);
+		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
+
+		$q = "
+		-- si la unidad ha sido o sera usada en alguna distribucion
+		-- donde la diferencia entre la fecha de llegada de la unidad 
+		-- de la nueva distribucion con la fecha de llegada de la 
+		-- alguna distribucion antigua NO supera las 48 horas
+		SELECT 
+			IF(COUNT(1) > 0, 1, 0) AS en_uso
+		FROM 
+			distribucion
+		WHERE 
+			id_unidad = $id_unidad
+			AND ABS(DATEDIFF(fecha_estimada, '$fecha_estimada')) <= 2
+			AND ABS(DATEDIFF(fecha_estimada, '$fecha_estimada')) >= 0;
+		";
+		$result = mysqli_query($enlace, $q);
+		$r = mysqli_fetch_assoc($result);
+		$en_uso = $r['en_uso'] ?? 0;
+
+		echo json_encode(["estado" => 1, "en_uso" => $en_uso]);
 		break;
 
 	default:

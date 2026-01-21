@@ -1279,66 +1279,87 @@ $backendUrl = 'apis/backend.php';
       // Guardar Distribucion
       $("#btn_guardar_distribucion").click(function () {
         let idUnidad = $("#dist_unidad").val();
+        let fecha = $("#dist_fecha").val();
 
         if (!idUnidad) {
           alert("Seleccione una unidad.");
           return;
         }
 
-        let payload = {
-          id_despacho: selectedDespachoId,
-          id_unidad: idUnidad,
-          segunda_placa: $("#dist_segunda_placa").val(),
-          fecha_estimada: $("#dist_fecha").val(),
-          // estado: $("#dist_estado").val(), // Logic removed
-          detalle: []
-        };
-
-        let totalPesoDistribucion = 0;
-
-        $(".input-dist-peso:enabled").each(function () {
-          let val = parseFloat($(this).val());
-          let idx = $(this).data('idx');
-          if (val > 0) {
-            totalPesoDistribucion += val;
-            payload.detalle.push({
-              id_despacho_detalle: itemsDespachoDistribucion[idx].id_despacho_detalle,
-              peso_tomado: val
-            });
-          }
-        });
-
-        if (payload.detalle.length === 0 && !confirm("¿Guardar sin items?")) return;
-
-        // Validar Capacidad
-        let selectedData = $("#dist_unidad").select2('data');
-        let capacidadUnidad = (selectedData && selectedData[0]) ? (selectedData[0].capacidad || 0) : 0;
-
-        if (totalPesoDistribucion > capacidadUnidad) {
-          if (!confirm("La capacidad del vehículo (" + formatNumber(capacidadUnidad) + ") es inferior al peso total (" + formatNumber(totalPesoDistribucion) + ").\n¿Desea continuar?")) {
-            return;
-          }
-        }
-        else {
-          if (!confirm("¿Confirmar Distribución?")) return;
-        }
-
-        let action = "crear_distribucion";
-
-
         let $btn = $(this);
         $btn.prop('disabled', true);
 
-        f_callBackend(action, payload).done(function (r) {
-          if (r.estado === 1) {
-            alert("Guardado correctamente.");
-            modalNuevaDistribucion.hide();
-            loadDistribuciones(selectedDespachoId);
-            selectDespacho(selectedDespachoId);
-          } else {
-            alert("Error: " + r.mensaje);
+        // Verificar uso de unidad
+        f_callBackend("verificar_uso_unidad_en_distribuciones", {
+          id_unidad: idUnidad,
+          fecha_estimada: fecha
+        }).done(function (rVer) {
+          $btn.prop('disabled', false);
+
+          // Check simplified response
+          if (rVer.estado === 1 && rVer.en_uso == 1) {
+            if (!confirm("Para la fecha " + fecha + ", la unidad seleccionada estará en uso en otra distribución cercana.\n¿Desea continuar?")) {
+              return;
+            }
           }
-        }).always(() => $btn.prop('disabled', false));
+
+          let payload = {
+            id_despacho: selectedDespachoId,
+            id_unidad: idUnidad,
+            segunda_placa: $("#dist_segunda_placa").val(),
+            fecha_estimada: fecha,
+            // estado: $("#dist_estado").val(), // Logic removed
+            detalle: []
+          };
+
+          let totalPesoDistribucion = 0;
+
+          $(".input-dist-peso:enabled").each(function () {
+            let val = parseFloat($(this).val());
+            let idx = $(this).data('idx');
+            if (val > 0) {
+              totalPesoDistribucion += val;
+              payload.detalle.push({
+                id_despacho_detalle: itemsDespachoDistribucion[idx].id_despacho_detalle,
+                peso_tomado: val
+              });
+            }
+          });
+
+          if (payload.detalle.length === 0 && !confirm("¿Guardar sin items?")) return;
+
+          // Validar Capacidad
+          let selectedData = $("#dist_unidad").select2('data');
+          let capacidadUnidad = (selectedData && selectedData[0]) ? (selectedData[0].capacidad || 0) : 0;
+
+          if (totalPesoDistribucion > capacidadUnidad) {
+            if (!confirm("La capacidad del vehículo (" + formatNumber(capacidadUnidad) + ") es inferior al peso total (" + formatNumber(totalPesoDistribucion) + ").\n¿Desea continuar?")) {
+              return;
+            }
+          }
+          else {
+            if (!confirm("¿Confirmar Distribución?")) return;
+          }
+
+          let action = "crear_distribucion";
+
+          $btn.prop('disabled', true);
+
+          f_callBackend(action, payload).done(function (r) {
+            if (r.estado === 1) {
+              alert("Guardado correctamente.");
+              modalNuevaDistribucion.hide();
+              loadDistribuciones(selectedDespachoId);
+              selectDespacho(selectedDespachoId);
+            } else {
+              alert("Error: " + r.mensaje);
+            }
+          }).always(() => $btn.prop('disabled', false));
+
+        }).fail(function () {
+          $btn.prop('disabled', false);
+          alert("Error al verificar disponibilidad de unidad.");
+        });
       });
 
       // INIT
