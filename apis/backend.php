@@ -3246,9 +3246,26 @@ function f_GenerarCodigoGel(
 	}
 }
 
+// Función de utilidad para logging
+if (!function_exists('debug_log_sql')) {
+	function debug_log_sql($context, $query, $result = null)
+	{
+		$logFile = '/opt/lampp/htdocs/GelSac/debug_gel_flow.jsonl';
+		$entry = [
+			'timestamp' => date('Y-m-d H:i:s'),
+			'context' => $context,
+			'query' => $query,
+			'result' => $result
+		];
+		file_put_contents($logFile, json_encode($entry) . "\n", FILE_APPEND);
+	}
+}
+
 // Función principal para generar el código GEL a partir de la tabla despachos_primertramo_validaciondatos
+// IMPORTANTE: $arr_lote_ids es el array de IDs de los lotes SELECCIONADOS por el usuario
 function f_Guia_GenerarCodigoGel(
 	$enlace,
+	$arr_lote_ids,
 	$guia_remitente,
 	$guia_fechahoraemision,
 	$planta_fechallegada,
@@ -3257,6 +3274,8 @@ function f_Guia_GenerarCodigoGel(
 ) {
 	$estado = 0;
 	$anho_actual = date("Y");
+
+	debug_log_sql("f_Guia_GenerarCodigoGel - START", "Inputs", compact('arr_lote_ids', 'guia_remitente', 'guia_fechahoraemision', 'planta_fechallegada', 'g_fecha', 'g_anho'));
 
 	// 1. Buscar si hay lotes cerrados con fecha posterior a la llegada de planta
 	$q_validacion = "SELECT COUNT(*) AS cantidad
@@ -3275,13 +3294,13 @@ function f_Guia_GenerarCodigoGel(
 			$hay_lotes_posteriores = intval($row["cantidad"]) > 0;
 		}
 	}
+	debug_log_sql("f_Guia_GenerarCodigoGel - Validacion Posteriores", $q_validacion, ["hay_lotes_posteriores" => $hay_lotes_posteriores]);
 
 	// 2. Según resultado, llamar PADRE o HIJO
 	if (!$hay_lotes_posteriores) {
 		$estado = f_GuiaInsertarCodigoGel_Padre(
 			$enlace,
-			$guia_remitente,
-			$guia_fechahoraemision,
+			$arr_lote_ids,
 			$planta_fechallegada,
 			$g_fecha,
 			$g_anho
@@ -3300,24 +3319,36 @@ function f_Guia_GenerarCodigoGel(
 	return $estado;
 }
 
+// CORREGIDO: Ahora recibe directamente los IDs de los lotes seleccionados
 function f_GuiaInsertarCodigoGel_Padre(
 	$enlace,
-	$guia_remitente,
-	$guia_fechahoraemision,
+	$arr_lote_ids,
 	$planta_fechallegada,
 	$g_fecha,
 	$g_anho
 ) {
 	$estado = 0;
 	$usuario_registro = $_SESSION["usu_usuario"];
-	$fecha_referencia = $planta_fechallegada; // Fecha a partir de la cual se generarán nuevos códigos
 
-	// Paso 1: obtener el último correlativo hasta la fecha de referencia
-	$q_max = "SELECT IFNULL(MAX(correlativo), 0) AS correlativo
-								FROM correlativo_codigosgel
-								WHERE cod_anho = '$g_anho'
-									AND DATE(fecha_llegadaplanta) < '$fecha_referencia'
-									AND estado = 'A'";
+	// Validar que hay lotes para procesar
+	if (empty($arr_lote_ids)) {
+		debug_log_sql("f_GuiaInsertarCodigoGel_Padre - ERROR", "No hay lotes para procesar", []);
+		return 0;
+	}
+
+	// Convertir a string para usar en IN clause
+	$lote_ids_str = implode(", ", array_map("intval", $arr_lote_ids));
+
+	debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Lotes Seleccionados", "IDs: $lote_ids_str", ["count" => count($arr_lote_ids)]);
+
+	// Paso 1: Obtener el último correlativo GLOBAL del año que YA tiene un lote asociado
+	// Esto asegura que empecemos desde donde quedó el último código asignado correctamente
+	$q_max = "SELECT IFNULL(MAX(C.correlativo), 0) AS correlativo
+								FROM correlativo_codigosgel C
+								INNER JOIN despachos_primertramo_validaciondatos V ON C.id_validaciondatos = V.Id
+								WHERE C.cod_anho = '$g_anho'
+									AND C.estado = 'A'
+									AND V.codigo_gel IS NOT NULL";
 
 	$ultimo_correlativo_gel = 1;
 
@@ -3326,26 +3357,25 @@ function f_GuiaInsertarCodigoGel_Padre(
 			$ultimo_correlativo_gel = intval($row["correlativo"]) + 1;
 		}
 	}
+	debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Ultimo Correlativo", $q_max, ["ultimo_correlativo_found" => $ultimo_correlativo_gel - 1, "next" => $ultimo_correlativo_gel]);
 
-	// Paso 2: obtener solo lotes cerrados y con fecha mayor o igual a la referencia
+	// Paso 2: Obtener SOLO los lotes que fueron seleccionados por el usuario
+	// Ordenados por la posición de la guía para mantener el orden de selección
 	$q_lotes = "SELECT V.Id AS id_validaciondatos,
 												V.lote_cod_lote,
-												V.lote_pesoinicial_fechahoraregistro
+												V.lote_pesoinicial_fechahoraregistro,
+												V.guias_posicion
 									FROM despachos_primertramo_validaciondatos V
-									WHERE /*V.is_cerradolote = 1
-										AND*/ DATE(V.lote_pesoinicial_fechahoraregistro) >= '$fecha_referencia'
-									ORDER BY V.lote_pesoinicial_fechahoraregistro ASC, V.guias_posicion ASC";
+									WHERE V.Id IN ($lote_ids_str)
+									ORDER BY V.guias_posicion ASC, V.Id ASC";
 
 	if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
 		if (mysqli_num_rows($res_lotes) > 0) {
 			while ($row = mysqli_fetch_assoc($res_lotes)) {
 				$id_validaciondatos = intval($row["id_validaciondatos"]);
 				$fecha_llegada = $row["lote_pesoinicial_fechahoraregistro"];
-				// $codigo_gel_asignado = sprintf(
-				//     "GEL-%02d-%04d",
-				//     date("y"),
-				//     $ultimo_correlativo_gel
-				// );
+
+				debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Processing Lote", "ID: $id_validaciondatos", ["fecha_llegada" => $fecha_llegada, "posicion" => $row["guias_posicion"]]);
 
 				$codigo_gel_asignado = sprintf(
 					"BJ-%02d-%04d",
@@ -3353,12 +3383,14 @@ function f_GuiaInsertarCodigoGel_Padre(
 					$ultimo_correlativo_gel
 				);
 
-				// Eliminar código anterior
+				debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Assigning Code", "Code: $codigo_gel_asignado", ["correlativo" => $ultimo_correlativo_gel]);
+
+				// Eliminar código anterior si existe
 				$q_delete = "DELETE FROM correlativo_codigosgel 
 												WHERE id_validaciondatos = $id_validaciondatos AND cod_anho = '$g_anho'";
 				mysqli_query($enlace, $q_delete);
 
-				// Actualizar en lote
+				// Actualizar el lote con el nuevo código GEL
 				$q_update = "UPDATE despachos_primertramo_validaciondatos VD
 												SET VD.codigo_gel = '$codigo_gel_asignado',
 														VD.codigo_gel_fechahoraregistro = '$g_fecha',
@@ -3366,7 +3398,7 @@ function f_GuiaInsertarCodigoGel_Padre(
 												WHERE VD.Id = $id_validaciondatos";
 				mysqli_query($enlace, $q_update);
 
-				// Insertar nuevo correlativo
+				// Insertar nuevo correlativo en la tabla de control
 				$q_insert = "INSERT INTO correlativo_codigosgel (
 														cod_anho, fecha_llegadaplanta, correlativo, codigo_gel,
 														id_validaciondatos, fechahora_registro, usuario_registro
@@ -3416,6 +3448,7 @@ function f_GuiaInsertarCodigoGel_Hijo(
 		}
 		mysqli_free_result($rs);
 	}
+	debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Base Search", $q_ultimo_en_guia, ["correlativo_base" => $correlativo_base]);
 
 	// Helpers letras
 	$letraAIndice = function ($letra) {
@@ -3499,6 +3532,7 @@ function f_GuiaInsertarCodigoGel_Hijo(
 	}
 
 	$idx_letra = $ultima_letra !== "" ? $letraAIndice($ultima_letra) + 1 : 1;
+	debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Letra Calculation", "Last: $ultima_letra", ["idx_start" => $idx_letra]);
 
 	// --- 3) Lotes PENDIENTES de ESTA GUÍA (sin GEL) en orden de la guía ---
 	$q_pend = "
@@ -3548,6 +3582,7 @@ function f_GuiaInsertarCodigoGel_Hijo(
 							VALUES
 								($g_anho, '$fecha_llegada', $correlativo_base, '$codigo', $id_validaciondatos, '$g_fecha', '$usuario_registro')"
 				);
+				debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Generated", "Code: $codigo", ["correlativo" => $correlativo_base, "id_val" => $id_validaciondatos]);
 
 				$idx_letra++;
 			}
@@ -40014,10 +40049,10 @@ switch ($_POST["accion"]) {
 				) ";
 
 		$q_log .= "SELECT *, ";
-		$q_log .= "'" . $g_fecha . "', ";         
-		$q_log .= "'" . $usuario_registro . "' "; 
+		$q_log .= "'" . $g_fecha . "', ";
+		$q_log .= "'" . $usuario_registro . "' ";
 		$q_log .= "FROM catalogolotes ";
-		$q_log .= "WHERE id_CatalogoLotes = " . (int)$id_lote;
+		$q_log .= "WHERE id_CatalogoLotes = " . (int) $id_lote;
 
 		if ($res_log = mysqli_query($enlace, $q_log)) {
 			// Recalculando el Ticket de Balanza
@@ -71535,6 +71570,9 @@ switch ($_POST["accion"]) {
 
 	case "grabar_Guias_PrimerTramo_GestionGuias":
 		$estado = 0;
+		if (function_exists('debug_log_sql')) {
+			debug_log_sql("grabar_Guias_PrimerTramo_GestionGuias - START", "POST Payload", $_POST);
+		}
 
 		// Recupera parámetros
 		$modograbar_guia = mysqli_real_escape_string(
@@ -71967,7 +72005,7 @@ switch ($_POST["accion"]) {
 				}
 			}
 
-			// Generar código GEL
+			// Generar código GEL - CORREGIDO: Pasando los IDs de los lotes seleccionados
 			$guia_remitente =
 				$guia_remitenteserie . "-" . $guia_remitentenumero;
 			$planta_fechallegada = $guia_balanza_fecharegistro;
@@ -71975,6 +72013,7 @@ switch ($_POST["accion"]) {
 
 			f_Guia_GenerarCodigoGel(
 				$enlace,
+				$id_distribucion_arr,  // <- IMPORTANTE: Pasamos los IDs de los lotes seleccionados
 				$guia_remitente,
 				$guia_fechaemision_x,
 				$planta_fechallegada,
