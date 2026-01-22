@@ -3319,7 +3319,7 @@ function f_Guia_GenerarCodigoGel(
 	return $estado;
 }
 
-// CORREGIDO: Ahora recibe directamente los IDs de los lotes seleccionados
+// Ahora recibe directamente los IDs de los lotes seleccionados
 function f_GuiaInsertarCodigoGel_Padre(
 	$enlace,
 	$arr_lote_ids,
@@ -3341,7 +3341,7 @@ function f_GuiaInsertarCodigoGel_Padre(
 
 	debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Lotes Seleccionados", "IDs: $lote_ids_str", ["count" => count($arr_lote_ids)]);
 
-	// Paso 1: Obtener el último correlativo GLOBAL del año que YA tiene un lote asociado
+	// Obtener el último correlativo GLOBAL del año que YA tiene un lote asociado
 	// Esto asegura que empecemos desde donde quedó el último código asignado correctamente
 	$q_max = "SELECT IFNULL(MAX(C.correlativo), 0) AS correlativo
 								FROM correlativo_codigosgel C
@@ -3359,7 +3359,7 @@ function f_GuiaInsertarCodigoGel_Padre(
 	}
 	debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Ultimo Correlativo", $q_max, ["ultimo_correlativo_found" => $ultimo_correlativo_gel - 1, "next" => $ultimo_correlativo_gel]);
 
-	// Paso 2: Obtener SOLO los lotes que fueron seleccionados por el usuario
+	// Obtener SOLO los lotes que fueron seleccionados por el usuario
 	// Ordenados por la posición de la guía para mantener el orden de selección
 	$q_lotes = "SELECT V.Id AS id_validaciondatos,
 												V.lote_cod_lote,
@@ -3526,7 +3526,7 @@ function f_GuiaInsertarCodigoGel_Hijo(
 				mysqli_free_result($rs);
 			}
 		} else {
-			// No hay base posible → no generamos hijos
+			// No hay base posible > no generamos hijos
 			return 0;
 		}
 	}
@@ -3534,7 +3534,7 @@ function f_GuiaInsertarCodigoGel_Hijo(
 	$idx_letra = $ultima_letra !== "" ? $letraAIndice($ultima_letra) + 1 : 1;
 	debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Letra Calculation", "Last: $ultima_letra", ["idx_start" => $idx_letra]);
 
-	// --- 3) Lotes PENDIENTES de ESTA GUÍA (sin GEL) en orden de la guía ---
+	// --Lotes PENDIENTES de ESTA GUÍA (sin GEL) en orden de la guía 
 	$q_pend = "
 				SELECT V.Id AS id_validaciondatos, V.lote_pesoinicial_fechahoraregistro AS fecha_llegada
 				FROM despachos_primertramo_validaciondatos V
