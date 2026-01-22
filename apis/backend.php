@@ -40008,13 +40008,16 @@ switch ($_POST["accion"]) {
 		$usuario_registro = $_SESSION["usu_usuario"];
 
 		// Guarda Log del registro original
-		$q_log =
-			"INSERT INTO catalogolotes_deletelog (id_CatalogoLotes, nNro_ticketsBalanza, item_ticketbalanza, id_TramoPesaje, dFechaBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, dFechaFinalBalanza, tHoraFinalBalanza, nPeso_FinalBalanza, pesofinal_observacion, nPesoBalanza, nPorcentajeHumedad, nPesoHumedad, nPesoSeco, nPesoEnviado, nPesoPendienteEnvio, id_TipoMaterial, id_OrigenCarga, id_PlantaDestino, id_PresentacionMaterial, id_Encargado, id_cliente, id_transporte, bTramo1, bTramo2, bSolicitudDocumentacion, bRecepciondocumentacion, bEnvioDocumentacion, id_EstadoLoteDespacho, bLiberacionLoteCliente, tNotasBalanza, tNotasGerencia, tNotasDespacho, id_ModalidadEnvio, cEstado_Registro, id_ModalidadGuiasDestino, id_EstadoLoteComercializacion, id_controlIngresoVehiculo, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoTaraBalanza, nPesoNetoBalanza, id_UsuarioCreacion, dFechaCreacion, id_UsuarioModificacion, dFechaModificacion, id_choferes, placa, cEliminado, bDocumentosValidados, balanza_id_tipocarga, balanza_id_zonaorigen, balanza_id_proveedorminero, balanza_id_encargadomuestra, balanza_id_producto, balanza_id_tipomineral, balanza_observacion, balanza_id_planta, balanza_numcontacto, tObservacion_T1, preparacion_fechahoraregistro, preparacion_usuarioregistro, humedad_pesohumedad, humedad_pesohumedad_fechahoraregistro, humedad_pesohumedad_usuarioregistro, is_copiacomercializacion, is_loteaum, fechahora_log, usuario_log, peso_actual) ";
+		$q_log = "INSERT INTO catalogolotes_deletelog (
+					id_CatalogoLotes, nNro_ticketsBalanza, item_ticketbalanza, id_TramoPesaje, dFechaBalanza, ccod_Lote, dFechaIngreso, tHora_Ingreso, tFechaInicialBalanza, tHoraInicialBalanza, nPeso_InicialBalanza, pesoinicial_observacion, dFechaFinalBalanza, tHoraFinalBalanza, nPeso_FinalBalanza, pesofinal_observacion, nPesoBalanza, nPorcentajeHumedad, nPesoHumedad, nPesoSeco, nPesoEnviado, nPesoPendienteEnvio, id_TipoMaterial, id_OrigenCarga, id_PlantaDestino, id_PresentacionMaterial, id_Encargado, id_cliente, id_transporte, bTramo1, bTramo2, bSolicitudDocumentacion, bRecepciondocumentacion, bEnvioDocumentacion, id_EstadoLoteDespacho, bLiberacionLoteCliente, tNotasBalanza, tNotasGerencia, tNotasDespacho, id_ModalidadEnvio, cEstado_Registro, id_ModalidadGuiasDestino, id_EstadoLoteComercializacion, id_controlIngresoVehiculo, cCodSecuenciaLote, nPesoBrutoBalanza, nPesoTaraBalanza, nPesoNetoBalanza, id_UsuarioCreacion, dFechaCreacion, id_UsuarioModificacion, dFechaModificacion, id_choferes, placa, cEliminado, bDocumentosValidados, balanza_id_tipocarga, balanza_id_zonaorigen, balanza_id_proveedorminero, balanza_id_encargadomuestra, balanza_id_producto, balanza_id_tipomineral, balanza_observacion, balanza_id_planta, balanza_numcontacto, tObservacion_T1, preparacion_fechahoraregistro, preparacion_usuarioregistro, humedad_pesohumedad, humedad_pesohumedad_fechahoraregistro, humedad_pesohumedad_usuarioregistro, is_copiacomercializacion, is_loteaum, 
+					peso_actual, fechahora_log, usuario_log
+				) ";
+
 		$q_log .= "SELECT *, ";
-		$q_log .= "'" . $g_fecha . "', ";
-		$q_log .= "'" . $usuario_registro . "'";
-		$q_log .= "  FROM catalogolotes";
-		$q_log .= " WHERE id_CatalogoLotes = " . $id_lote;
+		$q_log .= "'" . $g_fecha . "', ";         
+		$q_log .= "'" . $usuario_registro . "' "; 
+		$q_log .= "FROM catalogolotes ";
+		$q_log .= "WHERE id_CatalogoLotes = " . (int)$id_lote;
 
 		if ($res_log = mysqli_query($enlace, $q_log)) {
 			// Recalculando el Ticket de Balanza
