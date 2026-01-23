@@ -237,9 +237,9 @@ $backendUrl = 'apis/backend.php';
                   <th class="text-center" width="50">Sel.</th>
                   <!-- <th>Lote</th> -->
                   <th>Código Gel</th>
-                  <th class="text-end">Peso Inicial</th>
-                  <th class="text-end">Peso Actual (Disp.)</th>
-                  <th width="150" class="text-center">Peso a Tomar</th>
+                  <th class="text-end">TMH (Peso Húmedo)</th>
+                  <th class="text-end">H2O</th>
+                  <th class="text-end">TMS (Peso Seco)</th>
                 </tr>
               </thead>
               <tbody id="tbl_lotes_disponibles">
@@ -249,8 +249,10 @@ $backendUrl = 'apis/backend.php';
               </tbody>
               <tfoot>
                 <tr class="table-secondary fw-bold">
-                  <td colspan="4" class="text-end">TOTAL PESO BLENDING:</td>
-                  <td class="text-end" id="lbl_total_tomado">0.00</td>
+                  <td colspan="2" class="text-end">TOTALES:</td>
+                  <td class="text-end text-primary" id="lbl_total_tmh">0.00</td>
+                  <td class="text-end text-primary" id="lbl_avg_h2o">0.000</td>
+                  <td class="text-end text-primary" id="lbl_recalc_tms">0.00</td>
                 </tr>
               </tfoot>
             </table>
@@ -307,11 +309,12 @@ $backendUrl = 'apis/backend.php';
         }, 'json');
       }
 
-      function formatNumber(num) {
-        return parseFloat(num).toLocaleString('es-PE', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
+      function formatNumber(num, decimals = 2) {
+        if (num === null || num === undefined || isNaN(num)) return '0.00';
+        return new Intl.NumberFormat('en-US', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals
+        }).format(num);
       }
 
       // -------------------------
@@ -437,27 +440,23 @@ $backendUrl = 'apis/backend.php';
       function renderLotesDisponibles() {
         let html = '';
         if (lotesDisponibles.length === 0) {
-          html = '<tr><td colspan="6" class="text-center">No hay lotes con saldo para este proveedor.</td></tr>';
+          html = '<tr><td colspan="5" class="text-center">No hay lotes con saldo para este proveedor.</td></tr>';
         } else {
           lotesDisponibles.forEach(l => {
             html += `
-                  <tr>
+                  <tr class="lote-disponible-row" data-id="${l.id_lote}">
                     <td class="text-center">
-                        <input type="checkbox" class="chk-lote form-check-input" data-id="${l.id_lote}">
+                        <input type="checkbox" class="chk-lote form-check-input" 
+                               data-id="${l.id_lote}" 
+                               data-tmh="${l.peso_humedo}" 
+                               data-h2o="${l.porcentaje_humedad}" 
+                               data-tms="${l.peso_seco}">
                     </td>
                     <!-- <td>${l.codigo_lote}</td> -->
                     <td>${l.codigo_gel}</td>
-                    <td class="text-end">${formatNumber(l.peso_inicial)}</td>
-                    <td class="text-end text-success fw-bold">${formatNumber(l.peso_actual)}</td>
-                    <td>
-                        <input type="number" 
-                               step="0.01" 
-                               class="form-control form-control-sm input-peso-tomar text-end" 
-                               data-id="${l.id_lote}" 
-                               data-max="${l.peso_actual}"
-                               disabled
-                               placeholder="0.00">
-                    </td>
+                    <td class="text-end fw-bold">${formatNumber(l.peso_humedo)}</td>
+                    <td class="text-end text-muted">${formatNumber(l.porcentaje_humedad, 3)}</td>
+                    <td class="text-end text-success fw-bold">${formatNumber(l.peso_seco)}</td>
                   </tr>
                   `;
           });
@@ -467,17 +466,44 @@ $backendUrl = 'apis/backend.php';
       }
 
       function updateTotalModal() {
-        let total = 0;
-        $(".input-peso-tomar").each(function () {
-          if (!$(this).prop('disabled')) {
-            let val = parseFloat($(this).val());
-            if (!isNaN(val)) total += val;
-          }
+        let selectedItems = [];
+        $(".chk-lote:checked").each(function () {
+          selectedItems.push({
+            tmh: parseFloat($(this).data('tmh')) || 0,
+            h2o: parseFloat($(this).data('h2o')) || 0,
+            tms: parseFloat($(this).data('tms')) || 0
+          });
         });
-        $("#lbl_total_tomado").text(formatNumber(total));
+
+        let totalTMH = 0;
+        let sumH2O = 0;
+        let count = selectedItems.length;
+
+        selectedItems.forEach(item => {
+          totalTMH += item.tmh;
+          sumH2O += item.h2o;
+        });
+
+        let avgH2O = count > 0 ? (sumH2O / count) : 0;
+        // Formula: TMS = TMH / (1 + (H2O % / 100))
+        // Pero el valor de h2o ya viene como 0.052 (que es 5.2%)? 
+        // El usuario dice "da valores algo asi: 0.052". 
+        // Entonces la formula sería: Recalc TMS = Sum(TMH) / (1 + Avg(H2O))
+        // Si el usuario dijo: Peso humedo/(1 + (ley de humedad)/100)
+        // Y el backend da 0.052 para 5.2%, entonces 0.052 * 100 = 5.2
+        let recalcTMS = 0;
+        if (count > 0) {
+          // Si h2o es 0.052, entonces ley_humedad es 5.2
+          let ley_humedad_avg = avgH2O;
+          recalcTMS = totalTMH / (1 + (ley_humedad_avg / 100));
+        }
+
+        $("#lbl_total_tmh").text(formatNumber(totalTMH, 2));
+        $("#lbl_avg_h2o").text(formatNumber(avgH2O, 3));
+        $("#lbl_recalc_tms").text(formatNumber(recalcTMS, 2));
 
         // Enable/Disable create button
-        $("#btn_crear_blending").prop('disabled', total <= 0);
+        $("#btn_crear_blending").prop('disabled', count === 0);
       }
 
       // -------------------------
@@ -630,24 +656,6 @@ $backendUrl = 'apis/backend.php';
 
       // 4. Interacción en tabla lotes (Checkbox y Inputs)
       $(document).on("change", ".chk-lote", function () {
-        let id = $(this).data("id");
-        let isChecked = $(this).is(":checked");
-        let input = $(`.input-peso-tomar[data-id='${id}']`);
-
-        input.prop('disabled', !isChecked);
-        if (!isChecked) input.val('');
-        updateTotalModal();
-      });
-
-      $(document).on("input", ".input-peso-tomar", function () {
-        let max = parseFloat($(this).data("max"));
-        let val = parseFloat($(this).val());
-
-        if (val < 0) $(this).val(0);
-        if (val > max) {
-          alert("No puede exceder el peso actual del lote: " + max);
-          $(this).val(max);
-        }
         updateTotalModal();
       });
 
@@ -661,16 +669,12 @@ $backendUrl = 'apis/backend.php';
           return;
         }
 
-        $(".input-peso-tomar").each(function () {
-          if (!$(this).prop('disabled')) {
-            let val = parseFloat($(this).val());
-            if (val > 0) {
-              lotesSeleccionados.push({
-                id_lote: $(this).data("id"),
-                peso_tomado: val
-              });
-            }
-          }
+        $(".chk-lote:checked").each(function () {
+          let tmh = parseFloat($(this).data("tmh"));
+          lotesSeleccionados.push({
+            id_lote: $(this).data("id"),
+            peso_tomado: tmh
+          });
         });
 
         if (lotesSeleccionados.length === 0) {

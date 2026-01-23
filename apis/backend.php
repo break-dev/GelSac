@@ -11,9 +11,9 @@ ini_set("memory_limit", "1024M");
 // ini_set('display_errors', 1);
 // error_reporting(E_ALL);
 //
-// error_reporting(0);
-// ini_set('display_errors', 0);
-// ini_set('display_startuo_errors', 0);
+error_reporting(0);
+ini_set('display_errors', 0);
+ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -3248,17 +3248,24 @@ function f_GenerarCodigoGel(
 
 // Función de utilidad para logging
 if (!function_exists('debug_log_sql')) {
-	function debug_log_sql($context, $query, $result = null)
-	{
-		$logFile = '/opt/lampp/htdocs/GelSac/debug_gel_flow.jsonl';
-		$entry = [
-			'timestamp' => date('Y-m-d H:i:s'),
-			'context' => $context,
-			'query' => $query,
-			'result' => $result
-		];
-		file_put_contents($logFile, json_encode($entry) . "\n", FILE_APPEND);
-	}
+    function debug_log_sql($context, $query, $result = null)
+    {
+        $logFile = '/opt/lampp/htdocs/GelSac/debug_gel_flow.jsonl';
+        $exists = file_exists($logFile);
+
+        $entry = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'context'   => $context,
+            'query'     => $query,
+            'result'    => $result
+        ];
+
+        file_put_contents($logFile, json_encode($entry) . "\n", FILE_APPEND);
+
+        if (!$exists) {
+            chmod($logFile, 0777);
+        }
+    }
 }
 
 // Función principal para generar el código GEL a partir de la tabla despachos_primertramo_validaciondatos
@@ -69024,7 +69031,7 @@ switch ($_POST["accion"]) {
 		}
 
 		$q_lotes .= " GROUP BY L.ccod_Lote";
-
+		debug_log_sql("get_ListaDetalleLeyesLotes", "query", $q_lotes);
 		if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
 			if (mysqli_num_rows($res_lotes) > 0) {
 				$estado = 1;
@@ -76909,14 +76916,19 @@ switch ($_POST["accion"]) {
 			lot.id_CatalogoLotes AS id_lote,
 			lot.ccod_Lote AS codigo_lote,
 			vcd.cod_gel AS codigo_gel,
-			lot.nPesoNetoBalanza AS peso_inicial,
-			lot.peso_actual
+			lot.nPesoNetoBalanza as peso_humedo,
+			vcd.porc_h20 as porcentaje_humedad,
+			ROUND(lot.nPesoNetoBalanza / (1 + (vcd.porc_h20 / 100)),2) as peso_seco,
+			vcd.ley_oztc as ley,
+			anl.abv_valorizacion as elemento,
+			vcd.total
 		FROM
 			catalogolotes lot
 		INNER JOIN valorizacion_compramineral_detalle vcd ON
 			vcd.cod_lote = lot.ccod_Lote
 		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
 		INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
+		INNER JOIN tb_ensayos_analisis anl ON vcd.id_elemento = anl.Id
 		WHERE 
 			-- estados de PAGADO: mixto, banco, anticipos
 			cp.estado IN ('A','B','C') AND
