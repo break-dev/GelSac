@@ -183,17 +183,25 @@ $backendUrl = 'apis/backend.php';
                       <!-- <th class="header-bg-detalle text-center">ID Lote</th> -->
                       <!-- <th class="header-bg-detalle text-center">Código Lote</th> -->
                       <th class="header-bg-detalle text-center">Código Gel</th>
-                      <th class="header-bg-detalle text-center">Peso Lote (log)</th>
-                      <th class="header-bg-detalle text-center">Peso Usado</th>
-                      <!-- <th class="header-bg-detalle text-center">Peso Restante</th> -->
+                      <th class="header-bg-detalle text-center">TMH (Peso Húmedo)</th>
+                      <th class="header-bg-detalle text-center">H2O</th>
+                      <th class="header-bg-detalle text-center">TMS (Peso Seco)</th>
                     </tr>
                   </thead>
                   <tbody id="tbl_detalle_blending" style="font-size: 13px;">
                     <tr>
-                      <td colspan="5" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
+                      <td colspan="4" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
                         izquierdo.</td>
                     </tr>
                   </tbody>
+                  <tfoot>
+                    <tr class="table-secondary fw-bold" style="font-size: 13px;">
+                      <td class="text-end">TOTALES:</td>
+                      <td class="text-end text-primary" id="lbl_total_tmh_blending">0.00</td>
+                      <td class="text-end text-primary" id="lbl_avg_h2o_blending">0.000</td>
+                      <td class="text-end text-primary" id="lbl_recalc_tms_blending">0.00</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -374,21 +382,47 @@ $backendUrl = 'apis/backend.php';
 
       function renderDetalle(detalle) {
         let html = '';
+        let totalTMH = 0;
+        let totalTMS = 0;
+        let sumH2O = 0;
+        let count = detalle.length;
+
         if (detalle.length === 0) {
           html = '<tr><td colspan="5" class="text-center">No hay detalles para mostrar.</td></tr>';
+          $("#lbl_total_tmh_blending").text('0.00');
+          $("#lbl_avg_h2o_blending").text('0.000');
+          $("#lbl_recalc_tms_blending").text('0.00');
         } else {
           detalle.forEach(d => {
+            let pesoHumedo = parseFloat(d.peso_humedo) || 0;
+            let h2o = parseFloat(d.porcentaje_humedad) || 0;
+            let pesoSeco = parseFloat(d.peso_seco) || 0;
+
+            totalTMH += pesoHumedo;
+            totalTMS += pesoSeco;
+            sumH2O += h2o;
+
             html += `
                   <tr>
-                    <!-- <td class="text-center">${d.id_lote}</td> -->
-                    <!-- <td>${d.codigo_lote}</td> -->
+                    <!-- <td>${d.codigo_gel}</td> -->
                     <td>${d.codigo_gel}</td>
-                    <td class="text-end text-muted">${formatNumber(d.peso_actual_lote)}</td>
-                    <td class="text-end fw-bold text-primary">${formatNumber(d.peso_tomado)}</td>
-                    <!-- <td class="text-end text-muted">${formatNumber(d.peso_restante)}</td> -->
+                    <td class="text-end fw-bold text-primary">${formatNumber(pesoHumedo)}</td>
+                    <td class="text-end text-muted">${formatNumber(h2o, 3)}</td>
+                    <td class="text-end fw-bold text-success">${formatNumber(pesoSeco)}</td>
                   </tr>
                   `;
           });
+
+          // Calculate Totals for Footer
+          let avgH2O = count > 0 ? (sumH2O / count) : 0;
+          let recalcTMS = 0;
+          if (count > 0) {
+            recalcTMS = totalTMH / (1 + (avgH2O / 100));
+          }
+
+          $("#lbl_total_tmh_blending").text(formatNumber(totalTMH));
+          $("#lbl_avg_h2o_blending").text(formatNumber(avgH2O, 3));
+          $("#lbl_recalc_tms_blending").text(formatNumber(recalcTMS));
         }
         $("#tbl_detalle_blending").html(html);
       }
@@ -503,7 +537,7 @@ $backendUrl = 'apis/backend.php';
         $("#lbl_recalc_tms").text(formatNumber(recalcTMS, 2));
 
         // Enable/Disable create button
-        $("#btn_crear_blending").prop('disabled', count === 0);
+        $("#btn_crear_blending").prop('disabled', count <= 1);
       }
 
       // -------------------------
@@ -687,6 +721,8 @@ $backendUrl = 'apis/backend.php';
         // Enviar
         let $btn = $(this);
         $btn.prop('disabled', true).text("Procesando...");
+        console.log('lotesSeleccionados', lotesSeleccionados);
+        console.log('id_proveedor', id_proveedor);
 
         f_callBackend("crear_blending", {
           lotes: lotesSeleccionados,
