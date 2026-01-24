@@ -3247,25 +3247,66 @@ function f_GenerarCodigoGel(
 }
 
 // Función de utilidad para logging
-if (!function_exists('debug_log_sql')) {
-    function debug_log_sql($context, $query, $result = null)
-    {
-        $logFile = '/opt/lampp/htdocs/GelSac/debug_gel_flow.jsonl';
-        $exists = file_exists($logFile);
+function saveLog($datos)
+{
+  try {
+    // Carpeta 'logs' en el mismo nivel que este script
+    $directorio = __DIR__ . DIRECTORY_SEPARATOR . 'logs';
 
-        $entry = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'context'   => $context,
-            'query'     => $query,
-            'result'    => $result
-        ];
+    // un nombre de archivo por día para no sobrescribir todo siempre
+    $nombreArchivo = 'log_' . date('Y-m-d') . '.json';
+    $rutaCompleta = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
 
-        file_put_contents($logFile, json_encode($entry) . "\n", FILE_APPEND);
-
-        if (!$exists) {
-            chmod($logFile, 0777);
-        }
+    // Crear directorio si no existe con permisos totales
+    if (!is_dir($directorio)) {
+      mkdir($directorio, 0777, true);
+      chmod($directorio, 0777); // para Linux
     }
+
+    // Limpieza de caracteres especiales (\r, \n, \t) ---
+    $limpiar = function ($item) use (&$limpiar) {
+      if (is_array($item)) {
+        return array_map($limpiar, $item);
+      }
+      if (is_string($item)) {
+        return str_replace(["\r", "\n", "\t"], ' ', $item);
+      }
+      return $item;
+    };
+    $datosLimpios = $limpiar($datos);
+
+    // Agregamos una marca de tiempo al registro para saber cuándo ocurrió exactamente
+    $registro = [
+      'timestamp' => date('Y-m-d H:i:s'),
+      'data' => $datosLimpios
+    ];
+
+    // Si el archivo ya existe, leemos y añadimos, si no, creamos nuevo array
+    $listaLogs = [];
+    if (file_exists($rutaCompleta)) {
+      $contenidoActual = file_get_contents($rutaCompleta);
+      $listaLogs = json_decode($contenidoActual, true) ?: [];
+    }
+
+    $listaLogs[] = $registro;
+
+    // Convertir a JSON
+    // JSON_UNESCAPED_SLASHES evita las barras extra en rutas de Windows
+    $jsonContenido = json_encode($listaLogs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    // Escribir y forzar permisos
+    if (file_put_contents($rutaCompleta, $jsonContenido) !== false) {
+      chmod($rutaCompleta, 0777);
+      return true;
+    }
+
+    return false;
+
+  } catch (Exception $e) {
+    // si todo falla, enviamos al log del servidor
+    // error_log("Fallo crítico en saveLog: " . $e->getMessage());
+    return false;
+  }
 }
 
 // Función principal para generar el código GEL a partir de la tabla despachos_primertramo_validaciondatos
@@ -3281,8 +3322,6 @@ function f_Guia_GenerarCodigoGel(
 ) {
 	$estado = 0;
 	$anho_actual = date("Y");
-
-	debug_log_sql("f_Guia_GenerarCodigoGel - START", "Inputs", compact('arr_lote_ids', 'guia_remitente', 'guia_fechahoraemision', 'planta_fechallegada', 'g_fecha', 'g_anho'));
 
 	// 1. Buscar si hay lotes cerrados con fecha posterior a la llegada de planta
 	$q_validacion = "SELECT COUNT(*) AS cantidad
@@ -3301,7 +3340,6 @@ function f_Guia_GenerarCodigoGel(
 			$hay_lotes_posteriores = intval($row["cantidad"]) > 0;
 		}
 	}
-	debug_log_sql("f_Guia_GenerarCodigoGel - Validacion Posteriores", $q_validacion, ["hay_lotes_posteriores" => $hay_lotes_posteriores]);
 
 	// 2. Según resultado, llamar PADRE o HIJO
 	if (!$hay_lotes_posteriores) {
@@ -3339,14 +3377,11 @@ function f_GuiaInsertarCodigoGel_Padre(
 
 	// Validar que hay lotes para procesar
 	if (empty($arr_lote_ids)) {
-		debug_log_sql("f_GuiaInsertarCodigoGel_Padre - ERROR", "No hay lotes para procesar", []);
 		return 0;
 	}
 
 	// Convertir a string para usar en IN clause
 	$lote_ids_str = implode(", ", array_map("intval", $arr_lote_ids));
-
-	debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Lotes Seleccionados", "IDs: $lote_ids_str", ["count" => count($arr_lote_ids)]);
 
 	// Obtener el último correlativo GLOBAL del año que YA tiene un lote asociado
 	// Esto asegura que empecemos desde donde quedó el último código asignado correctamente
@@ -3364,7 +3399,6 @@ function f_GuiaInsertarCodigoGel_Padre(
 			$ultimo_correlativo_gel = intval($row["correlativo"]) + 1;
 		}
 	}
-	debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Ultimo Correlativo", $q_max, ["ultimo_correlativo_found" => $ultimo_correlativo_gel - 1, "next" => $ultimo_correlativo_gel]);
 
 	// Obtener SOLO los lotes que fueron seleccionados por el usuario
 	// Ordenados por la posición de la guía para mantener el orden de selección
@@ -3382,15 +3416,11 @@ function f_GuiaInsertarCodigoGel_Padre(
 				$id_validaciondatos = intval($row["id_validaciondatos"]);
 				$fecha_llegada = $row["lote_pesoinicial_fechahoraregistro"];
 
-				debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Processing Lote", "ID: $id_validaciondatos", ["fecha_llegada" => $fecha_llegada, "posicion" => $row["guias_posicion"]]);
-
 				$codigo_gel_asignado = sprintf(
 					"BJ-%02d-%04d",
 					date("y"),
 					$ultimo_correlativo_gel
 				);
-
-				debug_log_sql("f_GuiaInsertarCodigoGel_Padre - Assigning Code", "Code: $codigo_gel_asignado", ["correlativo" => $ultimo_correlativo_gel]);
 
 				// Eliminar código anterior si existe
 				$q_delete = "DELETE FROM correlativo_codigosgel 
@@ -3455,7 +3485,6 @@ function f_GuiaInsertarCodigoGel_Hijo(
 		}
 		mysqli_free_result($rs);
 	}
-	debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Base Search", $q_ultimo_en_guia, ["correlativo_base" => $correlativo_base]);
 
 	// Helpers letras
 	$letraAIndice = function ($letra) {
@@ -3539,7 +3568,6 @@ function f_GuiaInsertarCodigoGel_Hijo(
 	}
 
 	$idx_letra = $ultima_letra !== "" ? $letraAIndice($ultima_letra) + 1 : 1;
-	debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Letra Calculation", "Last: $ultima_letra", ["idx_start" => $idx_letra]);
 
 	// --Lotes PENDIENTES de ESTA GUÍA (sin GEL) en orden de la guía 
 	$q_pend = "
@@ -3589,7 +3617,6 @@ function f_GuiaInsertarCodigoGel_Hijo(
 							VALUES
 								($g_anho, '$fecha_llegada', $correlativo_base, '$codigo', $id_validaciondatos, '$g_fecha', '$usuario_registro')"
 				);
-				debug_log_sql("f_GuiaInsertarCodigoGel_Hijo - Generated", "Code: $codigo", ["correlativo" => $correlativo_base, "id_val" => $id_validaciondatos]);
 
 				$idx_letra++;
 			}
@@ -69031,7 +69058,6 @@ switch ($_POST["accion"]) {
 		}
 
 		$q_lotes .= " GROUP BY L.ccod_Lote";
-		debug_log_sql("get_ListaDetalleLeyesLotes", "query", $q_lotes);
 		if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
 			if (mysqli_num_rows($res_lotes) > 0) {
 				$estado = 1;
@@ -71577,9 +71603,6 @@ switch ($_POST["accion"]) {
 
 	case "grabar_Guias_PrimerTramo_GestionGuias":
 		$estado = 0;
-		if (function_exists('debug_log_sql')) {
-			debug_log_sql("grabar_Guias_PrimerTramo_GestionGuias - START", "POST Payload", $_POST);
-		}
 
 		// Recupera parámetros
 		$modograbar_guia = mysqli_real_escape_string(
