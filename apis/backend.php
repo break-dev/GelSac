@@ -99,86 +99,104 @@ function f_getTipoPagoValorizacion($enlace, $id_valorizacion)
 	throw new Exception("No se encontro informacion del tipo de pago de la valorizacion.");
 }
 
+function f_UpdateAllComprobantesStatus($enlace)
+{
+	$q = "SELECT Id FROM comprobante_pago";
+	$res = mysqli_query($enlace, $q);
+
+	if (!$res) {
+		return false;
+	}
+
+	$processed = 0;
+	while ($row = mysqli_fetch_assoc($res)) {
+		if (f_UpdateComprobanteStatus($enlace, $row['Id'])) {
+			$processed++;
+		}
+	}
+
+	return $processed;
+}
+
 function f_UpdateComprobanteStatus($enlace, $id_comprobante)
 {
 	$id_comprobante = intval($id_comprobante);
 
-	// obtener los pagos totales
-	// solo realizar este proceso para aquellos comprobantes que 
-	// ya hayan sido aprobados por las 3 partes
-	$q = "
-				SELECT
-						id_valorizacion,
-						total_sin_detraccion,
-						total_detraccion_soles,
-						pago_sin_detraccion,
-						pago_detraccion
-				FROM
-						comprobante_pago cp
-				WHERE
-						cp.aprobo_contabilidad = 1 AND 
-						cp.aprobo_comercial = 1 AND 
-						cp.aprobo_documentaria = 1 AND 
-						cp.Id = $id_comprobante
-		";
+	// 1. Obtener la "hoja de ruta" del comprobante (Lo que DEBE ser)
+	$q = "SELECT
+                id_valorizacion,
+                sub_total AS monto_objetivo_neto,
+                total_detraccion_soles AS monto_objetivo_detraccion,
+                estado
+          FROM comprobante_pago
+          WHERE aprobo_contabilidad = 1 
+            AND aprobo_comercial = 1 
+            AND aprobo_documentaria = 1 
+            AND Id = $id_comprobante";
 
 	$res = mysqli_query($enlace, $q);
-	if (!$res || mysqli_num_rows($res) == 0) {
+	if (!$res || mysqli_num_rows($res) == 0)
 		return false;
-	}
+
 	$row = mysqli_fetch_assoc($res);
+	if ($row['estado'] == 'X')
+		return false;
 
 	$id_valorizacion = intval($row['id_valorizacion']);
-	$total_neto = floatval($row['total_sin_detraccion']);
-	$total_det = floatval($row['total_detraccion_soles']);
-	$pago_neto = floatval($row['pago_sin_detraccion']);
-	$pago_det = floatval($row['pago_detraccion']);
+	$monto_objetivo_neto = floatval($row['monto_objetivo_neto']);
+	$monto_objetivo_detraccion = floatval($row['monto_objetivo_detraccion']);
 	$tipo_pago = f_getTipoPagoValorizacion($enlace, $id_valorizacion);
 
-	// obtener avances de los pagos de la valorizacion
-	$advances = 0.0;
+	// 2. Calcular lo PAGADO REALMENTE (Lo que ES)
+	$pagos_realizados_neto = 0.0;
+	$pagos_realizados_detraccion = 0.0;
+
 	if ($id_valorizacion > 0) {
-		$q_adv = "SELECT SUM(monto_retirado) as total_adv 
-									FROM proveedor_anticipo_transaccion 
-									WHERE id_valorizacion_compramineral = $id_valorizacion 
-										AND estado = 'A'";
-		$res_adv = mysqli_query($enlace, $q_adv);
-		if ($res_adv && $row_adv = mysqli_fetch_assoc($res_adv)) {
-			$advances = floatval($row_adv['total_adv']);
+		// PAGOS NETOS (Moneda 2: Transferencias o Anticipos)
+		if ($tipo_pago == "banco" || $tipo_pago == "mixto") {
+			$q_neto = "SELECT SUM(monto_pago) as total 
+                       FROM comprobante_pago_pagos 
+                       WHERE id_comprobante_pago = $id_comprobante 
+                         AND id_moneda_destino = 2 AND estado = 'A'";
+			$res_neto = mysqli_query($enlace, $q_neto);
+			if ($res_neto && $r = mysqli_fetch_assoc($res_neto))
+				$pagos_realizados_neto += floatval($r['total']);
+		}
+
+		if ($tipo_pago == "anticipo" || $tipo_pago == "mixto") {
+			$q_ant = "SELECT SUM(monto_retirado) as total 
+                      FROM proveedor_anticipo_transaccion 
+                      WHERE id_valorizacion_compramineral = $id_valorizacion AND estado = 'A'";
+			$res_ant = mysqli_query($enlace, $q_ant);
+			if ($res_ant && $r = mysqli_fetch_assoc($res_ant))
+				$pagos_realizados_neto += floatval($r['total']);
+		}
+
+		// PAGOS DETRACCIÓN (Moneda 1: Siempre por tabla de pagos)
+		$q_det = "SELECT SUM(monto_pago) as total 
+                  FROM comprobante_pago_pagos 
+                  WHERE id_comprobante_pago = $id_comprobante 
+                    AND id_moneda_destino = 1 AND estado = 'A'";
+		$res_det = mysqli_query($enlace, $q_det);
+		if ($res_det && $r = mysqli_fetch_assoc($res_det)) {
+			$pagos_realizados_detraccion = floatval($r['total']);
 		}
 	}
 
-	// si ya se pago, aplicando una pequeña tolerancia aprox de 0.01
+	// 3. Validación con margen de error (Epsilon)
 	$epsilon = 0.5;
+	$cumple_neto = ($pagos_realizados_neto >= ($monto_objetivo_neto - $epsilon));
+	$cumple_detraccion = ($pagos_realizados_detraccion >= ($monto_objetivo_detraccion - $epsilon));
 
-	$paid_amount_net = $pago_neto + $advances;
-
-	$is_paid_net = ($paid_amount_net >= ($total_neto - $epsilon));
-	$is_paid_det = ($pago_det >= ($total_det - $epsilon));
-
-	// 
-	$new_status = '';
-	if ($is_paid_net && $is_paid_det) { // si ya esta pagado
-		if ($tipo_pago == 'mixto') {
-			$new_status = 'A'; // pago mixto: anticipos y transferencias
-		} else if ($tipo_pago == 'anticipo') {
-			$new_status = 'C'; // pago solo por anticipos
-		} else if ($tipo_pago == 'banco') {
-			$new_status = 'B'; // pago solo por banco
-		}
+	// 4. Asignación de nuevo estado
+	if ($cumple_neto && $cumple_detraccion) {
+		$estados = ['mixto' => 'A', 'anticipo' => 'C', 'banco' => 'B'];
+		$nuevo_estado = $estados[$tipo_pago] ?? 'P';
 	} else {
-		$new_status = 'P'; // pago en proceso
+		$nuevo_estado = 'P';
 	}
 
-	// actualizamos el estado
-	$q_status = "SELECT estado FROM comprobante_pago WHERE Id = $id_comprobante";
-	$r_status = mysqli_query($enlace, $q_status);
-	$curr_status_row = mysqli_fetch_assoc($r_status);
-	if ($curr_status_row['estado'] == 'X') {
-		return false;
-	}
-
-	$q_update = "UPDATE comprobante_pago SET estado = '$new_status' WHERE Id = $id_comprobante";
+	$q_update = "UPDATE comprobante_pago SET estado = '$nuevo_estado' WHERE Id = $id_comprobante";
 	return mysqli_query($enlace, $q_update);
 }
 
@@ -3249,64 +3267,64 @@ function f_GenerarCodigoGel(
 // Función de utilidad para logging
 function saveLog($datos)
 {
-  try {
-    // Carpeta 'logs' en el mismo nivel que este script
-    $directorio = __DIR__ . DIRECTORY_SEPARATOR . 'logs';
+	try {
+		// Carpeta 'logs' en el mismo nivel que este script
+		$directorio = __DIR__ . DIRECTORY_SEPARATOR . 'logs';
 
-    // un nombre de archivo por día para no sobrescribir todo siempre
-    $nombreArchivo = 'log_' . date('Y-m-d') . '.json';
-    $rutaCompleta = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
+		// un nombre de archivo por día para no sobrescribir todo siempre
+		$nombreArchivo = 'log_' . date('Y-m-d') . '.json';
+		$rutaCompleta = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
 
-    // Crear directorio si no existe con permisos totales
-    if (!is_dir($directorio)) {
-      mkdir($directorio, 0777, true);
-      chmod($directorio, 0777); // para Linux
-    }
+		// Crear directorio si no existe con permisos totales
+		if (!is_dir($directorio)) {
+			mkdir($directorio, 0777, true);
+			chmod($directorio, 0777); // para Linux
+		}
 
-    // Limpieza de caracteres especiales (\r, \n, \t) ---
-    $limpiar = function ($item) use (&$limpiar) {
-      if (is_array($item)) {
-        return array_map($limpiar, $item);
-      }
-      if (is_string($item)) {
-        return str_replace(["\r", "\n", "\t"], ' ', $item);
-      }
-      return $item;
-    };
-    $datosLimpios = $limpiar($datos);
+		// Limpieza de caracteres especiales (\r, \n, \t) ---
+		$limpiar = function ($item) use (&$limpiar) {
+			if (is_array($item)) {
+				return array_map($limpiar, $item);
+			}
+			if (is_string($item)) {
+				return str_replace(["\r", "\n", "\t"], ' ', $item);
+			}
+			return $item;
+		};
+		$datosLimpios = $limpiar($datos);
 
-    // Agregamos una marca de tiempo al registro para saber cuándo ocurrió exactamente
-    $registro = [
-      'timestamp' => date('Y-m-d H:i:s'),
-      'data' => $datosLimpios
-    ];
+		// Agregamos una marca de tiempo al registro para saber cuándo ocurrió exactamente
+		$registro = [
+			'timestamp' => date('Y-m-d H:i:s'),
+			'data' => $datosLimpios
+		];
 
-    // Si el archivo ya existe, leemos y añadimos, si no, creamos nuevo array
-    $listaLogs = [];
-    if (file_exists($rutaCompleta)) {
-      $contenidoActual = file_get_contents($rutaCompleta);
-      $listaLogs = json_decode($contenidoActual, true) ?: [];
-    }
+		// Si el archivo ya existe, leemos y añadimos, si no, creamos nuevo array
+		$listaLogs = [];
+		if (file_exists($rutaCompleta)) {
+			$contenidoActual = file_get_contents($rutaCompleta);
+			$listaLogs = json_decode($contenidoActual, true) ?: [];
+		}
 
-    $listaLogs[] = $registro;
+		$listaLogs[] = $registro;
 
-    // Convertir a JSON
-    // JSON_UNESCAPED_SLASHES evita las barras extra en rutas de Windows
-    $jsonContenido = json_encode($listaLogs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		// Convertir a JSON
+		// JSON_UNESCAPED_SLASHES evita las barras extra en rutas de Windows
+		$jsonContenido = json_encode($listaLogs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-    // Escribir y forzar permisos
-    if (file_put_contents($rutaCompleta, $jsonContenido) !== false) {
-      chmod($rutaCompleta, 0777);
-      return true;
-    }
+		// Escribir y forzar permisos
+		if (file_put_contents($rutaCompleta, $jsonContenido) !== false) {
+			chmod($rutaCompleta, 0777);
+			return true;
+		}
 
-    return false;
+		return false;
 
-  } catch (Exception $e) {
-    // si todo falla, enviamos al log del servidor
-    // error_log("Fallo crítico en saveLog: " . $e->getMessage());
-    return false;
-  }
+	} catch (Exception $e) {
+		// si todo falla, enviamos al log del servidor
+		// error_log("Fallo crítico en saveLog: " . $e->getMessage());
+		return false;
+	}
 }
 
 // Función principal para generar el código GEL a partir de la tabla despachos_primertramo_validaciondatos
@@ -73054,6 +73072,7 @@ switch ($_POST["accion"]) {
 		break;
 
 	case "get_ComprobantePago_ListaValorizacion":
+		f_UpdateAllComprobantesStatus($enlace);
 		$res = [];
 		$estado = 0;
 
@@ -73164,13 +73183,11 @@ switch ($_POST["accion"]) {
 															GROUP_CONCAT(DISTINCT VD.cod_gel ORDER BY VD.cod_gel SEPARATOR ',') AS cod_gel,
 															GROUP_CONCAT(DISTINCT E.abv ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_ELEMENTO,
 
-															(SELECT IFNULL(SUM(CPP.monto_pago), 0) AS total_pagos
+															(SELECT IFNULL(SUM(CPP.monto_pago), 0)
 																 FROM comprobante_pago_pagos CPP
-																			LEFT JOIN tb_clientes_bancos BC ON BC.id_cliente = P.Id
-																																						AND CPP.id_cliente_banco = BC.Id
-																WHERE CPP.estado <> 'X'
+																WHERE CPP.estado = 'A'
 																	AND CPP.id_comprobante_pago = CP.Id
-																	AND BC.id_banco = 3) AS DETRACCION_PAGOTOTAL,
+																	AND CPP.id_moneda_destino = 1) AS DETRACCION_PAGOTOTAL,
 
 															CP.aprobo_contabilidad,
 															CP.aprobo_contabilidad_fechahora_registro,
@@ -73190,6 +73207,18 @@ switch ($_POST["accion"]) {
 															CP.observaciones,
 															CP.porc_detraccion,
 															CP.pago_sin_detraccion,
+
+															IFNULL((SELECT SUM(CPP.monto_pago)
+																			FROM comprobante_pago_pagos CPP
+																		 WHERE CPP.estado = 'A'
+																			 AND CPP.id_comprobante_pago = CP.Id
+																			 AND CPP.id_moneda_destino = 2), 0) AS pago_neto_banco,
+
+															IFNULL((SELECT SUM(PAT.monto_retirado)
+																			FROM proveedor_anticipo_transaccion PAT
+																		 WHERE PAT.estado = 'A'
+																			 AND PAT.id_valorizacion_compramineral = CP.id_valorizacion), 0) AS pago_neto_anticipo,
+
 															CP.pago_detraccion,
 															CP.pago_detraccion_fechahora_registro,
 															CP.pago_detraccion_usuario_registro,
@@ -73744,25 +73773,23 @@ switch ($_POST["accion"]) {
 						intval($row_validacion["aprobo_comercial"]) == 1 &&
 						intval($row_validacion["aprobo_documentaria"]) == 1;
 
+					// Corrección de saldo usando pagos bancarios detectados si son mayores al guardado
+					$pago_banco_calc = floatval($row_validacion["pago_neto_banco"]);
+					if ($pago_banco_calc > floatval($row_validacion["pago_sin_detraccion"])) {
+						$row_validacion["pago_sin_detraccion"] = $pago_banco_calc;
+					}
+
 					// Obteniendo Saldo (Netoo)
 					$neto_estado = "";
 					$neto_bg = "";
-					$neto_saldo =
-						$row_validacion["total_sin_detraccion"] -
-						$row_validacion["pago_sin_detraccion"];
+					$neto_saldo = $row_validacion["total_sin_detraccion"] - $row_validacion["pago_sin_detraccion"];
 
-					if ($neto_saldo == 0 && $aprobado_total) {
-						// pago mixto
-						if ($row_validacion["estado"] == 'A') {
-							$neto_estado = "PAGADO - Mixto";
-						}
-						// solo por banco
-						else if ($row_validacion["estado"] == 'B') {
-							$neto_estado = "PAGADO - Banco";
-						}
-						// solo por anticipo
-						else if ($row_validacion["estado"] == 'C') {
-							$neto_estado = "PAGADO - Anticipo";
+					if (abs($neto_saldo) < 0.02 && $aprobado_total) {
+						try {
+							$tipo_pago_val = f_getTipoPagoValorizacion($enlace, $row_validacion["id_valorizacion"]);
+							$neto_estado = "PAGADO - " . ucfirst($tipo_pago_val);
+						} catch (Exception $e) {
+							$neto_estado = "PAGADO";
 						}
 						$neto_bg = "bg-success";
 					} else {
@@ -73850,7 +73877,7 @@ switch ($_POST["accion"]) {
 						$row_validacion["total_detraccion_soles"] -
 						$row_validacion["DETRACCION_PAGOTOTAL"];
 
-					if ($detraccion_saldo == 0 && $aprobado_total) {
+					if (abs($detraccion_saldo) < 0.02 && $aprobado_total) {
 						$detraccion_estado = "PAGADO";
 						// // pago mixto
 						// if($row_validacion["estado"] == 'A'){
