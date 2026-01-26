@@ -76966,9 +76966,9 @@ switch ($_POST["accion"]) {
 			lot.id_CatalogoLotes AS id_lote,
 			lot.ccod_Lote AS codigo_lote,
 			vcd.cod_gel AS codigo_gel,
-			lot.nPesoNetoBalanza as peso_humedo,
+			lot.peso_actual as peso_humedo,
 			vcd.porc_h20 as porcentaje_humedad,
-			ROUND(lot.nPesoNetoBalanza / (1 + (vcd.porc_h20 / 100)),2) as peso_seco,
+			ROUND(lot.peso_actual / (1 + (vcd.porc_h20 / 100)),2) as peso_seco,
 			vcd.ley_oztc as ley,
 			anl.abv_valorizacion as elemento,
 			vcd.total
@@ -77889,7 +77889,7 @@ switch ($_POST["accion"]) {
 		INNER JOIN tb_clientes trn on trn.Id = uni.id_Transportista
 		INNER JOIN tbconfig_tipovehiculo tpv on tpv.Id = uni.id_tipovehiculo
 		WHERE dist.estado = 'A' AND dist.id_despacho = $id_despacho
-		ORDER BY dist.id DESC
+		ORDER BY dist.fecha_estimada ASC, dist.id ASC;
 		";
 		$result = mysqli_query($enlace, $q);
 		$distribuciones = [];
@@ -78050,24 +78050,38 @@ switch ($_POST["accion"]) {
 		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
 
 		$q = "
-		-- si la unidad ha sido o sera usada en alguna distribucion
-		-- donde la diferencia entre la fecha de llegada de la unidad 
-		-- de la nueva distribucion con la fecha de llegada de la 
-		-- alguna distribucion antigua NO supera las 48 horas
-		SELECT 
-			IF(COUNT(1) > 0, 1, 0) AS en_uso
-		FROM 
-			distribucion
-		WHERE 
-			id_unidad = $id_unidad
-			AND ABS(DATEDIFF(fecha_estimada, '$fecha_estimada')) <= 2
-			AND ABS(DATEDIFF(fecha_estimada, '$fecha_estimada')) >= 0;
+			-- si la unidad ha sido o sera usada en alguna distribucion
+			-- donde la diferencia entre la fecha de llegada de la unidad 
+			-- de la nueva distribucion con la fecha de llegada de la 
+			-- alguna distribucion antigua NO supera las 48 horas
+			SELECT DISTINCT
+				desp.correlativo
+			FROM
+				distribucion dist
+			INNER JOIN despacho desp on desp.id = dist.id_despacho
+			WHERE
+				dist.id_unidad = $id_unidad AND ABS(
+					DATEDIFF(
+						dist.fecha_estimada,
+						'$fecha_estimada'
+					)
+				) <= 2;
 		";
-		$result = mysqli_query($enlace, $q);
-		$r = mysqli_fetch_assoc($result);
-		$en_uso = $r['en_uso'] ?? 0;
 
-		echo json_encode(["estado" => 1, "en_uso" => $en_uso]);
+		$result = mysqli_query($enlace, $q);
+		$despachos = [];
+
+		while ($row = mysqli_fetch_assoc($result)) {
+			$despachos[] = $row['correlativo'];
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => [
+				"en_uso" => !empty($despachos),
+				"despachos_correlativos" => $despachos
+			]
+		]);
 		break;
 
 	default:

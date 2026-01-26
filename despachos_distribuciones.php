@@ -151,19 +151,19 @@ $backendUrl = 'apis/backend.php';
                 <!-- <div class="col-6">
                   <label class="form-label small mb-0 fw-bold">Estado</label>
                   <select id="filter_estado" class="form-select form-select-sm">
-                    <option value="">Todos</option>
                     <option value="Activo">Activo</option>
                     <option value="Anulado">Anulado</option>
                   </select>
                 </div> -->
                 <div class="col-3">
-                  <!-- Spacer or Correlativo if needed, let's stick to request: Planta, Proveedor, Fecha, Estado -->
                   <label class="form-label small mb-0 fw-bold">Desde</label>
-                  <input type="date" id="filter_fecha_desde" class="form-control form-control-sm">
+                  <input type="text" id="filter_fecha_desde" class="form-control form-control-sm"
+                    placeholder="dd/mm/yyyy" maxlength="10">
                 </div>
                 <div class="col-3">
                   <label class="form-label small mb-0 fw-bold">Hasta</label>
-                  <input type="date" id="filter_fecha_hasta" class="form-control form-control-sm">
+                  <input type="text" id="filter_fecha_hasta" class="form-control form-control-sm"
+                    placeholder="dd/mm/yyyy" maxlength="10">
                 </div>
                 <div class="col-6 text-end mt-4">
                   <button class="btn btn-primary btn-sm me-1" type="button" id="btn_aplicar_filtros">
@@ -206,7 +206,8 @@ $backendUrl = 'apis/backend.php';
                   <span><i class="bi bi-box-seam"></i> Detalle del Despacho: <span id="lbl_despacho_seleccionado"
                       class="text-primary fw-bold">---</span></span>
                 </h5>
-                <div id="info_provider_plant" class="mb-2 text-muted small fst-italic">Seleccione un despacho para ver
+                <div id="info_provider_plant" class="mb-2 text-muted small fst-italic">Seleccione un despacho
+                  para ver
                   detalles.</div>
                 <hr class="my-2" />
 
@@ -228,8 +229,9 @@ $backendUrl = 'apis/backend.php';
                     </tbody>
                     <tfoot id="tfoot_detalle_despacho" style="display:none;">
                       <tr class="fw-bold table-light">
-                        <td colspan="4" class="text-end">Total Despachado:</td>
+                        <td colspan="3" class="text-end">Totales:</td>
                         <td class="text-end" id="lbl_total_peso_despacho">0.00</td>
+                        <td class="text-end" id="lbl_total_peso_distribuido">0.00</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -249,10 +251,11 @@ $backendUrl = 'apis/backend.php';
                   <table class="table table-bordered table-sm table-hover align-middle">
                     <thead class="bg-light sticky-top">
                       <tr style="font-size: 13px;">
-                        <th class="text-center">Trans. / Unidad</th>
-                        <th class="text-center">Fecha Est.</th>
+                        <th class="text-center">Nro. Unidad</th>
+                        <th class="text-center">Info. Transporte</th>
+                        <th class="text-center">Fecha Llegada Est.</th>
                         <th class="text-end">Peso Total</th>
-                        <th class="text-center" width="50">Ver</th>
+                        <th class="text-center" width="70">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="tbl_distribuciones" style="font-size: 13px;">
@@ -303,7 +306,8 @@ $backendUrl = 'apis/backend.php';
           </div>
 
           <!-- Paso 2: Selección de Minerales -->
-          <h6 class="border-bottom pb-2 mb-2">3. Seleccione los Lotes o Blendings e ingrese su peso a Despachar</h6>
+          <h6 class="border-bottom pb-2 mb-2">3. Seleccione los Lotes o Blendings e ingrese su peso a Despachar
+          </h6>
           <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
             <table class="table table-sm table-hover align-middle">
               <thead class="table-secondary sticky-top">
@@ -317,7 +321,8 @@ $backendUrl = 'apis/backend.php';
               </thead>
               <tbody id="tbl_minerales_disponibles">
                 <tr>
-                  <td colspan="5" class="text-center text-muted py-4">Configure la Planta y el Proveedor para cargar
+                  <td colspan="5" class="text-center text-muted py-4">Configure la Planta y el Proveedor para
+                    cargar
                     minerales disponibles.</td>
                 </tr>
               </tbody>
@@ -368,7 +373,7 @@ $backendUrl = 'apis/backend.php';
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-bold text-muted">Fecha Estimada Llegada</label>
-              <input type="date" class="form-control" id="dist_fecha">
+              <input type="text" class="form-control" id="dist_fecha" placeholder="dd/mm/yyyy" maxlength="10">
             </div>
           </div>
 
@@ -429,7 +434,7 @@ $backendUrl = 'apis/backend.php';
             </div>
           </div>
 
-          <h6 class="border-bottom pb-2">Minerales Distribuidos</h6>
+          <h6 class="border-bottom pb-2">Mineral Distribuido:</h6>
           <table class="table table-sm table-bordered table-striped">
             <thead class="table-light">
               <tr>
@@ -449,6 +454,7 @@ $backendUrl = 'apis/backend.php';
     </div>
   </div>
 
+  <select id="voiceList" style="display:none;"></select>
   <?php include('global/auxiliares_js.php'); ?>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"
@@ -483,6 +489,25 @@ $backendUrl = 'apis/backend.php';
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         });
+      }
+
+      function formatDateToDMY(dateStr) {
+        if (!dateStr) return "";
+        // Asumiendo formato YYYY-MM-DD o YYYY-MM-DD HH:mm:ss
+        let parts = dateStr.split(' ')[0].split('-');
+        if (parts.length === 3) {
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+      }
+
+      function dmyToYmd(dateStr) {
+        if (!dateStr) return "";
+        let parts = dateStr.split('/');
+        if (parts.length === 3) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return dateStr;
       }
 
       // --------------------------------------------------------------------------------
@@ -549,8 +574,8 @@ $backendUrl = 'apis/backend.php';
         let fPlanta = $("#filter_planta").val();
         let fProv = $("#filter_proveedor").val();
         // let fEst = $("#filter_estado").val();
-        let fDesde = $("#filter_fecha_desde").val();
-        let fHasta = $("#filter_fecha_hasta").val();
+        let fDesde = dmyToYmd($("#filter_fecha_desde").val());
+        let fHasta = dmyToYmd($("#filter_fecha_hasta").val());
 
         let filtered = allDespachos.filter(d => {
           // Planta
@@ -621,7 +646,7 @@ $backendUrl = 'apis/backend.php';
                         <div class="fw-bold small">${d.razon_social}</div>
                         <div class="text-muted" style="font-size: 0.75em;">${d.documento_proveedor}</div>
                       </td>
-                      <td class="text-center small">${d.fecha_registro}</td>
+                      <td class="text-center small">${formatDateToDMY(d.fecha_registro)}</td>
                       <td class="text-center">
                         <span class="badge bg-secondary rounded-pill">${totalItems} Items</span>
                       </td>
@@ -682,16 +707,18 @@ $backendUrl = 'apis/backend.php';
               if (dists.length === 0) {
                 html = '<tr><td colspan="4" class="text-center text-muted p-2">Sin distribuciones registradas.</td></tr>';
               } else {
+                let contador = 1;
                 dists.forEach(d => {
                   let meta = encodeURIComponent(JSON.stringify(d));
 
                   html += `
                     <tr>
+                      <td class="text-center fw-bold">${contador}</td>
                       <td> 
                         <div class="fw-bold text-truncate">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''} | Cap. ${d.capacidad}</div>
                         <div class="small text-muted" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
                       </td>
-                      <td class="text-center small">${d.fecha_estimada}</td>
+                      <td class="text-center small">${formatDateToDMY(d.fecha_estimada)}</td>
                       <td class="text-end fw-bold text-success">${formatNumber(d.peso_acumulado)}</td>
                       <td class="text-center">
                           <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')">
@@ -703,6 +730,7 @@ $backendUrl = 'apis/backend.php';
                           </button>
                       </td>
                     </tr>`;
+                    contador++;
                 });
               }
             } else {
@@ -719,7 +747,7 @@ $backendUrl = 'apis/backend.php';
         // Set Header Info
         $("#view_dist_transportista").text(meta.nombre_transportista);
         $("#view_dist_placa").text(`${meta.tipo_vehiculo} - ${meta.placa} ${meta.segunda_placa ? '/ ' + meta.segunda_placa : ''}`);
-        $("#view_dist_fecha").text(meta.fecha_estimada);
+        $("#view_dist_fecha").text(formatDateToDMY(meta.fecha_estimada));
         $("#view_dist_total").text(formatNumber(meta.peso_acumulado));
 
         $("#tbl_view_dist_items").html('<tr><td colspan="3" class="text-center">Cargando detalles...</td></tr>');
@@ -738,8 +766,8 @@ $backendUrl = 'apis/backend.php';
                 items.forEach(i => {
                   let isBlending = (i.is_blending == 1);
                   let badge = isBlending
-                    ? '<span class="badge-mineral-type badge-blending">B</span>'
-                    : '<span class="badge-mineral-type badge-lote">L</span>';
+                    ? '<span class="badge-mineral-type badge-blending">Blending</span>'
+                    : '<span class="badge-mineral-type badge-lote">Lote</span>';
 
                   html += `
                             <tr>
@@ -786,6 +814,16 @@ $backendUrl = 'apis/backend.php';
 
         $("#tbl_detalle_despacho").html(html);
         $("#lbl_total_peso_despacho").text(formatNumber(totalPeso));
+
+        // Calcular total distribuido
+        let totalDist = 0;
+        if (detalles && detalles.length > 0) {
+          detalles.forEach(item => {
+            totalDist += parseFloat(item.peso_distribuido || 0);
+          });
+        }
+        $("#lbl_total_peso_distribuido").text(formatNumber(totalDist));
+
         $("#tfoot_detalle_despacho").show();
       }
 
@@ -1166,7 +1204,12 @@ $backendUrl = 'apis/backend.php';
         $("#dist_transportista, #dist_tipo_vehiculo").empty().append('<option value="">Cargando...</option>');
         $("#dist_unidad").empty().prop('disabled', true);
         $("#dist_segunda_placa").val('');
-        $("#dist_fecha").val(new Date().toISOString().split('T')[0]);
+        // Default today DD/MM/YYYY
+        let today = new Date();
+        let dd = String(today.getDate()).padStart(2, '0');
+        let mm = String(today.getMonth() + 1).padStart(2, '0');
+        let yyyy = today.getFullYear();
+        $("#dist_fecha").val(`${dd}/${mm}/${yyyy}`);
 
         $("#tbl_items_distribucion").html('<tr><td colspan="5" class="text-center p-3">Cargando items...</td></tr>');
         $("#lbl_total_dist_modal").text("0.00");
@@ -1219,8 +1262,8 @@ $backendUrl = 'apis/backend.php';
           itemsDespachoDistribucion.forEach((m, idx) => {
             let isBlending = (m.is_blending == 1);
             let badge = isBlending
-              ? '<span class="badge-mineral-type badge-blending">B</span>'
-              : '<span class="badge-mineral-type badge-lote">L</span>';
+              ? '<span class="badge-mineral-type badge-blending">Blending</span>'
+              : '<span class="badge-mineral-type badge-lote">Lote</span>';
             let restante = parseFloat(m.peso_actual);
             let uid = `dist_item_${m.id_despacho_detalle}`;
 
@@ -1279,7 +1322,7 @@ $backendUrl = 'apis/backend.php';
       // Guardar Distribucion
       $("#btn_guardar_distribucion").click(function () {
         let idUnidad = $("#dist_unidad").val();
-        let fecha = $("#dist_fecha").val();
+        let fecha = dmyToYmd($("#dist_fecha").val());
 
         if (!idUnidad) {
           alert("Seleccione una unidad.");
@@ -1297,8 +1340,11 @@ $backendUrl = 'apis/backend.php';
           $btn.prop('disabled', false);
 
           // Check simplified response
-          if (rVer.estado === 1 && rVer.en_uso == 1) {
-            if (!confirm("Para la fecha " + fecha + ", la unidad seleccionada estará en uso en otra distribución cercana.\n¿Desea continuar?")) {
+          if (rVer.estado === 1 && rVer.data.en_uso) {
+            let correlativos = rVer.data.despachos_correlativos ? rVer.data.despachos_correlativos.join(", ") : "";
+            let msg = "Para el día " + formatDateToDMY(fecha) + ", la unidad seleccionada estará en uso en los siguientes despachos: " + correlativos + ".\n¿Desea continuar?";
+
+            if (!confirm(msg)) {
               return;
             }
           }
