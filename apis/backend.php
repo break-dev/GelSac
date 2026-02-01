@@ -4142,6 +4142,9 @@ switch ($_POST["accion"]) {
 		// Recupera parámetros
 		$user = mysqli_real_escape_string($enlace, $_POST["user"]);
 		$password = mysqli_real_escape_string($enlace, md5($_POST["password"]));
+		$id_sucursal = $_POST["id_sucursal"];
+		$cod_sucursal = $_POST["cod_sucursal"];
+		$des_sucursal = $_POST["des_sucursal"];
 
 		// Valida Credenciales
 		$q_login =
@@ -4187,9 +4190,9 @@ switch ($_POST["accion"]) {
 					$_SESSION["Id"] = $row_login["Id"];
 					$_SESSION["cod_rol"] = $row_login["cod_rol"];
 					$_SESSION["nom_rol"] = $row_login["nom_rol"];
-					$_SESSION["cod_sucursal"] = $row_login["cod_sucursal"];
-					$_SESSION["des_sucursal"] = $row_login["des_sucursal"];
-					$_SESSION["prefijo_sucursal"] = $row_login["PREFIJO_SUCURSAL"];
+					$_SESSION["cod_sucursal"] = $id_sucursal;
+					$_SESSION["des_sucursal"] = $des_sucursal;
+					$_SESSION["prefijo_sucursal"] = $cod_sucursal;
 					$_SESSION["usu_usuario"] = $row_login["usu_usuario"];
 					$_SESSION["id_empleado"] = $row_login["id_empleado"];
 					$_SESSION["nom_usuario"] =

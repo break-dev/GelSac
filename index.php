@@ -4,6 +4,7 @@
 
 	include('global/variables.php');
 	include('global/auxiliares.php');
+  include('cnx/cnx.php');
 
 ?>
 
@@ -53,6 +54,38 @@
 
                   <div class="col-12">
                     <input id="password" type="password" class="form-control" style="font-size: 14px;" name="password" required="" autocomplete="current-password" value="">
+                  </div>
+                </div>
+
+                <div class="form-group row" style="text-align: left;">
+                  <label for="id_sucursal" class="col-12 col-form-label" style="font-weight: bold; color: #000; font-size: 12px;">Sucursal</label>
+
+                  <div class="col-12">
+                    <select id="id_sucursal" class="form-select" style="font-size: 14px;">
+                      <option selected value="">Elija una opción...</option>
+
+                      <?php
+
+                      $q_sucursales = "SELECT Id,
+                                              cod_sucursal,
+                                              des_sucursal
+                                         FROM tb_sucursal
+                                        WHERE estado_sucursal = 'A'";
+
+                      if ($res_sucursales = mysqli_query($enlace, $q_sucursales)) {
+                        if (mysqli_num_rows($res_sucursales) > 0) {
+                          while ($row_sucursales = mysqli_fetch_array($res_sucursales)) {
+                            ?>
+
+                            <option data-id_sucursal="<?php echo $row_sucursales["cod_sucursal"] ?>" value="<?php echo $row_sucursales["Id"] ?>"><?php echo $row_sucursales["des_sucursal"] ?></option>
+
+                            <?php
+                          }
+                        }
+                      }
+
+                      ?>
+                    </select>
                   </div>
                 </div>
 
@@ -167,26 +200,40 @@
 			function f_LogIn(){
         var user = f_CleanInjection($("#user").val());
         var password = f_CleanInjection($("#password").val());
+        var id_sucursal = f_CleanInjection($("#id_sucursal").val());
+        var cod_sucursal = f_CleanInjection($("#id_sucursal option:selected").data("id_sucursal"));
+        var des_sucursal = f_CleanInjection($("#id_sucursal option:selected").text());
 
         // Valida ingreso de datos
           if (user == null){
-            alert("Debe ingresar el Usuario");
+            alert("Debe ingresar el Usuario.");
 
             return;
           }
           if (user.length == 0){
-            alert("Debe ingresar el Usuario");
+            alert("Debe ingresar el Usuario.");
 
             return;
           }
 
           if (password == null){
-            alert("Debe ingresar la Clave");
+            alert("Debe ingresar la Clave.");
 
             return;
           }
           if (password.length == 0){
-            alert("Debe ingresar la Clave");
+            alert("Debe ingresar la Clave.");
+
+            return;
+          }
+
+          if (id_sucursal == null){
+            alert("Debe seleccionar la Sucursal.");
+
+            return;
+          }
+          if (id_sucursal.length == 0){
+            alert("Debe seleccionar la Sucursal.");
 
             return;
           }
@@ -194,7 +241,7 @@
           $(".spinner-border").show();
           $("#btn_LogIn").hide();
 
-          $.post( "apis/backend.php", { accion: "Log_In", user: user, password: password }, 
+          $.post( "apis/backend.php", { accion: "Log_In", user: user, password: password, id_sucursal, cod_sucursal, des_sucursal }, 
             function( data ) {
               if(data.estado == 1){
               	speak(data.sexo, "'" + data.nom_usuario + "'");
