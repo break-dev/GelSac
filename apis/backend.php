@@ -77488,7 +77488,17 @@ switch ($_POST["accion"]) {
 			bl.estado = 'A' AND
 			-- que aun tenga saldo
 			ROUND(bl.peso_actual, 2) > 0 AND 
-			bl.id_proveedor = $id_proveedor
+            -- que algun lote tenga como dueño al proveedor
+			$id_proveedor IN (
+                SELECT DISTINCT  
+                	vc.id_proveedor
+                FROM blending_detalle bld 
+                INNER JOIN catalogolotes lot on lot.id_CatalogoLotes = bld.id_lote
+                INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
+                INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+                INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
+                WHERE cp.estado IN('A', 'B', 'C') AND bld.id_blending = bl.id
+            )
 		ORDER BY bl.numero_correlativo;
 		";
 
@@ -77767,27 +77777,27 @@ switch ($_POST["accion"]) {
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
 
 		$q = "
-		SELECT
+		SELECT DISTINCT
 			dsd.id as id_despacho_detalle,
 			dsd.id_despacho,
 			dsd.id_mineral,
 			CASE
-				-- si es un blending
 				WHEN dsd.is_blending = 1 THEN (
-					SELECT
-						bl.correlativo
-					FROM blending bl where bl.id = dsd.id_mineral
-					LIMIT 1
-				)
-				-- si es un lote
+					SELECT 
+						bln.correlativo 
+					FROM blending bln 
+					WHERE bln.id = dsd.id_mineral)
 				WHEN dsd.is_blending = 0 THEN (
-					SELECT
+					SELECT DISTINCT
 						vcd.cod_gel
-					FROM catalogolotes lot
-					INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
-					LIMIT 1
+					FROM catalogolotes lot 
+					INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+					INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+					INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
+					WHERE cp.estado IN('A', 'B', 'C') AND lot.id_CatalogoLotes = dsd.id_mineral
+                    LIMIT 1
 				)
-			END as codigo,
+			END AS codigo,
 			dsd.is_blending,
 			dsd.peso_actual_log,
 			dsd.peso_tomado,

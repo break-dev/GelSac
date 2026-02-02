@@ -237,7 +237,7 @@ $backendUrl = 'apis/backend.php';
         <div class="modal-body">
           <div class="row mb-3">
             <div class="col-md-8">
-              <label for="reg_proveedor" class="form-label">Filtrar por Proveedor (Opcional)</label>
+              <label for="reg_proveedor" class="form-label">Filtrar por Proveedor (opc.)</label>
               <select id="reg_proveedor" class="form-select" data-bs-theme="bootstrap-5"></select>
             </div>
             <div class="col-md-4 d-flex align-items-end">

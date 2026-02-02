@@ -35,6 +35,7 @@ $backendUrl = 'apis/backend.php';
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
   <link rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
   <link rel="stylesheet" href="<?php echo $url_lims; ?>/global/styles.css">
 
@@ -157,13 +158,13 @@ $backendUrl = 'apis/backend.php';
                 </div> -->
                 <div class="col-3">
                   <label class="form-label small mb-0 fw-bold">Desde</label>
-                  <input type="text" id="filter_fecha_desde" class="form-control form-control-sm"
-                    placeholder="dd/mm/yyyy" maxlength="10">
+                  <input type="text" id="filter_fecha_desde" class="form-control form-control-sm bg-white"
+                    placeholder="dd/mm/yyyy" readonly>
                 </div>
                 <div class="col-3">
                   <label class="form-label small mb-0 fw-bold">Hasta</label>
-                  <input type="text" id="filter_fecha_hasta" class="form-control form-control-sm"
-                    placeholder="dd/mm/yyyy" maxlength="10">
+                  <input type="text" id="filter_fecha_hasta" class="form-control form-control-sm bg-white"
+                    placeholder="dd/mm/yyyy" readonly>
                 </div>
                 <div class="col-6 text-end mt-4">
                   <button class="btn btn-primary btn-sm me-1" type="button" id="btn_aplicar_filtros">
@@ -224,7 +225,7 @@ $backendUrl = 'apis/backend.php';
                     </thead>
                     <tbody id="tbl_detalle_despacho" style="font-size: 13px;">
                       <tr>
-                        <td colspan="4" class="text-center text-muted p-3">---</td>
+                        <td colspan="5" class="text-center text-muted p-3">---</td>
                       </tr>
                     </tbody>
                     <tfoot id="tfoot_detalle_despacho" style="display:none;">
@@ -243,7 +244,7 @@ $backendUrl = 'apis/backend.php';
                 <h5 class="d-flex justify-content-between align-items-center">
                   <span><i class="bi bi-diagram-3"></i> Distribuciones</span>
                   <button class="btn btn-sm btn-primary" id="btn_open_new_distribucion" disabled>
-                    <i class="bi bi-plus-lg"></i> Asignar Distribución
+                    <i class="bi bi-plus-lg"></i> Añadir Distribución
                   </button>
                 </h5>
                 <hr class="my-2" />
@@ -260,7 +261,7 @@ $backendUrl = 'apis/backend.php';
                     </thead>
                     <tbody id="tbl_distribuciones" style="font-size: 13px;">
                       <tr>
-                        <td colspan="4" class="text-center text-muted p-3">Seleccione un despacho para ver sus
+                        <td colspan="5" class="text-center text-muted p-3">Seleccione un despacho para ver sus
                           distribuciones.</td>
                       </tr>
                     </tbody>
@@ -373,11 +374,11 @@ $backendUrl = 'apis/backend.php';
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-bold text-muted">Fecha Estimada Llegada</label>
-              <input type="text" class="form-control" id="dist_fecha" placeholder="dd/mm/yyyy" maxlength="10">
+              <input type="text" class="form-control bg-white" id="dist_fecha" placeholder="dd/mm/yyyy" readonly>
             </div>
           </div>
 
-          <h6 class="border-bottom pb-2 mb-2 text-success">Seleccione Items del Despacho a Cargar</h6>
+          <h6 class="border-bottom pb-2 mb-2 text-success">Seleccione items del despacho a distribuir</h6>
           <div class="table-responsive">
             <table class="table table-sm table-striped align-middle">
               <thead class="table-light">
@@ -463,6 +464,8 @@ $backendUrl = 'apis/backend.php';
     integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
     crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
   <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function () {
@@ -476,6 +479,16 @@ $backendUrl = 'apis/backend.php';
       let mineralesDisponibles = [];
       let itemsDespachoDistribucion = [];
       let selectedDespachoId = 0;
+
+      // Initialize Flatpickr
+      const flatpickrConfig = {
+        locale: "es",
+        dateFormat: "d/m/Y",
+        allowInput: true,
+      };
+      flatpickr("#filter_fecha_desde", flatpickrConfig);
+      flatpickr("#filter_fecha_hasta", flatpickrConfig);
+      flatpickr("#dist_fecha", flatpickrConfig);
 
 
 
@@ -623,8 +636,8 @@ $backendUrl = 'apis/backend.php';
           dataList.forEach(d => {
             let totalItems = parseInt(d.blending_usados) + parseInt(d.lotes_usados);
             let estadoBadge = (d.estado == 'I' || d.estado == '0')
-              ? '<span class="badge bg-danger">Anulado</span>'
-              : '<span class="badge bg-success">Activo</span>';
+              ? '<span class="badge bg-danger" style="font-size:12px !important;">Anulado</span>'
+              : '<span class="badge bg-success" style="font-size:12px !important;">Activo</span>';
 
             // Group Header
             if (d.id_planta !== lastPlantId) {
@@ -632,7 +645,7 @@ $backendUrl = 'apis/backend.php';
                     <tr class="table-primary">
                         <td colspan="6" class="fw-bold text-uppercase" style="background-color: #e9ecef;">
                             <i class="bi bi-building me-2"></i>${d.descripcion_planta} 
-                            <span class="text-muted fw-normal small">(${d.ruc_planta})</span>
+                            <span class="text-muted fw-normal">(${d.ruc_planta})</span>
                         </td>
                     </tr>
                 `;
@@ -643,12 +656,12 @@ $backendUrl = 'apis/backend.php';
                   <tr class="clickable-row ${(d.id_despacho == selectedDespachoId) ? 'selected' : ''}" onclick="selectDespacho(${d.id_despacho}, this)" data-id="${d.id_despacho}">
                       <td class="text-center fw-bold">${d.correlativo}</td>
                       <td>
-                        <div class="fw-bold small">${d.razon_social}</div>
-                        <div class="text-muted" style="font-size: 0.75em;">${d.documento_proveedor}</div>
+                        <div class="fw-bold">${d.razon_social}</div>
+                        <div class="text-muted" style="font-size: 1em;">${d.documento_proveedor}</div>
                       </td>
-                      <td class="text-center small">${formatDateToDMY(d.fecha_registro)}</td>
+                      <td class="text-center">${formatDateToDMY(d.fecha_registro)}</td>
                       <td class="text-center">
-                        <span class="badge bg-secondary rounded-pill">${totalItems} Items</span>
+                        <span class="badge bg-secondary rounded-pill" style="font-size:12px !important;">${totalItems} Items</span>
                       </td>
                       <td class="text-center">${estadoBadge}</td>
                       <td class="text-center">
@@ -705,7 +718,7 @@ $backendUrl = 'apis/backend.php';
             if (r.estado === 1 && r.data && r.data.distribuciones) {
               let dists = r.data.distribuciones;
               if (dists.length === 0) {
-                html = '<tr><td colspan="4" class="text-center text-muted p-2">Sin distribuciones registradas.</td></tr>';
+                html = '<tr><td colspan="5" class="text-center text-muted p-2">Sin distribuciones registradas.</td></tr>';
               } else {
                 let contador = 1;
                 dists.forEach(d => {
@@ -715,10 +728,10 @@ $backendUrl = 'apis/backend.php';
                     <tr>
                       <td class="text-center fw-bold">${contador}</td>
                       <td> 
-                        <div class="fw-bold text-truncate">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''} | Cap. ${d.capacidad}</div>
-                        <div class="small text-muted" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
+                        <div class="fw-bold text-truncate" style="font-size:14px !important;">${d.tipo_vehiculo} | ${d.placa} ${d.segunda_placa ? '(' + d.segunda_placa + ')' : ''} | Cap. ${d.capacidad}</div>
+                        <div class="text-muted" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
                       </td>
-                      <td class="text-center small">${formatDateToDMY(d.fecha_estimada)}</td>
+                      <td class="text-center">${formatDateToDMY(d.fecha_estimada)}</td>
                       <td class="text-end fw-bold text-success">${formatNumber(d.peso_acumulado)}</td>
                       <td class="text-center">
                           <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')">
@@ -730,7 +743,7 @@ $backendUrl = 'apis/backend.php';
                           </button>
                       </td>
                     </tr>`;
-                    contador++;
+                  contador++;
                 });
               }
             } else {
@@ -796,8 +809,8 @@ $backendUrl = 'apis/backend.php';
           detalles.forEach(item => {
             let isBlending = (item.is_blending == 1);
             let badge = isBlending
-              ? '<span class="badge-mineral-type badge-blending">Blending</span>'
-              : '<span class="badge-mineral-type badge-lote">Lote</span>';
+              ? '<span class="badge-mineral-type badge-blending" style="font-size:12px !important;">Blending</span>'
+              : '<span class="badge-mineral-type badge-lote" style="font-size:12px !important;">Lote</span>';
 
             html += `
                   <tr>
@@ -977,6 +990,8 @@ $backendUrl = 'apis/backend.php';
 
         if (checked) {
           $input.focus();
+          let pesoTotal = mineralesDisponibles[idx].peso_actual;
+          $input.val(pesoTotal);
         } else {
           $input.val('');
         }
@@ -1065,9 +1080,9 @@ $backendUrl = 'apis/backend.php';
               selectedDespachoId = 0;
               $("#lbl_despacho_seleccionado").text("---");
               $("#info_provider_plant").text("Seleccione un despacho para ver detalles.");
-              $("#tbl_detalle_despacho").html('<tr><td colspan="4" class="text-center text-muted p-3">---</td></tr>');
+              $("#tbl_detalle_despacho").html('<tr><td colspan="5" class="text-center text-muted p-3">---</td></tr>');
               $("#tfoot_detalle_despacho").hide();
-              $("#tbl_distribuciones").html('<tr><td colspan="4" class="text-center text-muted p-3">Seleccione un despacho para ver sus distribuciones.</td></tr>');
+              $("#tbl_distribuciones").html('<tr><td colspan="5" class="text-center text-muted p-3">Seleccione un despacho para ver sus distribuciones.</td></tr>');
               $("#btn_open_new_distribucion").prop('disabled', true);
             }
           }
@@ -1198,7 +1213,7 @@ $backendUrl = 'apis/backend.php';
         if (!selectedDespachoId) return;
 
         // UI Reset
-        $("#modal_nueva_distribucion .modal-title").html('<i class="bi bi-truck"></i> Nueva Distribución de Carga');
+        $("#modal_nueva_distribucion .modal-title").html('<i class="bi bi-truck"></i> Nueva Distribución');
         $("#btn_guardar_distribucion").text("Guardar Distribución");
 
         $("#dist_transportista, #dist_tipo_vehiculo").empty().append('<option value="">Cargando...</option>');
@@ -1293,7 +1308,13 @@ $backendUrl = 'apis/backend.php';
         let $inp = $(`.input-dist-peso[data-idx='${idx}']`);
 
         $inp.prop('disabled', !chk);
-        if (chk) $inp.focus(); else $inp.val('');
+        if (chk) {
+          $inp.focus();
+          let pesoRestante = itemsDespachoDistribucion[idx].peso_actual;
+          $inp.val(pesoRestante);
+        } else {
+          $inp.val('');
+        }
 
         updateTotalDist();
       });
