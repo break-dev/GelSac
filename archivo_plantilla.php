@@ -26,47 +26,16 @@ $backendUrl = 'apis/backend.php';
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="<?php echo $favicon; ?>" type="image/png" />
 
-  <title><?php echo $nom_app; ?> | Blending</title>
+  <title><?php echo $nom_app; ?> | </title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
-
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
   <link rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
   <link rel="stylesheet" href="<?php echo $url_lims; ?>/global/styles.css">
-
-  <style>
-    /* Estilos de cabecera para las tablas */
-    .header-bg-blending {
-      background-color: #2c3e50 !important;
-      /* Dark Blue */
-      color: #fff;
-      font-weight: 600;
-      vertical-align: middle;
-    }
-
-    .header-bg-detalle {
-      background-color: #8e44ad !important;
-      /* Purple */
-      color: #fff;
-      font-weight: 600;
-      vertical-align: middle;
-    }
-
-    /* Estilo para las filas seleccionables de blending */
-    .blending-row:hover {
-      background-color: #e0f7fa;
-      cursor: pointer;
-    }
-
-    .blending-row.selected {
-      background-color: #b3e5fc;
-      font-weight: bold;
-    }
-  </style>
 </head>
 
 <body class="bg-light" style="zoom: 80%;">
@@ -95,145 +64,12 @@ $backendUrl = 'apis/backend.php';
       <div class="col-md-12 col-sm-12 col-xs-12" style="padding-top: 10px; padding-left: 15px; padding-right: 15px;">
         <div class="d-flex row">
 
-          <div class="row bg-white shadow-sm p-3 mb-3 rounded">
-            <h5><i class="bi bi-layers-half"></i> Registro y Control de Blending</h5>
-            <hr style="border-color: #D9D9D9; margin-top: 2px;" />
-            <div class="d-flex mb-2" style="font-size: 16px;">
-              <span class="me-4">
-                Total Blendings: <strong id="total_blendings" class="text-primary">0</strong>
-              </span>
-              <button class="btn btn-success btn-sm ms-auto" id="btn_open_new_blending_modal">
-                <i class="bi bi-plus-circle me-1"></i> Nuevo Blending
-              </button>
-            </div>
-          </div>
-
-          <!-- Columna Izquierda: Lista de Blendings -->
-          <div class="col-md-5">
-            <div class="bg-white shadow-sm p-3 rounded">
-              <h5 class="d-inline-block"><i class="bi bi-list-columns-reverse"></i> Historial de Blendings</h5>
-              <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
-
-              <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-striped">
-                  <thead>
-                    <tr style="font-size: 13px;">
-                      <th class="header-bg-blending text-center">Código</th>
-                      <th class="header-bg-blending text-center">Peso Inicial</th>
-                      <th class="header-bg-blending text-center">Peso Actual</th>
-                      <th class="header-bg-blending text-center">Estado</th>
-                      <th class="header-bg-blending text-center">Fecha</th>
-                      <th class="header-bg-blending text-center"># Lotes</th>
-                      <th class="header-bg-blending text-center">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbl_blendings" style="font-size: 13px;">
-                    <tr>
-                      <td colspan="7" class="text-center">Cargando...</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Columna Derecha: Detalle del Blending -->
-          <div class="col-md-7">
-            <div class="bg-white shadow-sm p-3 rounded">
-              <h5 class="d-inline-block"><i class="bi bi-eye"></i> Detalle de Blending: <span
-                  id="blending_seleccionado_codigo" class="text-primary">---</span></h5>
-              <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
-
-              <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-striped">
-                  <thead>
-                    <tr style="font-size: 13px;">
-                      <!-- <th class="header-bg-detalle text-center">ID Lote</th> -->
-                      <th class="header-bg-detalle text-center">Código Lote</th>
-                      <th class="header-bg-detalle text-center">Código Gel</th>
-                      <th class="header-bg-detalle text-center">Peso Lote (log)</th>
-                      <th class="header-bg-detalle text-center">Peso Usado</th>
-                      <th class="header-bg-detalle text-center">Peso Restante</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbl_detalle_blending" style="font-size: 13px;">
-                    <tr>
-                      <td colspan="5" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
-                        izquierdo.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
 
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Nuevo Blending -->
-  <div class="modal fade" id="modal_nuevo_blending" tabindex="-1" aria-labelledby="modal_nuevo_blending_Label"
-    aria-hidden="true">
-    <div class="modal-dialog modal-xl" style="position: fixed; top: 10%; left: 50%; transform: translate(-50%, 0);">
-      <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="modal_nuevo_blending_Label"><i class="bi bi-box-seam"></i> Crear Nuevo Blending
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="row mb-3">
-            <div class="col-md-8">
-              <label for="reg_proveedor" class="form-label">Proveedor (con lotes disponibles)</label>
-              <select id="reg_proveedor" class="form-select" data-bs-theme="bootstrap-5"></select>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-              <button class="btn btn-primary w-100" id="btn_cargar_lotes" disabled>
-                <i class="bi bi-search"></i> Buscar Lotes
-              </button>
-            </div>
-          </div>
-
-          <hr>
-
-          <h6 class="mb-2">Seleccione Lotes y Cantidades:</h6>
-          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-            <table class="table table-sm table-bordered">
-              <thead class="table-light">
-                <tr>
-                  <th class="text-center" width="50">Sel.</th>
-                  <th>Lote</th>
-                  <th>Código Gel</th>
-                  <th class="text-end">Peso Inicial</th>
-                  <th class="text-end">Peso Actual (Disp.)</th>
-                  <th width="150" class="text-center">Peso a Tomar</th>
-                </tr>
-              </thead>
-              <tbody id="tbl_lotes_disponibles">
-                <tr>
-                  <td colspan="6" class="text-center text-muted">Seleccione un proveedor para ver sus lotes.</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr class="table-secondary fw-bold">
-                  <td colspan="5" class="text-end">TOTAL PESO BLENDING:</td>
-                  <td class="text-end" id="lbl_total_tomado">0.00</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i>
-            Cancelar</button>
-          <button type="button" class="btn btn-success" id="btn_crear_blending" disabled><i class="bi bi-save"></i>
-            Crear Blending</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <?php include('global/auxiliares_js.php'); ?>
 
@@ -253,11 +89,6 @@ $backendUrl = 'apis/backend.php';
       // Variables Globales
       // -------------------------
       const backendUrl = '<?php echo $backendUrl; ?>';
-      const nuevoBlendingModal = new bootstrap.Modal(document.getElementById("modal_nuevo_blending"));
-
-      let allBlendings = [];
-      let blendingSeleccionado = null;
-      let lotesDisponibles = [];
 
       // -------------------------
       // Funciones Auxiliares
@@ -269,296 +100,19 @@ $backendUrl = 'apis/backend.php';
         }, 'json');
       }
 
-      function formatNumber(num) {
-        return parseFloat(num).toFixed(2);
+      function formatNumber(num, decimals = 2) {
+        if (num === null || num === undefined || isNaN(num)) return '0.00';
+        return new Intl.NumberFormat('en-US', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals
+        }).format(num);
       }
 
-      // -------------------------
-      // Lógica de Renderizado
-      // -------------------------
-
-      function renderBlendings() {
-        let html = '';
-        if (allBlendings.length === 0) {
-          html = '<tr><td colspan="7" class="text-center">No se encontraron blendings registrados.</td></tr>';
-        } else {
-          // Ordenar por Proveedor y luego por ID descendente
-          allBlendings.sort((a, b) => {
-            if (a.razon_social < b.razon_social) return -1;
-            if (a.razon_social > b.razon_social) return 1;
-            return b.id_blending - a.id_blending;
-          });
-
-          let lastProviderId = null;
-
-          allBlendings.forEach(b => {
-            let estadoClass = b.estado === 'Activo' ? 'text-success' : 'text-muted';
-
-            // Verificar cambio de proveedor para insertar cabecera
-            if (b.id_proveedor !== lastProviderId) {
-              html += `
-                     <tr class="table-primary">
-                        <td colspan="7" class="fw-bold text-uppercase"><i class="bi bi-person-badge-fill me-2"></i>${b.razon_social} <span class="text-muted fw-normal small">(${b.documento})</span></td>
-                     </tr>
-                     `;
-              lastProviderId = b.id_proveedor;
-            }
-
-            html += `
-                 <tr class="blending-row" data-id="${b.id_blending}" onclick="selectBlending(${b.id_blending})">
-                    <td class="fw-bold text-center ps-4"><i class="bi bi-caret-right-fill text-muted" style="font-size: 0.8em;"></i> ${b.correlativo}</td>
-                    <td class="text-end">${formatNumber(b.peso_inicial)}</td>
-                    <td class="text-end">${formatNumber(b.peso_actual)}</td>
-                    <td class="text-center ${estadoClass}">${b.estado}</td>
-                    <td class="text-center">${b.fecha_registro}</td>
-                    <td class="text-center">${b.cantidad_lotes}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-primary" onclick="selectBlending(${b.id_blending}, event)">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </td>
-                 </tr>
-                 `;
-          });
-        }
-        $("#tbl_blendings").html(html);
-        $("#total_blendings").text(allBlendings.length);
-      }
-
-      function renderDetalle(detalle) {
-        let html = '';
-        if (detalle.length === 0) {
-          html = '<tr><td colspan="5" class="text-center">No hay detalles para mostrar.</td></tr>';
-        } else {
-          detalle.forEach(d => {
-            html += `
-                  <tr>
-                    <!-- <td class="text-center">${d.id_lote}</td> -->
-                    <td>${d.codigo_lote}</td>
-                    <td>${d.codigo_gel}</td>
-                    <td class="text-end text-muted">${formatNumber(d.peso_actual_lote)}</td>
-                    <td class="text-end fw-bold text-primary">${formatNumber(d.peso_tomado)}</td>
-                    <td class="text-end text-muted">${formatNumber(d.peso_restante)}</td>
-                  </tr>
-                  `;
-          });
-        }
-        $("#tbl_detalle_blending").html(html);
-      }
-
-      // Expuesta globalmente para usar en el HTML onclick
-      window.selectBlending = function (id, event) {
-        if (event) event.stopPropagation();
-
-        // UI update
-        $(".blending-row").removeClass("selected");
-        $(`.blending-row[data-id='${id}']`).addClass("selected");
-
-        let blending = allBlendings.find(b => b.id_blending == id);
-        if (blending) {
-          $("#blending_seleccionado_codigo").text(blending.correlativo);
-          $("#msg_detalle_blending").parent().html('<tr><td colspan="5" class="text-center">Cargando detalle...</td></tr>');
-
-          f_callBackend('get_blending_detalle_by_blending', { id_blending: id })
-            .done(function (r) {
-              if (r.estado === 1) {
-                renderDetalle(r.data.detalle_blending);
-              } else {
-                alert("Error al cargar detalle.");
-              }
-            });
-        }
-      };
-
-      function renderLotesDisponibles() {
-        let html = '';
-        if (lotesDisponibles.length === 0) {
-          html = '<tr><td colspan="6" class="text-center">No hay lotes con saldo para este proveedor.</td></tr>';
-        } else {
-          lotesDisponibles.forEach(l => {
-            html += `
-                  <tr>
-                    <td class="text-center">
-                        <input type="checkbox" class="chk-lote form-check-input" data-id="${l.id_lote}">
-                    </td>
-                    <td>${l.codigo_lote}</td>
-                    <td>${l.codigo_gel}</td>
-                    <td class="text-end">${formatNumber(l.peso_inicial)}</td>
-                    <td class="text-end text-success fw-bold">${formatNumber(l.peso_actual)}</td>
-                    <td>
-                        <input type="number" 
-                               step="0.01" 
-                               class="form-control form-control-sm input-peso-tomar text-end" 
-                               data-id="${l.id_lote}" 
-                               data-max="${l.peso_actual}"
-                               disabled
-                               placeholder="0.00">
-                    </td>
-                  </tr>
-                  `;
-          });
-        }
-        $("#tbl_lotes_disponibles").html(html);
-        updateTotalModal();
-      }
-
-      function updateTotalModal() {
-        let total = 0;
-        $(".input-peso-tomar").each(function () {
-          if (!$(this).prop('disabled')) {
-            let val = parseFloat($(this).val());
-            if (!isNaN(val)) total += val;
-          }
-        });
-        $("#lbl_total_tomado").text(formatNumber(total));
-
-        // Enable/Disable create button
-        $("#btn_crear_blending").prop('disabled', total <= 0);
-      }
-
-      // -------------------------
-      // Eventos
-      // -------------------------
-
-      // 1. Cargar datos iniciales
-      function loadAllData() {
-        f_callBackend('get_lista_blending_cabecera', {})
-          .done(function (r) {
-            if (r.estado === 1) {
-              allBlendings = r.data.blendings;
-              renderBlendings();
-            } else {
-              console.error("Error cargando blendings");
-            }
-          });
-      }
-
-      // 2. Abrir Modal Nuevo
-      $("#btn_open_new_blending_modal").on("click", function () {
-        // Reset Modal
-        $("#reg_proveedor").empty();
-        $("#tbl_lotes_disponibles").html('<tr><td colspan="6" class="text-center text-muted">Seleccione un proveedor y busque lotes.</td></tr>');
-        $("#lbl_total_tomado").text("0.00");
-        $("#btn_cargar_lotes").prop('disabled', true);
-        $("#btn_crear_blending").prop('disabled', true);
-
-        // Cargar proveedores
-        f_callBackend("get_proveedores_to_blending", {})
-          .done(function (r) {
-            if (r.estado === 1) {
-              let data = r.data.proveedores.map(p => ({
-                id: p.id_proveedor,
-                text: `${p.razon_social} (${p.documento})`
-              }));
-              $("#reg_proveedor").select2({
-                dropdownParent: $('#modal_nuevo_blending'),
-                theme: "bootstrap-5",
-                placeholder: 'Seleccione proveedor',
-                data: data,
-                width: '100%'
-              });
-              $("#btn_cargar_lotes").prop('disabled', false);
-            }
-          });
-
-        nuevoBlendingModal.show();
-      });
-
-      // 3. Buscar Lotes
-      $("#btn_cargar_lotes").on("click", function () {
-        let id_prov = $("#reg_proveedor").val();
-        if (!id_prov) return;
-
-        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
-
-        f_callBackend("get_lotes_to_blending_by_proveedor", { id_proveedor: id_prov })
-          .done(function (r) {
-            $("#btn_cargar_lotes").prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Lotes');
-            if (r.estado === 1) {
-              lotesDisponibles = r.data.lotes;
-              renderLotesDisponibles();
-            }
-          });
-      });
-
-      // 4. Interacción en tabla lotes (Checkbox y Inputs)
-      $(document).on("change", ".chk-lote", function () {
-        let id = $(this).data("id");
-        let isChecked = $(this).is(":checked");
-        let input = $(`.input-peso-tomar[data-id='${id}']`);
-
-        input.prop('disabled', !isChecked);
-        if (!isChecked) input.val('');
-        updateTotalModal();
-      });
-
-      $(document).on("input", ".input-peso-tomar", function () {
-        let max = parseFloat($(this).data("max"));
-        let val = parseFloat($(this).val());
-
-        if (val < 0) $(this).val(0);
-        if (val > max) {
-          alert("No puede exceder el peso actual del lote: " + max);
-          $(this).val(max);
-        }
-        updateTotalModal();
-      });
-
-      // 5. Crear Blending Enviar
-      $("#btn_crear_blending").on("click", function () {
-        let id_proveedor = $("#reg_proveedor").val();
-        let lotesSeleccionados = [];
-
-        if (!id_proveedor) {
-          alert("Debe seleccionar un proveedor.");
-          return;
-        }
-
-        $(".input-peso-tomar").each(function () {
-          if (!$(this).prop('disabled')) {
-            let val = parseFloat($(this).val());
-            if (val > 0) {
-              lotesSeleccionados.push({
-                id_lote: $(this).data("id"),
-                peso_tomado: val
-              });
-            }
-          }
-        });
-
-        if (lotesSeleccionados.length === 0) {
-          alert("Debe seleccionar al menos un lote con peso mayor a 0.");
-          return;
-        }
-
-        if (!confirm("¿Está seguro de crear este Blending? Se descontará el stock de los lotes seleccionados.")) return;
-
-        // Enviar
-        let $btn = $(this);
-        $btn.prop('disabled', true).text("Procesando...");
-
-        f_callBackend("crear_blending", {
-          lotes: lotesSeleccionados,
-          id_proveedor: id_proveedor
-        })
-          .done(function (r) {
-            if (r.estado === 1) {
-              alert(r.mensaje);
-              nuevoBlendingModal.hide();
-              loadAllData(); // Recargar lista
-            } else {
-              alert("Error: " + r.mensaje);
-            }
-          })
-          .fail(function () { alert("Error de conexión"); })
-          .always(function () { $btn.prop('disabled', false).text("Crear Blending"); });
-      });
 
       // Start
       function f_Init() {
         f_GetMenuPrincipal();
-        $("#nv_titulo").html('| Registro de Blending');
-        loadAllData();
+        $("#nv_titulo").html('| ');
       }
 
       f_Init();
