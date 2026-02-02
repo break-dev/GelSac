@@ -76964,6 +76964,12 @@ switch ($_POST["accion"]) {
 
 	case "get_lotes_to_blending_by_proveedor":
 		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+
+		$where_clause = "";
+		if ($id_proveedor > 0) {
+			$where_clause = "AND vc.id_proveedor = $id_proveedor";
+		}
+
 		$q = "
 		SELECT
 			lot.id_CatalogoLotes AS id_lote,
@@ -76974,7 +76980,9 @@ switch ($_POST["accion"]) {
 			ROUND(lot.peso_actual / (1 + (vcd.porc_h20 / 100)),2) as peso_seco,
 			vcd.ley_oztc as ley,
 			anl.abv_valorizacion as elemento,
-			vcd.total
+			vcd.total,
+			prov.razon_social as proveedor_nombre,
+			prov.documento as proveedor_doc
 		FROM
 			catalogolotes lot
 		INNER JOIN valorizacion_compramineral_detalle vcd ON
@@ -76982,13 +76990,14 @@ switch ($_POST["accion"]) {
 		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
 		INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
 		INNER JOIN tb_ensayos_analisis anl ON vcd.id_elemento = anl.Id
+		INNER JOIN tb_clientes prov ON prov.Id = vc.id_proveedor
 		WHERE 
 			-- estados de PAGADO: mixto, banco, anticipos
 			cp.estado IN ('A','B','C') AND
 			-- que aun tenga saldo
-			ROUND(lot.peso_actual, 2) > 0 AND
-			vc.id_proveedor = $id_proveedor
-		ORDER BY vcd.cod_gel;
+			ROUND(lot.peso_actual, 2) > 0 
+			$where_clause
+		ORDER BY prov.razon_social, vcd.cod_gel;
 		";
 
 		$result = mysqli_query($enlace, $q);
@@ -77008,7 +77017,6 @@ switch ($_POST["accion"]) {
 
 	case "crear_blending":
 		$lotes = $_POST["lotes"]; // { "id_lote" : "", "peso_tomado": ""}
-		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
 
 		// calcular el nuevo correlativo
 		$nuevo_numero_correlativo = getNuevoNumeroCorrelativoBlending($enlace);
@@ -77044,7 +77052,6 @@ switch ($_POST["accion"]) {
 		// INSERTAR CABECERA
 		$q_cabecera = "
 		INSERT INTO blending (
-			id_proveedor,
 			correlativo, 
 			numero_correlativo, 
 			peso_inicial, 
@@ -77052,7 +77059,6 @@ switch ($_POST["accion"]) {
 			estado
 		) 
 		VALUES (
-			$id_proveedor,
 			'$nuevo_correlativo', 
 			$nuevo_numero_correlativo, 
 			$peso_total_tomado, 
@@ -77115,9 +77121,6 @@ switch ($_POST["accion"]) {
 		$q = "
 		SELECT
 			bl.id as id_blending,
-            prov.Id as id_proveedor,
-            prov.documento,
-            prov.razon_social,
 			bl.correlativo,
 			bl.peso_inicial,
 			bl.peso_actual,
@@ -77135,7 +77138,6 @@ switch ($_POST["accion"]) {
 			END AS estado
 		FROM
 			blending bl
-        INNER JOIN tb_clientes prov ON prov.Id = bl.id_proveedor
 		ORDER BY bl.numero_correlativo DESC;
 		";
 
@@ -77161,17 +77163,15 @@ switch ($_POST["accion"]) {
 			bld.id_blending,
 			bld.id as id_blending_detalle,
 			lot.id_CatalogoLotes AS id_lote,
-			lot.ccod_Lote AS codigo_lote,
+            prov.documento as documento_proveedor,
+            prov.razon_social as nombre_proveedor,
 			vcd.cod_gel AS codigo_gel,
 			bld.peso_tomado AS peso_humedo,
 			vcd.porc_h20 AS porcentaje_humedad,
 			ROUND(
 				bld.peso_tomado /(1 +(vcd.porc_h20 / 100)),
 				2
-			) AS peso_seco,
-			vcd.ley_oztc AS ley,
-			anl.abv_valorizacion AS elemento,
-			vcd.total
+			) AS peso_seco
 		FROM
 			catalogolotes lot
 		INNER JOIN valorizacion_compramineral_detalle vcd ON
@@ -77184,10 +77184,11 @@ switch ($_POST["accion"]) {
 			vcd.id_elemento = anl.Id
 		INNER JOIN blending_detalle bld ON
 			bld.id_lote = lot.id_CatalogoLotes
+        INNER JOIN tb_clientes prov on prov.Id = vc.id_proveedor
 		WHERE
 			-- estados de PAGADO: mixto, banco, anticipos
 			cp.estado IN('A', 'B', 'C') AND bld.id_blending = $id_blending
-		ORDER BY codigo_gel, codigo_lote;
+		ORDER BY codigo_gel;
 		";
 
 		$result = mysqli_query($enlace, $q);

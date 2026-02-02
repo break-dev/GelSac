@@ -35,6 +35,7 @@ $backendUrl = 'apis/backend.php';
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
   <link rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
   <link rel="stylesheet" href="<?php echo $url_lims; ?>/global/styles.css">
 
@@ -66,6 +67,13 @@ $backendUrl = 'apis/backend.php';
       background-color: #b3e5fc;
       font-weight: bold;
     }
+
+    /* Ajuste para que el modal sea más ancho */
+    @media (min-width: 1200px) {
+      .modal-xl-custom {
+        max-width: 65% !important;
+      }
+    }
   </style>
 </head>
 
@@ -91,131 +99,135 @@ $backendUrl = 'apis/backend.php';
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="col-md-12 col-sm-12 col-xs-12" style="padding-top: 10px; padding-left: 15px; padding-right: 15px;">
-        <div class="d-flex row">
+  <!-- Hidden element to prevent JS Error in auxiliaries_js.php -->
+  <select id="voiceList" hidden></select>
 
-          <div class="row bg-white shadow-sm p-3 mb-3 rounded">
-            <h5><i class="bi bi-layers-half"></i> Registro y Control de Blending</h5>
-            <hr style="border-color: #D9D9D9; margin-top: 2px;" />
-            <div class="d-flex mb-2" style="font-size: 16px;">
-              <span class="me-4">
-                Total Blendings: <strong id="total_blendings" class="text-primary">0</strong>
-              </span>
-              <button class="btn btn-success btn-sm ms-auto" id="btn_open_new_blending_modal">
-                <i class="bi bi-plus-circle me-1"></i> Nuevo Blending
-              </button>
-            </div>
-          </div>
+  <div class="col-md-12 col-sm-12 col-xs-12" style="padding-top: 10px; padding-left: 15px; padding-right: 15px;">
+    <div class="d-flex row">
 
-          <!-- Columna Izquierda: Lista de Blendings -->
-          <div class="col-md-5">
-            <div class="bg-white shadow-sm p-3 rounded">
-              <h5 class="d-inline-block"><i class="bi bi-list-columns-reverse"></i> Historial de Blendings</h5>
-              <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
-
-              <!-- Filters Section -->
-              <div class="row g-2 mb-3 bg-light p-2 rounded border">
-                <div class="col-12">
-                  <label class="form-label small mb-0 fw-bold">Proveedor</label>
-                  <select id="filter_proveedor" class="form-select form-select-sm w-100"></select>
-                </div>
-                <div class="col-6">
-                  <label class="form-label small mb-0 fw-bold">Correlativo</label>
-                  <select id="filter_correlativo" class="form-select form-select-sm w-100"></select>
-                </div>
-                <div class="col-6">
-                  <label class="form-label small mb-0 fw-bold">Estado</label>
-                  <select id="filter_estado" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    <option value="Con peso">Con peso</option>
-                    <option value="Agotado">Agotado</option>
-                  </select>
-                </div>
-                <div class="col-6">
-                  <label class="form-label small mb-0 fw-bold">Desde</label>
-                  <input type="date" id="filter_fecha_desde" class="form-control form-control-sm">
-                </div>
-                <div class="col-6">
-                  <label class="form-label small mb-0 fw-bold">Hasta</label>
-                  <div class="input-group input-group-sm">
-                    <input type="date" id="filter_fecha_hasta" class="form-control form-control-sm">
-                    <button class="btn btn-outline-secondary" type="button" id="btn_limpiar_filtros"
-                      title="Limpiar Filtros"><i class="bi bi-x-lg"></i></button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-striped">
-                  <thead>
-                    <tr style="font-size: 13px;">
-                      <th class="header-bg-blending text-center">Código</th>
-                      <th class="header-bg-blending text-center">Peso Inicial</th>
-                      <th class="header-bg-blending text-center">Peso Actual</th>
-                      <th class="header-bg-blending text-center">Estado</th>
-                      <th class="header-bg-blending text-center">Fecha</th>
-                      <th class="header-bg-blending text-center"># Lotes</th>
-                      <th class="header-bg-blending text-center">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbl_blendings" style="font-size: 13px;">
-                    <tr>
-                      <td colspan="7" class="text-center">Cargando...</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Columna Derecha: Detalle del Blending -->
-          <div class="col-md-7">
-            <div class="bg-white shadow-sm p-3 rounded">
-              <h5 class="d-inline-block"><i class="bi bi-eye"></i> Detalle de Blending: <span
-                  id="blending_seleccionado_codigo" class="text-primary">---</span></h5>
-              <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
-
-              <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-striped">
-                  <thead>
-                    <tr style="font-size: 13px;">
-                      <!-- <th class="header-bg-detalle text-center">ID Lote</th> -->
-                      <!-- <th class="header-bg-detalle text-center">Código Lote</th> -->
-                      <th class="header-bg-detalle text-center">Código Gel</th>
-                      <th class="header-bg-detalle text-center">TMH (Peso Húmedo)</th>
-                      <th class="header-bg-detalle text-center">H2O</th>
-                      <th class="header-bg-detalle text-center">TMS (Peso Seco)</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbl_detalle_blending" style="font-size: 13px;">
-                    <tr>
-                      <td colspan="4" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
-                        izquierdo.</td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr class="table-secondary fw-bold" style="font-size: 13px;">
-                      <td class="text-end">TOTALES:</td>
-                      <td class="text-end text-primary" id="lbl_total_tmh_blending">0.00</td>
-                      <td class="text-end text-primary" id="lbl_avg_h2o_blending">0.000</td>
-                      <td class="text-end text-primary" id="lbl_recalc_tms_blending">0.00</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-
+      <div class="row bg-white shadow-sm p-3 mb-3 rounded">
+        <h5><i class="bi bi-layers-half"></i> Registro y Control de Blending</h5>
+        <hr style="border-color: #D9D9D9; margin-top: 2px;" />
+        <div class="d-flex mb-2" style="font-size: 16px;">
+          <span class="me-4">
+            Total Blendings: <strong id="total_blendings" class="text-primary">0</strong>
+          </span>
+          <button class="btn btn-success btn-sm ms-auto" id="btn_open_new_blending_modal">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo Blending
+          </button>
         </div>
       </div>
+
+      <!-- Columna Izquierda: Lista de Blendings -->
+      <div class="col-md-5">
+        <div class="bg-white shadow-sm p-3 rounded">
+          <h5 class="d-inline-block"><i class="bi bi-list-columns-reverse"></i> Historial de Blendings</h5>
+          <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
+
+          <!-- Filters Section -->
+          <div class="row g-2 mb-3 bg-light p-2 rounded border">
+            <div class="col-6">
+              <label class="form-label small mb-0 fw-bold">Correlativo</label>
+              <select id="filter_correlativo" class="form-select form-select-sm w-100"></select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small mb-0 fw-bold">Estado</label>
+              <select id="filter_estado" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                <option value="Con peso">Con peso</option>
+                <option value="Agotado">Agotado</option>
+              </select>
+            </div>
+            <div class="col-3">
+              <label class="form-label small mb-0 fw-bold">Desde</label>
+              <input type="text" id="filter_fecha_desde" class="form-control form-control-sm bg-white"
+                placeholder="dd/mm/yyyy" readonly>
+            </div>
+            <div class="col-3">
+              <label class="form-label small mb-0 fw-bold">Hasta</label>
+              <input type="text" id="filter_fecha_hasta" class="form-control form-control-sm bg-white"
+                placeholder="dd/mm/yyyy" readonly>
+            </div>
+            <div class="col-6 text-end mt-4">
+              <button class="btn btn-primary btn-sm me-1" type="button" id="btn_aplicar_filtros">
+                <i class="bi bi-funnel-fill"></i> Aplicar Filtros
+              </button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" id="btn_limpiar_filtros"
+                title="Limpiar Filtros"><i class="bi bi-x-lg"></i> Limpiar filtros</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-bordered table-hover table-striped">
+              <thead>
+                <tr style="font-size: 13px;">
+                  <th class="header-bg-blending text-center">Código</th>
+                  <th class="header-bg-blending text-center">Peso Inicial</th>
+                  <th class="header-bg-blending text-center">Peso Actual</th>
+                  <th class="header-bg-blending text-center">Estado</th>
+                  <th class="header-bg-blending text-center">Fecha</th>
+                  <th class="header-bg-blending text-center"># Lotes</th>
+                  <th class="header-bg-blending text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tbl_blendings" style="font-size: 13px;">
+                <tr>
+                  <td colspan="7" class="text-center">Cargando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Detalle del Blending -->
+      <div class="col-md-7">
+        <div class="bg-white shadow-sm p-3 rounded">
+          <h5 class="d-inline-block"><i class="bi bi-eye"></i> Detalle de Blending: <span
+              id="blending_seleccionado_codigo" class="text-primary">---</span></h5>
+          <hr style="border-color: #D9D9D9; margin-top: 5px; margin-bottom: 10px;" />
+
+          <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-bordered table-hover table-striped">
+              <thead>
+                <tr style="font-size: 13px;">
+                  <th class="header-bg-detalle text-center">Código Gel</th>
+                  <th class="header-bg-detalle text-center">TMH (Peso Húmedo)</th>
+                  <th class="header-bg-detalle text-center">H2O</th>
+                  <th class="header-bg-detalle text-center">TMS (Peso Seco)</th>
+                </tr>
+              </thead>
+              <tbody id="tbl_detalle_blending" style="font-size: 13px;">
+                <tr>
+                  <td colspan="4" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
+                    izquierdo.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="table-secondary fw-bold" style="font-size: 13px;">
+                  <td class="text-end">TOTALES:</td>
+                  <td class="text-end text-primary" id="lbl_total_tmh_blending">0.00</td>
+                  <td class="text-end text-primary" id="lbl_avg_h2o_blending">0.000</td>
+                  <td class="text-end text-primary" id="lbl_recalc_tms_blending">0.00</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
+  </div>
+  </div>
   </div>
 
   <!-- Modal Nuevo Blending -->
   <div class="modal fade" id="modal_nuevo_blending" tabindex="-1" aria-labelledby="modal_nuevo_blending_Label"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-xl-custom modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title" id="modal_nuevo_blending_Label"><i class="bi bi-box-seam"></i> Crear Nuevo Blending
@@ -225,7 +237,7 @@ $backendUrl = 'apis/backend.php';
         <div class="modal-body">
           <div class="row mb-3">
             <div class="col-md-8">
-              <label for="reg_proveedor" class="form-label">Proveedor (con lotes disponibles)</label>
+              <label for="reg_proveedor" class="form-label">Filtrar por Proveedor (Opcional)</label>
               <select id="reg_proveedor" class="form-select" data-bs-theme="bootstrap-5"></select>
             </div>
             <div class="col-md-4 d-flex align-items-end">
@@ -237,36 +249,81 @@ $backendUrl = 'apis/backend.php';
 
           <hr>
 
-          <h6 class="mb-2">Seleccione Lotes y Cantidades:</h6>
-          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <h6 class="mb-2">Lotes Disponibles:</h6>
+          <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
             <table class="table table-sm table-bordered">
               <thead class="table-light">
                 <tr>
-                  <th class="text-center" width="50">Sel.</th>
-                  <!-- <th>Lote</th> -->
-                  <th>Código Gel</th>
-                  <th class="text-end">TMH (Peso Húmedo)</th>
-                  <th class="text-end">H2O</th>
-                  <th class="text-end">TMS (Peso Seco)</th>
+                  <th class="text-center">Proveedor</th>
+                  <th class="text-center">Código Gel</th>
+                  <th class="text-center">TMH (Peso Húmedo)</th>
+                  <th class="text-center">H2O (Humedad)</th>
+                  <th class="text-center">TMS (Peso Seco)</th>
+                  <th class="text-center" width="50"></th>
                 </tr>
               </thead>
               <tbody id="tbl_lotes_disponibles">
                 <tr>
-                  <td colspan="5" class="text-center text-muted">Seleccione un proveedor para ver sus lotes.</td>
+                  <td colspan="6" class="text-center text-muted">Seleccione Buscar para ver lotes.</td>
                 </tr>
               </tbody>
-              <tfoot>
-                <tr class="table-secondary fw-bold">
-                  <td colspan="2" class="text-end">TOTALES:</td>
-                  <td class="text-end text-primary" id="lbl_total_tmh">0.00</td>
-                  <td class="text-end text-primary" id="lbl_avg_h2o">0.000</td>
-                  <td class="text-end text-primary" id="lbl_recalc_tms">0.00</td>
-                </tr>
-              </tfoot>
             </table>
           </div>
 
+          <hr>
+
+          <h6 class="mb-2">Lotes Seleccionados:</h6>
+          <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-sm table-bordered">
+              <thead class="table-success">
+                <tr>
+                  <th class="text-center">Proveedor</th>
+                  <th class="text-center">Código Gel</th>
+                  <th class="text-center">TMH (Disponible)</th>
+                  <th class="text-center">H2O (Humedad)</th>
+                  <th class="text-center">TMS (Disponible)</th>
+                  <th class="text-center" width="120">Peso a Tomar</th>
+                  <th class="text-center" width="50"></th>
+                </tr>
+              </thead>
+              <tbody id="tbl_lotes_seleccionados">
+                <tr>
+                  <td colspan="7" class="text-center text-muted">No hay lotes seleccionados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total Summary Section -->
+          <div class="mt-4">
+            <h6 class="text-secondary fw-bold text-uppercase small border-bottom pb-1 mb-3">Valores Estimados</h6>
+            <div class="d-flex justify-content-center align-items-center gap-4 text-center">
+              <!-- TMH -->
+              <div>
+                <div class="text-primary fw-bold" style="font-size: 1.5rem;" id="card_total_tmh">0.00</div>
+                <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                  Peso Humedo</div>
+              </div>
+              <!-- Divider -->
+              <div class="border-end border-2" style="height: 40px; opacity: 0.2;"></div>
+              <!-- H2O -->
+              <div>
+                <div class="text-info fw-bold" style="font-size: 1.5rem;" id="card_avg_h2o">0.000</div>
+                <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                  Humedad %</div>
+              </div>
+              <!-- Divider -->
+              <div class="border-end border-2" style="height: 40px; opacity: 0.2;"></div>
+              <!-- TMS -->
+              <div>
+                <div class="text-success fw-bold" style="font-size: 1.5rem;" id="card_recalc_tms">0.00</div>
+                <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                  Peso Seco</div>
+              </div>
+            </div>
+          </div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i>
             Cancelar</button>
@@ -276,8 +333,9 @@ $backendUrl = 'apis/backend.php';
       </div>
     </div>
   </div>
+  </div>
 
-  <?php include('global/auxiliares_js.php'); ?>
+  <!-- Moved auxiliaries include to after scripts -->
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"
     integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
@@ -286,6 +344,10 @@ $backendUrl = 'apis/backend.php';
     crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+  <?php include('global/auxiliares_js.php'); ?>
 
 
   <script type="text/javascript">
@@ -300,6 +362,7 @@ $backendUrl = 'apis/backend.php';
       let allBlendings = [];
       let blendingSeleccionado = null;
       let lotesDisponibles = [];
+      let lotesSeleccionados = []; // Array to persist selected lots across provider changes
 
       // Filter Data
       let filterData = {
@@ -325,6 +388,24 @@ $backendUrl = 'apis/backend.php';
         }).format(num);
       }
 
+      function dmyToYmd(dateStr) {
+        if (!dateStr) return "";
+        let parts = dateStr.split('/');
+        if (parts.length === 3) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return dateStr;
+      }
+
+      // Initialize Flatpickr
+      const flatpickrConfig = {
+        locale: "es",
+        dateFormat: "d/m/Y",
+        allowInput: true,
+      };
+      flatpickr("#filter_fecha_desde", flatpickrConfig);
+      flatpickr("#filter_fecha_hasta", flatpickrConfig);
+
       // -------------------------
       // Lógica de Renderizado
       // -------------------------
@@ -334,27 +415,23 @@ $backendUrl = 'apis/backend.php';
         if (dataList.length === 0) {
           html = '<tr><td colspan="7" class="text-center">No se encontraron blendings registrados.</td></tr>';
         } else {
-          // Ordenar por Proveedor y luego por ID descendente
+          // Sorting by Date/ID Descending
           dataList.sort((a, b) => {
-            if (a.razon_social < b.razon_social) return -1;
-            if (a.razon_social > b.razon_social) return 1;
             return b.id_blending - a.id_blending;
           });
 
-          let lastProviderId = null;
+          // let lastProviderId = null;
 
           dataList.forEach(b => {
             let estadoClass = b.estado === 'Activo' ? 'text-success' : 'text-muted';
 
-            // Verificar cambio de proveedor para insertar cabecera
+            // Removed Provider Grouping Row
+            /*
             if (b.id_proveedor !== lastProviderId) {
-              html += `
-                     <tr class="table-primary">
-                        <td colspan="7" class="fw-bold text-uppercase"><i class="bi bi-person-badge-fill me-2"></i>${b.razon_social} <span class="text-muted fw-normal small">(${b.documento})</span></td>
-                     </tr>
-                     `;
-              lastProviderId = b.id_proveedor;
+               html += ...
+               lastProviderId = b.id_proveedor;
             }
+            */
 
             html += `
                  <tr class="blending-row" data-id="${b.id_blending}" onclick="selectBlending(${b.id_blending})">
@@ -362,7 +439,7 @@ $backendUrl = 'apis/backend.php';
                     <td class="text-end">${formatNumber(b.peso_inicial)}</td>
                     <td class="text-end">${formatNumber(b.peso_actual)}</td>
                     <td class="text-center ${estadoClass}">${b.estado}</td>
-                    <td class="text-center">${b.fecha_registro}</td>
+                    <td class="text-center">${f_FormatFecha(b.fecha_registro, 1)}</td>
                     <td class="text-center">${b.cantidad_lotes}</td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-primary" onclick="selectBlending(${b.id_blending}, event)">
@@ -393,6 +470,8 @@ $backendUrl = 'apis/backend.php';
           $("#lbl_avg_h2o_blending").text('0.000');
           $("#lbl_recalc_tms_blending").text('0.00');
         } else {
+          let lastProvider = null;
+
           detalle.forEach(d => {
             let pesoHumedo = parseFloat(d.peso_humedo) || 0;
             let h2o = parseFloat(d.porcentaje_humedad) || 0;
@@ -402,10 +481,21 @@ $backendUrl = 'apis/backend.php';
             totalTMS += pesoSeco;
             sumH2O += h2o;
 
+            if (d.nombre_proveedor !== lastProvider) {
+              html += `
+                     <tr class="table-dev">
+                        <td colspan="4" class="fw-bold text-uppercase" style="background-color:#EFEFEF;">
+                            <i class="bi bi-person-fill"></i> ${d.nombre_proveedor}
+                        </td>
+                     </tr>
+                `;
+              lastProvider = d.nombre_proveedor;
+            }
+
             html += `
                   <tr>
                     <!-- <td>${d.codigo_gel}</td> -->
-                    <td>${d.codigo_gel}</td>
+                    <td class="ps-4">${d.codigo_gel}</td>
                     <td class="text-end fw-bold text-primary">${formatNumber(pesoHumedo)}</td>
                     <td class="text-end text-muted">${formatNumber(h2o, 3)}</td>
                     <td class="text-end fw-bold text-success">${formatNumber(pesoSeco)}</td>
@@ -473,72 +563,182 @@ $backendUrl = 'apis/backend.php';
 
       function renderLotesDisponibles() {
         let html = '';
-        if (lotesDisponibles.length === 0) {
-          html = '<tr><td colspan="5" class="text-center">No hay lotes con saldo para este proveedor.</td></tr>';
+        // Filter out already selected lots - use String comparison to ensure proper matching
+        let selectedIds = lotesSeleccionados.map(l => String(l.id_lote));
+        let availableLots = lotesDisponibles.filter(l => !selectedIds.includes(String(l.id_lote)));
+
+        if (availableLots.length === 0) {
+          html = '<tr><td colspan="6" class="text-center">No hay lotes disponibles.</td></tr>';
         } else {
-          lotesDisponibles.forEach(l => {
+          availableLots.forEach(l => {
+            let maxPeso = parseFloat(l.peso_humedo) || 0;
+
             html += `
-                  <tr class="lote-disponible-row" data-id="${l.id_lote}">
-                    <td class="text-center">
-                        <input type="checkbox" class="chk-lote form-check-input" 
-                               data-id="${l.id_lote}" 
-                               data-tmh="${l.peso_humedo}" 
-                               data-h2o="${l.porcentaje_humedad}" 
-                               data-tms="${l.peso_seco}">
-                    </td>
-                    <!-- <td>${l.codigo_lote}</td> -->
-                    <td>${l.codigo_gel}</td>
-                    <td class="text-end fw-bold">${formatNumber(l.peso_humedo)}</td>
-                    <td class="text-end text-muted">${formatNumber(l.porcentaje_humedad, 3)}</td>
-                    <td class="text-end text-success fw-bold">${formatNumber(l.peso_seco)}</td>
-                  </tr>
-                  `;
+                      <tr class="lote-disponible-row" data-id="${l.id_lote}">
+                        <td class="text-center small align-middle">${l.proveedor_nombre || '-'}</td>
+                        <td class="text-center align-middle fw-bold">${l.codigo_gel}</td>
+                        <td class="text-center align-middle">${formatNumber(maxPeso)}</td>
+                        <td class="text-center text-muted align-middle">${formatNumber(l.porcentaje_humedad, 3)}</td>
+                        <td class="text-center text-success fw-bold align-middle">${formatNumber(l.peso_seco)}</td>
+                        <td class="text-center align-middle">
+                            <button class="btn btn-sm btn-success btn-add-lote" 
+                                    data-id="${l.id_lote}" 
+                                    data-proveedor="${l.proveedor_nombre || '-'}" 
+                                    data-codigo-gel="${l.codigo_gel}" 
+                                    data-max="${maxPeso}"
+                                    data-h2o="${l.porcentaje_humedad}"
+                                    data-tms="${l.peso_seco}"
+                                    title="Agregar lote">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </td>
+                      </tr>
+                      `;
           });
         }
         $("#tbl_lotes_disponibles").html(html);
+      }
+
+      function renderLotesSeleccionados() {
+        let html = '';
+        if (lotesSeleccionados.length === 0) {
+          html = '<tr><td colspan="7" class="text-center text-muted">No hay lotes seleccionados.</td></tr>';
+        } else {
+          lotesSeleccionados.forEach(l => {
+            let maxPeso = parseFloat(l.peso_disponible) || 0;
+            let pesoActual = parseFloat(l.peso_tomado) || maxPeso;
+
+            html += `
+                      <tr class="lote-seleccionado-row" data-id="${l.id_lote}">
+                        <td class="text-center small align-middle">${l.proveedor}</td>
+                        <td class="text-center align-middle fw-bold">${l.codigo_gel}</td>
+                        <td class="text-center align-middle">${formatNumber(maxPeso)}</td>
+                        <td class="text-center text-muted align-middle">${formatNumber(l.h2o, 3)}</td>
+                        <td class="text-center text-success fw-bold align-middle">${formatNumber(l.tms)}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm text-end input-peso-seleccionado" 
+                                   step="0.01" min="0" max="${maxPeso}"
+                                   data-id="${l.id_lote}"
+                                   value="${pesoActual}">
+                        </td>
+                        <td class="text-center align-middle">
+                            <button class="btn btn-sm btn-danger btn-remove-lote" 
+                                    data-id="${l.id_lote}"
+                                    title="Quitar lote">
+                                <i class="bi bi-dash-lg"></i>
+                            </button>
+                        </td>
+                      </tr>
+                      `;
+          });
+        }
+        $("#tbl_lotes_seleccionados").html(html);
         updateTotalModal();
       }
 
-      function updateTotalModal() {
-        let selectedItems = [];
-        $(".chk-lote:checked").each(function () {
-          selectedItems.push({
-            tmh: parseFloat($(this).data('tmh')) || 0,
-            h2o: parseFloat($(this).data('h2o')) || 0,
-            tms: parseFloat($(this).data('tms')) || 0
-          });
+      // --- ADD AND REMOVE LOT BUTTONS ---
+
+      $(document).on("click", ".btn-add-lote", function () {
+        let id = $(this).data('id');
+        let proveedor = $(this).data('proveedor');
+        let codigoGel = $(this).data('codigo-gel');
+        let max = parseFloat($(this).data('max'));
+        let h2o = parseFloat($(this).data('h2o'));
+        let tms = parseFloat($(this).data('tms'));
+
+        // Check if lot is already selected (prevent duplicates)
+        let yaSeleccionado = lotesSeleccionados.some(l => String(l.id_lote) === String(id));
+        if (yaSeleccionado) {
+          alert("Este lote ya ha sido seleccionado.");
+          return;
+        }
+
+        // Add to selected array
+        lotesSeleccionados.push({
+          id_lote: id,
+          proveedor: proveedor,
+          codigo_gel: codigoGel,
+          peso_disponible: max,
+          h2o: h2o,
+          tms: tms,
+          peso_tomado: max // Auto-fill with full weight
         });
 
+        // Re-render both tables
+        renderLotesDisponibles();
+        renderLotesSeleccionados();
+      });
+
+      $(document).on("click", ".btn-remove-lote", function () {
+        let id = $(this).data('id');
+
+        // Remove from selected array - use String comparison
+        lotesSeleccionados = lotesSeleccionados.filter(l => String(l.id_lote) !== String(id));
+
+        // Re-render both tables
+        renderLotesDisponibles();
+        renderLotesSeleccionados();
+      });
+
+      $(document).on("input change", ".input-peso-seleccionado", function () {
+        let val = parseFloat($(this).val());
+        let max = parseFloat($(this).attr('max'));
+        let id = $(this).data('id');
+
+        // Validate Max
+        if (val > max) {
+          $(this).val(max);
+          val = max;
+        }
+        if (val < 0) {
+          $(this).val(0);
+          val = 0;
+        }
+
+        // Update peso_tomado in array - use String comparison
+        let lote = lotesSeleccionados.find(l => String(l.id_lote) === String(id));
+        if (lote) {
+          lote.peso_tomado = val;
+        }
+
+        updateTotalModal();
+      });
+
+      function updateTotalModal() {
         let totalTMH = 0;
         let sumH2O = 0;
-        let count = selectedItems.length;
+        let count = 0;
 
-        selectedItems.forEach(item => {
-          totalTMH += item.tmh;
-          sumH2O += item.h2o;
+        lotesSeleccionados.forEach(l => {
+          let peso = parseFloat(l.peso_tomado) || 0;
+          let h2o = parseFloat(l.h2o) || 0;
+
+          if (peso > 0) {
+            totalTMH += peso;
+            sumH2O += h2o;
+            count++;
+          }
         });
 
         let avgH2O = count > 0 ? (sumH2O / count) : 0;
-        // Formula: TMS = TMH / (1 + (H2O % / 100))
-        // Pero el valor de h2o ya viene como 0.052 (que es 5.2%)? 
-        // El usuario dice "da valores algo asi: 0.052". 
-        // Entonces la formula sería: Recalc TMS = Sum(TMH) / (1 + Avg(H2O))
-        // Si el usuario dijo: Peso humedo/(1 + (ley de humedad)/100)
-        // Y el backend da 0.052 para 5.2%, entonces 0.052 * 100 = 5.2
         let recalcTMS = 0;
         if (count > 0) {
-          // Si h2o es 0.052, entonces ley_humedad es 5.2
-          let ley_humedad_avg = avgH2O;
-          recalcTMS = totalTMH / (1 + (ley_humedad_avg / 100));
+          recalcTMS = totalTMH / (1 + (avgH2O / 100));
         }
 
-        $("#lbl_total_tmh").text(formatNumber(totalTMH, 2));
-        $("#lbl_avg_h2o").text(formatNumber(avgH2O, 3));
-        $("#lbl_recalc_tms").text(formatNumber(recalcTMS, 2));
+        $("#card_total_tmh").text(formatNumber(totalTMH, 2));
+        $("#card_avg_h2o").text(formatNumber(avgH2O, 3));
+        $("#card_recalc_tms").text(formatNumber(recalcTMS, 2));
 
         // Enable/Disable create button
-        $("#btn_crear_blending").prop('disabled', count <= 1);
+        $("#btn_crear_blending").prop('disabled', count < 1);
       }
+
+      // Remove old updateTotalModal if it exists below or above
+      /*
+      function updateTotalModal() {
+      ...
+      */
 
       // -------------------------
       // Eventos
@@ -570,30 +770,25 @@ $backendUrl = 'apis/backend.php';
         arrProvs.unshift({ id: '', text: 'Todos' });
         arrCorrels.unshift({ id: '', text: 'Todos' });
 
-        // Init Select2 Proveedor
-        $("#filter_proveedor").empty().select2({
-          theme: "bootstrap-5",
-          data: arrProvs
-        }).val('').trigger('change.select2');
-
-        // Init Select2 Correlativo
+        // Init Select2
         $("#filter_correlativo").empty().select2({
           theme: "bootstrap-5",
           data: arrCorrels
         }).val('').trigger('change.select2');
+
+        $("#filter_estado").select2({
+          theme: "bootstrap-5",
+        });
       }
 
       // 1.2 Aplicar Filtros
       function applyFilters() {
-        let provId = $("#filter_proveedor").val();
         let correlativo = $("#filter_correlativo").val();
         let estado = $("#filter_estado").val();
-        let fDesde = $("#filter_fecha_desde").val();
-        let fHasta = $("#filter_fecha_hasta").val();
+        let fDesde = dmyToYmd($("#filter_fecha_desde").val());
+        let fHasta = dmyToYmd($("#filter_fecha_hasta").val());
 
         let filtered = allBlendings.filter(b => {
-          // Proveedor
-          if (provId && b.id_proveedor != provId) return false;
           // Correlativo
           if (correlativo && b.correlativo != correlativo) return false;
           // Estado
@@ -610,15 +805,13 @@ $backendUrl = 'apis/backend.php';
         renderBlendings(filtered);
       }
 
-      // Event Listeners for Filters
-      $("#filter_proveedor, #filter_correlativo, #filter_estado").on("change", function () {
+      // Botón Aplicar Filtros
+      $("#btn_aplicar_filtros").on("click", function () {
         applyFilters();
       });
-      $("#filter_fecha_desde, #filter_fecha_hasta").on("input change", function () {
-        applyFilters();
-      });
+
+      // Botón Limpiar Filtros
       $("#btn_limpiar_filtros").on("click", function () {
-        $("#filter_proveedor").val(null).trigger('change');
         $("#filter_correlativo").val(null).trigger('change');
         $("#filter_estado").val('');
         $("#filter_fecha_desde").val('');
@@ -643,8 +836,11 @@ $backendUrl = 'apis/backend.php';
       // 2. Abrir Modal Nuevo
       $("#btn_open_new_blending_modal").on("click", function () {
         // Reset Modal
+        lotesSeleccionados = []; // Clear selected lots
+        lotesDisponibles = []; // Clear available lots
         $("#reg_proveedor").empty();
-        $("#tbl_lotes_disponibles").html('<tr><td colspan="6" class="text-center text-muted">Seleccione un proveedor y busque lotes.</td></tr>');
+        $("#tbl_lotes_disponibles").html('<tr><td colspan="6" class="text-center text-muted">Seleccione Buscar para ver lotes.</td></tr>');
+        $("#tbl_lotes_seleccionados").html('<tr><td colspan="7" class="text-center text-muted">No hay lotes seleccionados.</td></tr>');
         $("#lbl_total_tomado").text("0.00");
         $("#btn_cargar_lotes").prop('disabled', true);
         $("#btn_crear_blending").prop('disabled', true);
@@ -660,10 +856,12 @@ $backendUrl = 'apis/backend.php';
               $("#reg_proveedor").select2({
                 dropdownParent: $('#modal_nuevo_blending'),
                 theme: "bootstrap-5",
-                placeholder: 'Seleccione proveedor',
+                placeholder: 'Todos (Opcional)',
                 data: data,
-                width: '100%'
+                width: '100%',
+                allowClear: true
               });
+              $("#reg_proveedor").val('').trigger('change'); // Default to All
               $("#btn_cargar_lotes").prop('disabled', false);
             }
           });
@@ -673,8 +871,7 @@ $backendUrl = 'apis/backend.php';
 
       // 3. Buscar Lotes
       $("#btn_cargar_lotes").on("click", function () {
-        let id_prov = $("#reg_proveedor").val();
-        if (!id_prov) return;
+        let id_prov = $("#reg_proveedor").val() || 0; // Send 0 if empty
 
         $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
 
@@ -683,35 +880,27 @@ $backendUrl = 'apis/backend.php';
             $("#btn_cargar_lotes").prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Lotes');
             if (r.estado === 1) {
               lotesDisponibles = r.data.lotes;
-              renderLotesDisponibles();
+              renderLotesDisponibles(); // Will filter out already selected lots
+              // Don't reset lotesSeleccionados - preserve selected lots across provider changes
             }
           });
       });
 
-      // 4. Interacción en tabla lotes (Checkbox y Inputs)
-      $(document).on("change", ".chk-lote", function () {
-        updateTotalModal();
-      });
-
       // 5. Crear Blending Enviar
       $("#btn_crear_blending").on("click", function () {
-        let id_proveedor = $("#reg_proveedor").val();
-        let lotesSeleccionados = [];
+        let lotesParaEnviar = [];
 
-        if (!id_proveedor) {
-          alert("Debe seleccionar un proveedor.");
-          return;
-        }
-
-        $(".chk-lote:checked").each(function () {
-          let tmh = parseFloat($(this).data("tmh"));
-          lotesSeleccionados.push({
-            id_lote: $(this).data("id"),
-            peso_tomado: tmh
-          });
+        lotesSeleccionados.forEach(l => {
+          let peso = parseFloat(l.peso_tomado) || 0;
+          if (peso > 0) {
+            lotesParaEnviar.push({
+              id_lote: l.id_lote,
+              peso_tomado: peso
+            });
+          }
         });
 
-        if (lotesSeleccionados.length === 0) {
+        if (lotesParaEnviar.length === 0) {
           alert("Debe seleccionar al menos un lote con peso mayor a 0.");
           return;
         }
@@ -721,24 +910,44 @@ $backendUrl = 'apis/backend.php';
         // Enviar
         let $btn = $(this);
         $btn.prop('disabled', true).text("Procesando...");
-        console.log('lotesSeleccionados', lotesSeleccionados);
-        console.log('id_proveedor', id_proveedor);
 
         f_callBackend("crear_blending", {
-          lotes: lotesSeleccionados,
-          id_proveedor: id_proveedor
+          lotes: lotesParaEnviar,
         })
           .done(function (r) {
             if (r.estado === 1) {
               alert(r.mensaje);
-              nuevoBlendingModal.hide();
-              loadAllData(); // Recargar lista
+              $("#modal_nuevo_blending").modal("hide");
+              loadAllData();
             } else {
               alert("Error: " + r.mensaje);
             }
           })
-          .fail(function () { alert("Error de conexión"); })
-          .always(function () { $btn.prop('disabled', false).text("Crear Blending"); });
+          .fail(function () {
+            alert("Error de conexión");
+          })
+          .always(function () {
+            $("#btn_crear_blending").prop("disabled", false);
+          });
+      });
+
+      // 6. Reset Modal on Close (Fix persistence)
+      document.getElementById('modal_nuevo_blending').addEventListener('hidden.bs.modal', function () {
+        // Reset Filters
+        $("#reg_proveedor").val(null).trigger('change');
+        // Reset Data
+        lotesDisponibles = [];
+        lotesSeleccionados = [];
+        // Reset Tables
+        renderLotesDisponibles();
+        renderLotesSeleccionados();
+        // Reset Totals
+        $("#lbl_total_tomado").text('0.00');
+        $("#card_total_tmh").text('0.00');
+        $("#card_avg_h2o").text('0.000');
+        $("#card_recalc_tms").text('0.00');
+        // Disable button
+        $("#btn_crear_blending").prop('disabled', true);
       });
 
       // Start
