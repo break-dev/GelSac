@@ -470,8 +470,8 @@
 
 						    <body style="width: 100%; padding: 0px; text-align: center;">
 						    	<div style="width: 100%; margin-left: 0px; margin-top: '.(($_SESSION['cod_rol'] != 4) ? '50px' : '0px').' margin-right: 0px;">
-										<div class="row" style="text-align: center;">
-											<img src="'.$ruta_images.'logo.png" width="100mm"/>
+										<div class="row" style="text-align: center; margin-bottom: 8px !important;">
+											<img src="'.$ruta_images.'empresa/logo.png" width="100mm"/>
 										</div>
  
 										<div class="row" style="text-align: center;">
