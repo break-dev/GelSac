@@ -22,14 +22,16 @@ if (!isset($_SESSION["Id"])) {
   <link rel="icon" href="<?php echo $favicon; ?>" type="image/png" />
 
   <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
 
   <!-- Íconos -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
 
   <!-- Select2 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
   <link rel="stylesheet" href="<?php echo $url_lims ?>/global/styles.css">
 
@@ -102,14 +104,16 @@ if (!isset($_SESSION["Id"])) {
       <?php echo $navbar_maintop; ?>
 
       <!-- Modal (Menú Lateral) -->
-      <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true"
+        data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-left" style="margin-top: 0px !important; margin-left: 0px !important;">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title" id="menuModalLabel">Menú de Opciones</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="background: #25476a; color: white; border-top: solid #EFB810 3px; padding: 0px !important;">
+            <div class="modal-body"
+              style="background: #25476a; color: white; border-top: solid #EFB810 3px; padding: 0px !important;">
               <ul class="list-unstyled">
                 <div id="div_menu1"></div>
               </ul>
@@ -119,7 +123,8 @@ if (!isset($_SESSION["Id"])) {
       </div>
 
       <!-- Modal (Menú Lateral) -->
-      <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true"
+        data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-right" style="margin-top: 0px !important; margin-left: 0px !important;">
           <div class="modal-content">
             <div class="modal-header">
@@ -128,11 +133,14 @@ if (!isset($_SESSION["Id"])) {
             </div>
             <div class="modal-body" style="padding: 0px !important;">
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
-                <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+                <div
+                  style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                   <div class="row" style="padding-left: 10px; padding-right: 10px;">
                     <h6 style="font-size: 14px;">Fecha Ingreso a Balanza
-                      <button class="btn btn-info text-end" type="button" onclick="f_LoadResultados();" style="font-size: 14px; background-color: #ffffff; padding: 5px; margin-left: 5px; margin-top: -5px;">
+                      <button class="btn btn-info text-end" type="button" onclick="f_LoadResultados();"
+                        style="font-size: 14px; background-color: #ffffff; padding: 5px; margin-left: 5px; margin-top: -5px;">
                         <img src="<?php echo $img_refresh ?>" style="width: 25px;">
                       </button>
                     </h6>
@@ -144,20 +152,26 @@ if (!isset($_SESSION["Id"])) {
 
                   <div class="row">
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_inicio" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>" onchange="f_LoadFiltroClientes();">
+                      <input id="fecha_inicio" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>"
+                        onchange="f_LoadFiltroClientes();">
                     </div>
                     <br><br>
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_fin" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>" onchange="f_LoadFiltroClientes();">
+                      <input id="fecha_fin" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>"
+                        onchange="f_LoadFiltroClientes();">
                     </div>
 
                   </div>
                 </div>
               </div>
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
                 <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 2px;">
-                  <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+                  <div
+                    style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                     <div class="row" style="padding-left: 10px; padding-right: 10px;">
                       <h6 style="font-size: 14px;">Por Lotes:</h6>
                     </div>
@@ -165,7 +179,9 @@ if (!isset($_SESSION["Id"])) {
                       <hr style="border-color: #D9D9D9;" />
                     </div>
                     <div class="d-flex" style="margin-top: -5px; padding-left: 10px; padding-right: 10px;">
-                      <select id="filtro_lote" class="form-control" multiple data-placeholder="Elija una o más opciones..." style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
+                      <select id="filtro_lote" class="form-control" multiple
+                        data-placeholder="Elija una o más opciones..."
+                        style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
                         <?php
 
                         $q_lotes = "SELECT ccod_Lote
@@ -176,11 +192,12 @@ if (!isset($_SESSION["Id"])) {
                         if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
                           if (mysqli_num_rows($res_lotes) > 0) {
                             while ($row_lotes = mysqli_fetch_array($res_lotes)) {
-                        ?>
+                              ?>
 
-                              <option value="<?php echo $row_lotes["ccod_Lote"]; ?>"><?php echo $row_lotes["ccod_Lote"]; ?></option>
+                              <option value="<?php echo $row_lotes["ccod_Lote"]; ?>"><?php echo $row_lotes["ccod_Lote"]; ?>
+                              </option>
 
-                        <?php
+                              <?php
                             }
                           }
                         }
@@ -194,13 +211,15 @@ if (!isset($_SESSION["Id"])) {
 
               <div class="row" style="padding-left: 10px;margin-top: 30px;font-size: 13px;padding-right: 10px;">
                 <div class="col-md-12 col-sm-12 col-xs-12">
-                  <button class="btn btn-secondary" type="button" onclick="f_LoadResultados();" style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; background-color: #cfaa41; margin-bottom: 10px;">
+                  <button class="btn btn-secondary" type="button" onclick="f_LoadResultados();"
+                    style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; background-color: #cfaa41; margin-bottom: 10px;">
                     <i class="bi bi-search"></i> <b>Ejecutar Búsqueda</b>
                   </button>
                 </div>
                 <br><br>
                 <div class="col-md-12 col-sm-12 col-xs-12">
-                  <button class="btn btn-success" type="button" onclick="f_ExportToExcel();" style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; margin-bottom: 12px;">
+                  <button class="btn btn-success" type="button" onclick="f_ExportToExcel();"
+                    style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; margin-bottom: 12px;">
                     <b>Exportar a Excel</b>
                   </button>
                 </div>
@@ -211,25 +230,29 @@ if (!isset($_SESSION["Id"])) {
         </div>
       </div>
 
-      <div class="col-md-12 col-sm-12 col-xs-12" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding-top: 10px; padding-left: 35px;">
+      <div class="col-md-12 col-sm-12 col-xs-12"
+        style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding-top: 10px; padding-left: 35px;">
         <div class="d-flex row">
           <div class="row" style="padding: 0px;">
 
             <div id="div_valorizacion_lista" class="col-md-6 col-sm-6 col-xs-12" style="padding: 5px;">
-              <div class="" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; padding: 0px;">
+              <div class=""
+                style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; padding: 0px;">
                 <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 0px;">
                   <div class="row" style="padding-top: 10px; padding-left : 20px; padding-right: 20px;">
                     <div class="col-md-8 col-sm-8 col-xs-12">
                       <div class="d-flex">
                         <h6>Valorizaciones</h6>
-                        <div id="wt_valorizaciones" class="" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+                        <div id="wt_valorizaciones" class=""
+                          style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
                           <img src="<?php echo $img_waiting ?>" style="width: 20px;">
                           <label style="font-style: italic;"> Cargando datos...</label>
                         </div>
                       </div>
                     </div>
                     <div class="col-md-4 col-sm-4 col-xs-12 text-end">
-                      <button class="btn btn-primary btn-sm" style="margin-top: -7px;" onclick="f_AdminValorizacion('x');">
+                      <button class="btn btn-primary btn-sm" style="margin-top: -7px;"
+                        onclick="f_AdminValorizacion('x');">
                         <i class="bi bi-plus-circle"></i> Nueva Valorización
                       </button>
                     </div>
@@ -240,24 +263,48 @@ if (!isset($_SESSION["Id"])) {
                   <hr style="border-color: #D9D9D9;" />
                 </div>
 
-                <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 20px; margin-top: -22px; overflow-x: scroll; width: 100%;">
-                  <table class="table table-bordered table-hover" style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
+                <div class="col-md-12 col-sm-12 col-xs-12"
+                  style="padding: 20px; margin-top: -22px; overflow-x: scroll; width: 100%;">
+                  <table class="table table-bordered table-hover"
+                    style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
                     <thead>
                       <tr style="font-size: 12px;">
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 30px; border-top-left-radius: 15px;">#</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">N°<br>Valorización</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">N°<br>Oficio</th>
-                        <th colspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Información Proveedor</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 50px;">Versión</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">Elaborado<br>por</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">Aprobado<br>por</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Estado</th>
-                        <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px; border-top-right-radius: 15px;">Acción</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 30px; border-top-left-radius: 15px;">
+                          #</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          N°<br>Valorización</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          N°<br>Oficio</th>
+                        <th colspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          Información Proveedor</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 50px;">
+                          Versión</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          Elaborado<br>por</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          Aprobado<br>por</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          Estado</th>
+                        <th rowspan="2"
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px; border-top-right-radius: 15px;">
+                          Acción</th>
                       </tr>
 
                       <tr style="font-size: 12px;">
-                        <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">RUC</th>
-                        <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Proveedor</th>
+                        <th
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          RUC</th>
+                        <th
+                          style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          Proveedor</th>
                       </tr>
                     </thead>
 
@@ -270,12 +317,14 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div id="div_valorizacion_detalle" class="col-md-6 col-sm-6 col-xs-12" style="padding: 5px;">
-              <div class="" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; padding: 0px;">
+              <div class=""
+                style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; padding: 0px;">
                 <div class="col-md-10 col-sm-10 col-xs-10" style="padding: 0px;">
                   <div class="row" style="padding-top: 10px; padding-left : 20px; padding-right: 20px;">
                     <div class="col-md-12 col-sm-12 col-xs-12">
                       <div class="d-flex">
-                        <button id="btn_toggle_panel" class="btn btn-sm btn-outline-secondary me-2" style="margin-top: -5px; margin-bottom: 3px;" onclick="f_TogglePanel();">
+                        <button id="btn_toggle_panel" class="btn btn-sm btn-outline-secondary me-2"
+                          style="margin-top: -5px; margin-bottom: 3px;" onclick="f_TogglePanel();">
                           <i class="bi bi-arrows-angle-expand"></i>
                         </button>
                         <h6>Detalle de Valorización:</h6>
@@ -293,32 +342,78 @@ if (!isset($_SESSION["Id"])) {
                   <hr style="border-color: #D9D9D9;" />
                 </div>
 
-                <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 20px; margin-top: -22px; overflow-x: scroll; width: 100%;">
-                  <table class="table table-bordered table-hover" style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
+                <div class="col-md-12 col-sm-12 col-xs-12"
+                  style="padding: 20px; margin-top: -22px; overflow-x: scroll; width: 100%;">
+                  <table class="table table-bordered table-hover"
+                    style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
                     <thead>
                       <tr style="font-size: 12px;">
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Elemento</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">Lote</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">GEL</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">G.R.R.</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">G.R.T.</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 90px;">Fecha<br>Ingreso</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMH</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">% H2O</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMS</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Ley<br>(oz/tc)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REC<br>(%)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">INTER<br>($/oz)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">DES. INTER<br>($/oz)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">MAQUILA<br>($/oz)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REACT<br>($/oz)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">FLETE</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">FACTOR</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">PRECIO * TN</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">INCENTIVO</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">PRECIO * TN<br>(Final)</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TOTAL</th>
-                        <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Acción</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          Elemento</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          Lote</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          GEL</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          G.R.R.</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          G.R.T.</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 90px;">
+                          Fecha<br>Ingreso</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          TMH</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          % H2O</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          TMS</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          Ley<br>(oz/tc)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          REC<br>(%)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          INTER<br>($/oz)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          DES. INTER<br>($/oz)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          MAQUILA<br>($/oz)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          REACT<br>($/oz)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">
+                          FLETE</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          FACTOR</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          PRECIO * TN</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">
+                          INCENTIVO</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; display: none;">
+                          PRECIO * TN<br>(Final)</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          TOTAL</th>
+                        <th
+                          style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          Acción</th>
                       </tr>
                     </thead>
                     <tbody id="tbl_valorizacion_detalle"></tbody>
@@ -333,7 +428,8 @@ if (!isset($_SESSION["Id"])) {
       </div>
 
       <!-- MODAL: NUEVA/EDITAR VALORIZACIÓN -->
-      <div class="modal fade" id="modal_valorizacion" tabindex="-1" aria-labelledby="modal_valorizacionLabel" aria-hidden="true">
+      <div class="modal fade" id="modal_valorizacion" tabindex="-1" aria-labelledby="modal_valorizacionLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xxl modal-dialog-centered modal-dialog-scrollable">
           <div class="modal-content">
 
@@ -354,7 +450,9 @@ if (!isset($_SESSION["Id"])) {
                     </div>
 
                     <div class="col-md-11">
-                      <select id="cmb_proveedor" class="form-select" style="width: 100%; font-size: 14px; margin-top: -5px;" onchange="f_CargarConcesionesPorProveedor(); f_LoadListaCuentasBancarias(); f_LoadListaCuentaDetraccion();">
+                      <select id="cmb_proveedor" class="form-select"
+                        style="width: 100%; font-size: 14px; margin-top: -5px;"
+                        onchange="f_CargarConcesionesPorProveedor(); f_LoadListaCuentasBancarias(); f_LoadListaCuentaDetraccion();">
                         <option value="">[Seleccione proveedor]</option>
                       </select>
                     </div>
@@ -366,26 +464,33 @@ if (!isset($_SESSION["Id"])) {
                   <div class="col-md-6 col-sm-6 col-xs-12">
                     <div class="row mt-3">
                       <div class="col-md-12">
-                        <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
+                        <div
+                          style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
                           Información Concesión
                         </div>
                       </div>
                     </div>
 
-                    <div class="row mb-2 mt-2" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 0px; padding: 10px; margin-top: 2px !important;">
+                    <div class="row mb-2 mt-2"
+                      style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 0px; padding: 10px; margin-top: 2px !important;">
                       <div class="col-md-4">
                         <label class="form-label" style="font-size: 14px;">Concesión:</label>
-                        <select id="cmb_concesion" class="form-select" style="width: 100%; font-size: 14px;" onchange="f_MostrarInfoConcesionSeleccionada();">
+                        <select id="cmb_concesion" class="form-select" style="width: 100%; font-size: 14px;"
+                          onchange="f_MostrarInfoConcesionSeleccionada();">
                           <option value="">[Seleccione concesión]</option>
                         </select>
                       </div>
                       <div class="col-md-3">
                         <label class="form-label" style="font-size: 14px;">Código Único:</label>
-                        <input type="text" id="txt_codigo_unico" class="form-control form-control-sm" style="height: 35px; background-color: #e9ecef; font-weight: bold; text-align: center;" readonly>
+                        <input type="text" id="txt_codigo_unico" class="form-control form-control-sm"
+                          style="height: 35px; background-color: #e9ecef; font-weight: bold; text-align: center;"
+                          readonly>
                       </div>
                       <div class="col-md-5">
                         <label class="form-label" style="font-size: 14px;">Procedencia:</label>
-                        <input type="text" id="txt_procedencia" class="form-control form-control-sm" style="height: 35px; background-color: #e9ecef; font-weight: bold; text-align: center;" readonly>
+                        <input type="text" id="txt_procedencia" class="form-control form-control-sm"
+                          style="height: 35px; background-color: #e9ecef; font-weight: bold; text-align: center;"
+                          readonly>
                       </div>
                     </div>
                   </div>
@@ -394,7 +499,8 @@ if (!isset($_SESSION["Id"])) {
                   <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: 5px;">
                     <div class="row mt-3">
                       <div class="col-md-12">
-                        <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
+                        <div
+                          style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
                           Información Pago
                         </div>
                       </div>
@@ -403,20 +509,23 @@ if (!isset($_SESSION["Id"])) {
                     <div class="row">
 
                       <div class="col-md-6">
-                        <div id="div_informacion_bancaria" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 10px 0; padding: 10px;">
+                        <div id="div_informacion_bancaria"
+                          style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 10px 0; padding: 10px;">
                           <h6 style="font-size: 14px; color: #816951; font-weight: bold; margin-bottom: 15px;">
                             <i class="bi bi-bank"></i> Información Bancaria
                           </h6>
 
                           <div class="col-md-8">
                             <label class="form-label" style="font-size: 14px;">Cuenta Bancaria:</label>
-                            <select id="valorizacion_cuentaproveedor" class="form-select" style="width: 100%; font-size: 14px;">
+                            <select id="valorizacion_cuentaproveedor" class="form-select"
+                              style="width: 100%; font-size: 14px;">
                             </select>
                           </div>
 
                           <div class="mt-1 col-md-8">
                             <label class="form-label" style="font-size: 14px;">Cuenta Detracción:</label>
-                            <select id="valorizacion_cuentadetraccionproveedor" class="form-select" style="width: 100%; font-size: 14px;">
+                            <select id="valorizacion_cuentadetraccionproveedor" class="form-select"
+                              style="width: 100%; font-size: 14px;">
                             </select>
                           </div>
 
@@ -425,41 +534,50 @@ if (!isset($_SESSION["Id"])) {
                               <label class="form-label" style="font-size: 14px;">Monto a Transferir:</label>
                               <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="number" id="txt_monto_transferencia" class="form-control" step="0.01" min="0" placeholder="0.00" readonly>
+                                <input type="number" id="txt_monto_transferencia" class="form-control" step="0.01"
+                                  min="0" placeholder="0.00" readonly>
                               </div>
-                              <small class="text-muted">Se completará automáticamente después de seleccionar anticipos</small>
+                              <small class="text-muted">Se completará automáticamente después de seleccionar
+                                anticipos</small>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       <div class="col-md-6">
-                        <div id="div_gestion_anticipos" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 10px 0; padding: 10px;">
+                        <div id="div_gestion_anticipos"
+                          style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; margin: 10px 0; padding: 10px;">
                           <h6 style="font-size: 14px; color: #816951; font-weight: bold; margin-bottom: 15px;">
                             <i class="bi bi-wallet2"></i> Gestión de Anticipos
                           </h6>
 
                           <div class="col-md-12">
                             <label class="form-label" style="font-size: 14px;">Anticipos seleccionados:</label>
-                            <div id="txt_anticipos_seleccionados" class="form-control" style="height: auto; min-height: 35px; background-color: #e9ecef; font-size: 13px; padding: 5px;" readonly>
+                            <div id="txt_anticipos_seleccionados" class="form-control"
+                              style="height: auto; min-height: 35px; background-color: #e9ecef; font-size: 13px; padding: 5px;"
+                              readonly>
                               Ningún anticipo seleccionado
                             </div>
 
                             <div class="mt-4 d-flex justify-content-between" style="margin-bottom: 12px;">
-                              <button type="button" class="btn btn-sm btn-outline-primary" onclick="f_AbrirModalSeleccionAnticipos();" style="font-size: 13px;">
+                              <button type="button" class="btn btn-sm btn-outline-primary"
+                                onclick="f_AbrirModalSeleccionAnticipos();" style="font-size: 13px;">
                                 <i class="bi bi-wallet2"></i> Seleccionar anticipos
                               </button>
 
                               <div class="d-flex align-items-center">
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="f_LimpiarSeleccionAnticipos();" style="font-size: 13px;">
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                  onclick="f_LimpiarSeleccionAnticipos();" style="font-size: 13px;">
                                   <i class="bi bi-trash"></i> Limpiar
                                 </button>
                               </div>
                             </div>
 
-                            <div id="div_saldo_restante" class="alert alert-warning mt-2" style="font-size: 12px; display: none; margin-bottom: 4px;">
+                            <div id="div_saldo_restante" class="alert alert-warning mt-2"
+                              style="font-size: 12px; display: none; margin-bottom: 4px;">
                               <i class="bi bi-exclamation-triangle me-1"></i>
-                              <strong>Saldo restante:</strong> <span id="lbl_saldo_restante">$ 0.00</span> - Este monto se cubrirá con transferencia bancaria.
+                              <strong>Saldo restante:</strong> <span id="lbl_saldo_restante">$ 0.00</span> - Este monto
+                              se cubrirá con transferencia bancaria.
                             </div>
                           </div>
                         </div>
@@ -473,13 +591,15 @@ if (!isset($_SESSION["Id"])) {
                 <!-- Grupo: Detalle Valorización -->
                 <div class="row mt-4">
                   <div class="col-md-10">
-                    <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
+                    <div
+                      style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px;">
                       Detalle Valorización
                     </div>
                   </div>
 
                   <div class="col-md-2" style="padding: 0px;">
-                    <button type="button" class="btn btn-info btn-sm" style="width: 93%; color: #ffffff;" onclick="f_AdminLotes('x');">
+                    <button type="button" class="btn btn-info btn-sm" style="width: 93%; color: #ffffff;"
+                      onclick="f_AdminLotes('x');">
                       <i class="bi bi-plus-circle"></i> Nuevo Lote
                     </button>
                   </div>
@@ -488,30 +608,69 @@ if (!isset($_SESSION["Id"])) {
                 <!-- Botón + tabla -->
                 <div class="row">
                   <div class="col-md-12" style="width: 100%; overflow-x: scroll;">
-                    <table class="table table-bordered table-hover" id="tbl_lotes_valorizacion" style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
+                    <table class="table table-bordered table-hover" id="tbl_lotes_valorizacion"
+                      style="border-top-left-radius: 15px; border-top-right-radius: 15px; overflow: hidden;">
                       <thead>
                         <tr style="font-size: 12px;">
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Elemento</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Lote</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">GEL</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">G.R.R.</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">G.R.T.</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Fecha<br>Ingreso</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMH</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">% H2O</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TMS</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Ley<br>(oz/tc)</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REC<br>(%)</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">INTER<br>($/oz)</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">DES. INTER<br>($/oz)</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">MAQUILA<br>($/oz)</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">REACT<br>($/oz)</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">FACTOR</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">PRECIO * TN</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            Elemento</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            Lote</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            GEL</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            G.R.R.</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            G.R.T.</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            Fecha<br>Ingreso</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            TMH</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            % H2O</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            TMS</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            Ley<br>(oz/tc)</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            REC<br>(%)</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            INTER<br>($/oz)</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            DES. INTER<br>($/oz)</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            MAQUILA<br>($/oz)</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            REACT<br>($/oz)</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            FACTOR</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            PRECIO * TN</th>
                           <!-- <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">INCENTIVO</th>
                             <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">PRECIO * TN<br>(Final)</th> -->
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">TOTAL</th>
-                          <th style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">Acción</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            TOTAL</th>
+                          <th
+                            style="text-align: center; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                            Acción</th>
                         </tr>
                       </thead>
                       <tbody id="tbody_lotes_valorizacion">
@@ -529,20 +688,24 @@ if (!isset($_SESSION["Id"])) {
 
             <!-- FOOTER -->
             <div class="modal-footer">
-              <div id="wt_grabarvalorizacion" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+              <div id="wt_grabarvalorizacion"
+                style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
                 <img src="<?php echo $img_waiting ?>" style="width: 20px;">
                 <label style="font-style: italic;"> Grabando datos...</label>
               </div>
 
-              <button type="button" class="btn btn-secondary wt_grabarvalorizacion_button" data-bs-dismiss="modal">Cerrar</button>
-              <button type="button" class="btn btn-primary wt_grabarvalorizacion_button" onclick="f_GrabarValorizacion();">Grabar</button>
+              <button type="button" class="btn btn-secondary wt_grabarvalorizacion_button"
+                data-bs-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-primary wt_grabarvalorizacion_button"
+                onclick="f_GrabarValorizacion();">Grabar</button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- MODAL: NUEVO LOTE -->
-      <div class="modal fade" id="modal_nuevolote" tabindex="-1" aria-labelledby="modal_nuevoloteLabel" aria-hidden="true">
+      <div class="modal fade" id="modal_nuevolote" tabindex="-1" aria-labelledby="modal_nuevoloteLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
           <div class="modal-content" style="border: solid; border-width: 1px; border-color: #816951;">
 
@@ -567,7 +730,8 @@ if (!isset($_SESSION["Id"])) {
                   </div>
 
                   <!-- Texto de Lote (Editar) -->
-                  <div class="col-md-5" id="div_lote_static" style="display: none; margin-top: -7px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
+                  <div class="col-md-5" id="div_lote_static"
+                    style="display: none; margin-top: -7px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
                     <label id="lbl_lote_static" class="form-control-plaintext" style="font-size: 14px;"></label>
                   </div>
 
@@ -582,22 +746,26 @@ if (!isset($_SESSION["Id"])) {
                   </div>
 
                   <!-- Texto de Elemento (Editar) -->
-                  <div class="col-md-4" id="div_elemento_static" style="display: none; margin-top: -7px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
+                  <div class="col-md-4" id="div_elemento_static"
+                    style="display: none; margin-top: -7px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
                     <label id="lbl_elemento_static" class="form-control-plaintext" style="font-size: 14px;"></label>
                   </div>
                 </div>
 
                 <div class="row mb-2">
                   <!-- Mostrar solo en edición -->
-                  <input type="text" id="txt_lote_visible" class="form-control form-control-sm" style="display: none; text-align: center; background-color: #e9ecef; font-weight: bold;" readonly>
-                  <input type="text" id="txt_elemento_visible" class="form-control form-control-sm" style="display: none; text-align: center; background-color: #e9ecef; font-weight: bold;" readonly>
+                  <input type="text" id="txt_lote_visible" class="form-control form-control-sm"
+                    style="display: none; text-align: center; background-color: #e9ecef; font-weight: bold;" readonly>
+                  <input type="text" id="txt_elemento_visible" class="form-control form-control-sm"
+                    style="display: none; text-align: center; background-color: #e9ecef; font-weight: bold;" readonly>
                 </div>
 
                 <div id="div_sinvalorcomercial" class="row mb-12">
                   <div class="col-md-1"><label class="form-label"></label></div>
 
                   <!-- Combo de Lote (Nuevo) -->
-                  <div class="col-md-5" style="margin-top: -15px; background-color: #dc3545; text-align: center; font-size: 13px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
+                  <div class="col-md-5"
+                    style="margin-top: -15px; background-color: #dc3545; text-align: center; font-size: 13px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px;">
                     <label style="color: #ffffff;">
                       Sin Valor Comercial
                     </label>
@@ -608,7 +776,8 @@ if (!isset($_SESSION["Id"])) {
                   <div class="col-md-6">
                     <div class="row mt-3">
                       <div class="col-md-12">
-                        <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px; margin-bottom: 5px;">
+                        <div
+                          style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px; margin-bottom: 5px;">
                           Información Lote
                         </div>
                       </div>
@@ -616,57 +785,75 @@ if (!isset($_SESSION["Id"])) {
 
                     <!-- Código GEL -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Código GEL:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_codigo_gel" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Código
+                          GEL:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_codigo_gel" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- G.R.R. -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">G.R.R.:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_grr" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">G.R.R.:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_grr" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- G.R.T. -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">G.R.T.:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_grt" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">G.R.T.:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_grt" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- Fecha Ingreso -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Fecha Ingreso:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_fecha_ingreso" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Fecha
+                          Ingreso:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_fecha_ingreso"
+                          class="form-control form-control-sm" readonly
+                          style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- TMH -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">TMH:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_tmh" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">TMH:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_tmh" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- % H2O -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">% H2O:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_h2o" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">%
+                          H2O:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_h2o" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- TMS -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">TMS:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_tms" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">TMS:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_tms" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- Ley -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Ley (oz/tc):</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_ley" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">Ley
+                          (oz/tc):</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_ley" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
                   </div>
 
                   <div class="col-md-6">
                     <div class="row mt-3">
                       <div class="col-md-12">
-                        <div style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px; margin-bottom: 5px;">
+                        <div
+                          style="background-color: #816951; color: #ffffff; font-weight: bold; padding: 5px; border-radius: 6px; text-align: center; font-size: 14px; margin-bottom: 5px;">
                           Información Valorización
                         </div>
                       </div>
@@ -674,8 +861,10 @@ if (!isset($_SESSION["Id"])) {
 
                     <!-- REC % -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">REC %:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_recuperacion" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">REC
+                          %:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_recuperacion" style="text-align: center;"
+                          class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
                     </div>
 
                     <!-- INTER -->
@@ -689,56 +878,75 @@ if (!isset($_SESSION["Id"])) {
                                   onclick="f_GetPrecioInternacionalAu('txt_inter', '<?php echo $g_date ?>')">
                             <i class="bi bi-cloud-download"></i>
                           </button> -->
-                        <input type="text" id="txt_inter" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();">
+                        <input type="text" id="txt_inter" style="text-align: center;"
+                          class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();">
                       </div>
                     </div>
 
                     <!-- DESCUENTO INTER -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">DES. INTER ($/oz):</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_desc_inter" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">DES.
+                          INTER ($/oz):</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_desc_inter" style="text-align: center;"
+                          class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
                     </div>
 
                     <!-- MAQUILA -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">MAQUILA ($/tc):</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_maquila" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">MAQUILA
+                          ($/tc):</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_maquila" style="text-align: center;"
+                          class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
                     </div>
 
                     <!-- REACT -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">REACT ($/tc):</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_reactivo" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">REACT
+                          ($/tc):</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_reactivo" style="text-align: center;"
+                          class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
                     </div>
 
                     <!-- FACTOR -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">FACTOR:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_factor" style="text-align: center;" class="form-control form-control-sm" style="text-align: center;" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">FACTOR:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_factor" style="text-align: center;"
+                          class="form-control form-control-sm" style="text-align: center;"
+                          onkeyup="f_CalcularTotalesValorizacion();"></div>
                     </div>
 
                     <!-- PRECIO * TN -->
                     <div class="row mb-2" style="display: none;">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">PRECIO * TN:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_precio_tn" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">PRECIO *
+                          TN:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_precio_tn" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- INCENTIVO -->
                     <div class="row mb-2" style="display: none;">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">INCENTIVO:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_incentivo" style="text-align: center;" class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">INCENTIVO:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_incentivo" style="text-align: center;"
+                          class="form-control form-control-sm" onkeyup="f_CalcularTotalesValorizacion();"></div>
                     </div>
 
                     <!-- PRECIO TN FINAL -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">PRECIO * TN (Final):</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_precio_tn_final" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">PRECIO *
+                          TN (Final):</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_precio_tn_final"
+                          class="form-control form-control-sm" readonly
+                          style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
 
                     <!-- TOTAL -->
                     <div class="row mb-2">
-                      <div class="col-md-5"><label class="form-label" style="font-size: 14px; margin-top: 5px;">TOTAL:</label></div>
-                      <div class="col-md-7"><input type="text" id="txt_total" class="form-control form-control-sm" readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
+                      <div class="col-md-5"><label class="form-label"
+                          style="font-size: 14px; margin-top: 5px;">TOTAL:</label></div>
+                      <div class="col-md-7"><input type="text" id="txt_total" class="form-control form-control-sm"
+                          readonly style="text-align: center; background-color: #e9ecef; font-weight: bold;"></div>
                     </div>
                   </div>
                 </div>
@@ -758,14 +966,17 @@ if (!isset($_SESSION["Id"])) {
                 <label style="font-style: italic;"> Grabando lote...</label>
               </div>
 
-              <button type="button" class="btn btn-secondary wt_grabarlote_button" data-bs-dismiss="modal">Cerrar</button>
-              <button type="button" class="btn btn-primary wt_grabarlote_button" onclick="f_GrabarLoteValorizacion();">Agregar</button>
+              <button type="button" class="btn btn-secondary wt_grabarlote_button"
+                data-bs-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-primary wt_grabarlote_button"
+                onclick="f_GrabarLoteValorizacion();">Agregar</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="modal fade" id="modal_AddCuentaBancaria" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_AddCuentaBancaria" aria-hidden="true">
+      <div class="modal fade" id="modal_AddCuentaBancaria" data-bs-backdrop="static" data-bs-keyboard="false"
+        tabindex="-1" aria-labelledby="modal_AddCuentaBancaria" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-content" style="border: solid; border-width: 1px; border-color: #816951;">
             <div class="modal-header">
@@ -793,11 +1004,11 @@ if (!isset($_SESSION["Id"])) {
                     if ($res_banco = mysqli_query($enlace, $q_banco)) {
                       if (mysqli_num_rows($res_banco) > 0) {
                         while ($row_banco = mysqli_fetch_array($res_banco)) {
-                    ?>
+                          ?>
 
                           <option value="<?php echo $row_banco["Id"]; ?>"><?php echo $row_banco["descripcion"]; ?></option>
 
-                    <?php
+                          <?php
                         }
                       }
                     }
@@ -827,11 +1038,11 @@ if (!isset($_SESSION["Id"])) {
                     if ($res_moneda = mysqli_query($enlace, $q_moneda)) {
                       if (mysqli_num_rows($res_moneda) > 0) {
                         while ($row_moneda = mysqli_fetch_array($res_moneda)) {
-                    ?>
+                          ?>
 
                           <option value="<?php echo $row_moneda["Id"]; ?>"><?php echo $row_moneda["descripcion"]; ?></option>
 
-                    <?php
+                          <?php
                         }
                       }
                     }
@@ -848,7 +1059,8 @@ if (!isset($_SESSION["Id"])) {
                 </div>
 
                 <div class="col-md-8 col-sm-8 col-xs-8">
-                  <input id="cliente_banco_num_cuenta" type="text" class="form-control col-md-12 col-xs-12" style="text-align: center;">
+                  <input id="cliente_banco_num_cuenta" type="text" class="form-control col-md-12 col-xs-12"
+                    style="text-align: center;">
                 </div>
               </div>
 
@@ -858,7 +1070,8 @@ if (!isset($_SESSION["Id"])) {
                 </div>
 
                 <div class="col-md-8 col-sm-8 col-xs-8">
-                  <input id="cliente_banco_cci" type="text" class="form-control col-md-12 col-xs-12" style="text-align: center;">
+                  <input id="cliente_banco_cci" type="text" class="form-control col-md-12 col-xs-12"
+                    style="text-align: center;">
                 </div>
               </div>
             </div>
@@ -875,7 +1088,8 @@ if (!isset($_SESSION["Id"])) {
 
 
       <!-- MODAL: SELECCIÓN DE ANTICIPOS -->
-      <div class="modal fade" id="modal_seleccion_anticipos" tabindex="-1" aria-labelledby="modal_seleccion_anticiposLabel" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal fade" id="modal_seleccion_anticipos" tabindex="-1"
+        aria-labelledby="modal_seleccion_anticiposLabel" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-lg">
           <div class="modal-content" style="border: solid; border-width: 1px; border-color: #816951;">
             <div class="modal-header">
@@ -901,7 +1115,8 @@ if (!isset($_SESSION["Id"])) {
                     Total seleccionado: <span id="lbl_total_seleccionado" class="fw-bold">0.00</span>
                   </div>
                   <div class="badge bg-warning fs-6 mt-1">
-                    Restante: <span id="lbl_monto_restante" class="fw-bold" style="color: #25476a !important;">0.00</span>
+                    Restante: <span id="lbl_monto_restante" class="fw-bold"
+                      style="color: #25476a !important;">0.00</span>
                   </div>
                 </div>
               </div>
@@ -947,8 +1162,11 @@ if (!isset($_SESSION["Id"])) {
   </div>
 
   <!-- Referenciando a JQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+    integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
+    crossorigin="anonymous"></script>
 
   <!-- Select2 -->
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -1192,7 +1410,7 @@ if (!isset($_SESSION["Id"])) {
         id_proveedor: idProveedor,
         monto_valorizacion: montoValorizacion,
         es_para_seleccion: true
-      }, function(data) {
+      }, function (data) {
         console.log('Datos de anticipos recibidos:', data); // Para debug
 
         if (data.estado == 1) {
@@ -1210,7 +1428,7 @@ if (!isset($_SESSION["Id"])) {
         } else {
           $('#tbl_anticipos_disponibles').html(`<tr><td colspan="7" class="text-center text-danger">${data.msg || 'Error al cargar anticipos'}</td></tr>`);
         }
-      }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
+      }, 'json').fail(function (jqXHR, textStatus, errorThrown) {
         console.error('Error en la solicitud AJAX:', textStatus, errorThrown);
         $('#tbl_anticipos_disponibles').html('<tr><td colspan="7" class="text-center text-danger">Error de conexión al cargar anticipos</td></tr>');
       });
@@ -1350,7 +1568,7 @@ if (!isset($_SESSION["Id"])) {
 
     function getMontoTotalValorizacionNumerico() {
       let total = 0;
-      $('#tbody_lotes_valorizacion tr').each(function(i) {
+      $('#tbody_lotes_valorizacion tr').each(function (i) {
         if ($(this).attr('id') === 'tr_TotalValorizacion') return;
         const text = $('#total_' + i).text();
         total += parseFloat(text.replace(/,/g, '')) || 0;
@@ -1582,7 +1800,7 @@ if (!isset($_SESSION["Id"])) {
 
       $.post(url_api, {
         accion: 'get_ValorizacionCompra_ListaValorizaciones'
-      }, function(data) {
+      }, function (data) {
         $('#wt_valorizaciones').hide();
 
         if (data.estado == 1) {
@@ -1605,35 +1823,35 @@ if (!isset($_SESSION["Id"])) {
 
           // 3) Paleta por grupo
           const PALETTE = [{
-              border: '#2563eb',
-              bg: '#e8f0ff',
-              ink: '#1e3a8a'
-            }, // azul
-            {
-              border: '#059669',
-              bg: '#e6faf3',
-              ink: '#065f46'
-            }, // verde
-            {
-              border: '#d97706',
-              bg: '#fff4e5',
-              ink: '#92400e'
-            }, // ámbar
-            {
-              border: '#6d28d9',
-              bg: '#f2e8ff',
-              ink: '#4c1d95'
-            }, // violeta
-            {
-              border: '#db2777',
-              bg: '#ffe8f2',
-              ink: '#9d174d'
-            }, // rosa
-            {
-              border: '#0ea5e9',
-              bg: '#e6f7fd',
-              ink: '#075985'
-            }, // celeste
+            border: '#2563eb',
+            bg: '#e8f0ff',
+            ink: '#1e3a8a'
+          }, // azul
+          {
+            border: '#059669',
+            bg: '#e6faf3',
+            ink: '#065f46'
+          }, // verde
+          {
+            border: '#d97706',
+            bg: '#fff4e5',
+            ink: '#92400e'
+          }, // ámbar
+          {
+            border: '#6d28d9',
+            bg: '#f2e8ff',
+            ink: '#4c1d95'
+          }, // violeta
+          {
+            border: '#db2777',
+            bg: '#ffe8f2',
+            ink: '#9d174d'
+          }, // rosa
+          {
+            border: '#0ea5e9',
+            bg: '#e6f7fd',
+            ink: '#075985'
+          }, // celeste
           ];
 
           let _html = '';
@@ -1642,7 +1860,7 @@ if (!isset($_SESSION["Id"])) {
             groupIndex = -1;
 
           console.log(data.registros);
-          $.each(data.registros, function(x, row) {
+          $.each(data.registros, function (x, row) {
             // Estado (tu misma lógica)
             let estado_txt = '',
               estado_color = '';
@@ -1806,15 +2024,15 @@ if (!isset($_SESSION["Id"])) {
 
                                 <div class="d-flex flex-column mb-1">
                                     ${row.estado == 'A'
-                                        ? `<button class="btn btn-sm btn-warning" title="Inactivar" style="margin:2px;"
+                    ? `<button class="btn btn-sm btn-warning" title="Inactivar" style="margin:2px;"
                                                 onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'I');">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>`
-                                        : `<button class="btn btn-sm btn-success" title="Activar" style="margin:2px;"
+                    : `<button class="btn btn-sm btn-success" title="Activar" style="margin:2px;"
                                                 onclick="event.stopPropagation(); f_CambiarEstadoValorizacion(${row.Id}, 'A');">
                                                 <i class="bi bi-check-circle"></i>
                                             </button>`
-                                    }
+                  }
                                     <button class="btn btn-sm btn-danger" title="Eliminar" style="margin:2px;"
                                         onclick="event.stopPropagation(); f_EliminarValorizacion(${row.Id});">
                                         <i class="bi bi-trash"></i>
@@ -1853,7 +2071,7 @@ if (!isset($_SESSION["Id"])) {
       $.post(url_api, {
         accion: 'reabrir_Valorizacion',
         id_valorizacion: id_valorizacion
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           alert('Valorización reabierta correctamente.');
           f_LoadValorizaciones();
@@ -1887,14 +2105,14 @@ if (!isset($_SESSION["Id"])) {
       $.post(url_api, {
         accion: 'get_ValorizacionCompra_Detalle',
         id_valorizacion: id_valorizacion
-      }, function(data) {
+      }, function (data) {
         $('#wt_detallevalorizacion').hide();
 
         if (data.estado == 1) {
           let _html = '';
           let d = 0;
 
-          $.each(data.registros, function(i, v) {
+          $.each(data.registros, function (i, v) {
             _html += `
                 <tr style="font-size: 13px;">
                   <td style="text-align: center; vertical-align: middle; font-weight: bold;">${v.elemento}</td>
@@ -1993,7 +2211,7 @@ if (!isset($_SESSION["Id"])) {
         $.post(url_api, {
           accion: 'getAnticiposByValorizacion',
           id_valorizacion: _id_valorizacion
-        }, function(data) {
+        }, function (data) {
           let verificar_estado = false;
           if (data.estado == 1 && data.data.length > 0) {
             // Marcar que usa anticipos
@@ -2023,7 +2241,7 @@ if (!isset($_SESSION["Id"])) {
           $.post(url_api, {
             accion: 'getTipoPagoValorizacion',
             id_valorizacion: _id_valorizacion
-          }, async function(data) {
+          }, async function (data) {
             if (data.estado == 1) {
               // Si la valorizacion solo ha usado anticipos, vaciar y deshabilitar 
               // las cuentas de banco
@@ -2044,7 +2262,7 @@ if (!isset($_SESSION["Id"])) {
               $.post(url_api, {
                 accion: 'get_montos_valorizacion',
                 id_valorizacion: _id_valorizacion
-              }, async function(data) {
+              }, async function (data) {
                 if (data.estado == 1) {
                   if (es_mixto) {
                     console.log("data: ", data);
@@ -2104,9 +2322,9 @@ if (!isset($_SESSION["Id"])) {
 
       $.post(url_api, {
         accion: "get_ValorizacionCompra_ListaProveedores"
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
-          $.each(data.registros, function(i, v) {
+          $.each(data.registros, function (i, v) {
             _html += `<option value="${v.Id}">${v.documento} - ${v.razon_social}</option>`;
           });
           $("#cmb_proveedor").html(_html);
@@ -2126,10 +2344,10 @@ if (!isset($_SESSION["Id"])) {
         $.post(url_api, {
           accion: "get_ValorizacionCompra_ListaConcesiones",
           id_proveedor: id_proveedor
-        }, function(data) {
+        }, function (data) {
           if (data.estado == 1) {
             let _html = '<option value="">[Seleccione concesión]</option>';
-            $.each(data.registros, function(i, v) {
+            $.each(data.registros, function (i, v) {
               _html += '<option ' + ((_id_concesion == v.Id) ? 'selected' : '') + ' value="' + v.Id + '" data-codigo="' + v.codigo_unico + '" data-procedencia="' + v.procedencia + '">' + v.descripcion + '</option>';
             });
             $("#cmb_concesion").html(_html);
@@ -2299,10 +2517,10 @@ if (!isset($_SESSION["Id"])) {
         accion: "get_ValorizacionCompra_Elementos",
         id_valorizacion,
         cod_lote
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           let html = '<option value="">[Seleccione]</option>';
-          $.each(data.registros, function(i, e) {
+          $.each(data.registros, function (i, e) {
             html += `<option value="${e.Id}">${e.abv}</option>`;
           });
           $('#cmb_elemento').html(html);
@@ -2324,16 +2542,27 @@ if (!isset($_SESSION["Id"])) {
         accion: "get_ValorizacionCompra_LotesDisponibles",
         id_proveedor: id_proveedor,
         id_concesion: id_concesion
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           let _html = '<option value="">[Seleccione]</option>';
 
-          $.each(data.registros, function(i, v) {
-            // si el lote ya lo eligio, lo saltamos
-            let lotesSeleccionados = getLotesSeleccionados();
-            if (lotesSeleccionados.some(lote => lote.cod_lote == v.lote_cod_lote)) {
-              return;
+          $.each(data.registros, function (i, v) {
+            // Verificar si este lote ya fue valorizado con Au y Ag
+            let elementosUsados = [];
+            $('#tbody_lotes_valorizacion tr').each(function () {
+              let loteEnTabla = $(this).data('lote');
+              let elementoEnTabla = $(this).data('elemento');
+
+              if (loteEnTabla == v.ID_CODLOTE) {
+                elementosUsados.push(elementoEnTabla.toString());
+              }
+            });
+
+            // Si el lote ya tiene Au (33) y Ag (34), lo saltamos
+            if (elementosUsados.includes('33') && elementosUsados.includes('34')) {
+              return; // No mostrar este lote
             }
+
             _html += `<option value="${v.Id}"
                                 data-idcodlote="${v.ID_CODLOTE}"
                                 data-codgel="${v.CODIGO_GEL}"
@@ -2357,7 +2586,7 @@ if (!isset($_SESSION["Id"])) {
       }, "json");
     }
 
-    $('#cmb_lotes').on('change', function() {
+    $('#cmb_lotes').on('change', function () {
       const sel = $('#cmb_lotes option:selected');
 
       let id_codlote = parseFloat(sel.data('idcodlote')) || 0;
@@ -2394,7 +2623,7 @@ if (!isset($_SESSION["Id"])) {
       }
     });
 
-    $("#cmb_elemento").on('change', function() {
+    $("#cmb_elemento").on('change', function () {
       f_ObtenerCondicionesComerciales();
     });
 
@@ -2436,11 +2665,11 @@ if (!isset($_SESSION["Id"])) {
       if ($("#cmb_elemento").val() == 33) {
         if ($("#hd_modograbar_lote").val() == 'N') {
           $.post(url_api, {
-              accion: "get_ValorizacionCompra_CondicionesComerciales",
-              documento: documento,
-              ley: ley_oz
-            },
-            function(data) {
+            accion: "get_ValorizacionCompra_CondicionesComerciales",
+            documento: documento,
+            ley: ley_oz
+          },
+            function (data) {
               if (data.estado == 1) {
                 if ($("#hd_modograbar_lote").val() == 'N') {
                   $("#txt_recuperacion").val(data.recuperacion);
@@ -2522,7 +2751,7 @@ if (!isset($_SESSION["Id"])) {
       }
 
       let usados = [];
-      $('#tbody_lotes_valorizacion tr').each(function() {
+      $('#tbody_lotes_valorizacion tr').each(function () {
         let elemento = $(this).data('elemento');
         let lote = $(this).data('lote');
 
@@ -2544,10 +2773,10 @@ if (!isset($_SESSION["Id"])) {
         accion: "get_ValorizacionCompra_Elementos",
         id_valorizacion,
         cod_lote
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           let _html = '<option value="">[Seleccione]</option>';
-          data.registros.forEach(function(el) {
+          data.registros.forEach(function (el) {
             if (!usados.includes(el.Id.toString())) {
               _html += `<option value="${el.Id}">${el.abv}</option>`;
             }
@@ -2746,7 +2975,7 @@ if (!isset($_SESSION["Id"])) {
       }
     }
 
-    $('#valorizacion_cuentaproveedor').on('change', function() {
+    $('#valorizacion_cuentaproveedor').on('change', function () {
       var id_cuenta = $(this).val();
 
       if (id_cuenta == 'x') {
@@ -2824,7 +3053,7 @@ if (!isset($_SESSION["Id"])) {
       }
     }
 
-    $('#valorizacion_cuentadetraccionproveedor').on('change', function() {
+    $('#valorizacion_cuentadetraccionproveedor').on('change', function () {
       var id_cuenta = $(this).val();
 
       if (id_cuenta == 'x') {
@@ -2845,7 +3074,7 @@ if (!isset($_SESSION["Id"])) {
       }
     });
 
-    $('#modal_AddCuentaBancaria').on('hidden.bs.modal', function(e) {
+    $('#modal_AddCuentaBancaria').on('hidden.bs.modal', function (e) {
       if ($("#hd_iscuentadetraccion").val() == 0) {
         if ($("#valorizacion_cuentaproveedor").val() != 'x') {
           return;
@@ -3004,7 +3233,7 @@ if (!isset($_SESSION["Id"])) {
         $("#btn_toggle_panel i").removeClass("bi-arrows-angle-contract").addClass("bi-arrows-angle-expand");
 
         // Espera 300ms para que la animación termine antes de mostrar el panel izquierdo
-        setTimeout(function() {
+        setTimeout(function () {
           $("#div_valorizacion_lista").show();
         }, 300);
 
@@ -3013,9 +3242,9 @@ if (!isset($_SESSION["Id"])) {
     }
 
     function f_RenumerarFilas() {
-      $('#tbody_lotes_valorizacion tr').each(function(i) {
+      $('#tbody_lotes_valorizacion tr').each(function (i) {
         // Actualiza el ID de cada TD
-        $(this).find('td').each(function(index, td) {
+        $(this).find('td').each(function (index, td) {
           let id_actual = $(td).attr('id');
           if (id_actual) {
             let base = id_actual.split('_')[0]; // ejemplo: "lote_3" → "lote"
@@ -3094,7 +3323,7 @@ if (!isset($_SESSION["Id"])) {
       // Solo validar duplicado si es nuevo
       if (modo !== 'E') {
         let duplicado = false;
-        $('#tbody_lotes_valorizacion tr').each(function() {
+        $('#tbody_lotes_valorizacion tr').each(function () {
           let val_elemento = $(this).attr('data-elemento');
           let val_lote = $(this).attr('data-lote');
           if (val_elemento == id_elemento && val_lote == id_lote) {
@@ -3255,7 +3484,7 @@ if (!isset($_SESSION["Id"])) {
     function getLotesSeleccionados() {
       let detalle = [];
 
-      $('#tbody_lotes_valorizacion tr').each(function(idx, tr) {
+      $('#tbody_lotes_valorizacion tr').each(function (idx, tr) {
         if ($(tr).attr("id") === "tr_TotalValorizacion") {
           return;
         }
@@ -3407,7 +3636,7 @@ if (!isset($_SESSION["Id"])) {
 
       let detalle = [];
 
-      $('#tbody_lotes_valorizacion tr').each(function(idx, tr) {
+      $('#tbody_lotes_valorizacion tr').each(function (idx, tr) {
         if ($(tr).attr("id") === "tr_TotalValorizacion") {
           return;
         }
@@ -3489,7 +3718,7 @@ if (!isset($_SESSION["Id"])) {
       // console.log('║ Datos completos enviados:', datosEnvio);
       // ===== FIN LOGGING =====
 
-      $.post(url_api, datosEnvio, function(data) {
+      $.post(url_api, datosEnvio, function (data) {
         if (data.estado == 1) {
           // Limpiar selección de anticipos
           anticiposSeleccionados = [];
@@ -3528,10 +3757,10 @@ if (!isset($_SESSION["Id"])) {
     function f_EliminarRegistro(_id_registro) {
       if (confirm("¿Está seguro de Eliminar el registro seleccionado?")) {
         $.post(url_api, {
-            accion: "eliminar_ValorizacionDetalle",
-            id_registro: _id_registro
-          },
-          function(data) {
+          accion: "eliminar_ValorizacionDetalle",
+          id_registro: _id_registro
+        },
+          function (data) {
             if (data.estado == 1) {
               f_LoadDetalleValorizacion(id_valorizacion_Selected);
             } else {
@@ -3550,7 +3779,7 @@ if (!isset($_SESSION["Id"])) {
           accion: "eliminar_Valorizacion",
           modo: _modo,
           id_registro: _id
-        }, function(data) {
+        }, function (data) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
@@ -3566,7 +3795,7 @@ if (!isset($_SESSION["Id"])) {
           accion: "eliminar_Valorizacion",
           modo: "X",
           id_registro: _id
-        }, function(data) {
+        }, function (data) {
           console.log("Data: ", data);
           if (data.estado == 1) {
             f_LoadValorizaciones();
@@ -3607,16 +3836,16 @@ if (!isset($_SESSION["Id"])) {
 
       // Envío al backend
       $.post(url_api, {
-          accion: "grabar_ClienteBanco",
-          modo_grabar: 'N',
-          id_cliente: _id_cliente,
-          id_banco: _id_banco,
-          id_moneda: _id_moneda,
-          nro_cuenta: _nro_cuenta,
-          cci: _cci,
-          is_detraccion: _is_detraccion
-        },
-        function(data) {
+        accion: "grabar_ClienteBanco",
+        modo_grabar: 'N',
+        id_cliente: _id_cliente,
+        id_banco: _id_banco,
+        id_moneda: _id_moneda,
+        nro_cuenta: _nro_cuenta,
+        cci: _cci,
+        is_detraccion: _is_detraccion
+      },
+        function (data) {
           if (data.estado == 1) {
             if ($("#hd_iscuentadetraccion").val() == 0) {
               f_LoadListaCuentasBancarias(data.id_registro);
@@ -3645,11 +3874,11 @@ if (!isset($_SESSION["Id"])) {
 
       // Creando copia
       $.post(url_api, {
-          accion: "grabar_ValorizacionCompra_NuevaVersion",
-          id_registro: _id_registro,
-          num_valorizacion: _num_valorizacion
-        },
-        function(data) {
+        accion: "grabar_ValorizacionCompra_NuevaVersion",
+        id_registro: _id_registro,
+        num_valorizacion: _num_valorizacion
+      },
+        function (data) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
@@ -3666,13 +3895,13 @@ if (!isset($_SESSION["Id"])) {
 
       // Aprobando Valorización
       $.post(url_api, {
-          accion: "grabar_ValorizacionCompra_Aprobacion",
-          id_registro: _id_registro,
-          num_valorizacion: _num_valorizacion,
-          version: _version,
-          is_aprobado: 1
-        },
-        function(data) {
+        accion: "grabar_ValorizacionCompra_Aprobacion",
+        id_registro: _id_registro,
+        num_valorizacion: _num_valorizacion,
+        version: _version,
+        is_aprobado: 1
+      },
+        function (data) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {

@@ -70522,50 +70522,66 @@ switch ($_POST["accion"]) {
 		break;
 
 	case "get_ValorizacionCompra_Elementos":
-		$id_valorizacion = $_POST["id_valorizacion"];
-		$id_valorizacion = strlen($id_valorizacion) == 0 ? 0 : $id_valorizacion;
 		$cod_lote = trim($_POST["cod_lote"]);
 
-		// Obtiene elementos ya registrados
-		$in_elementos = "";
-
-		$q_datos = "SELECT CMD.id_elemento
-											FROM valorizacion_compramineral_detalle CMD
-													 INNER JOIN valorizacion_compramineral CM ON CMD.id_valorizacion = CM.Id
-										 WHERE CMD.cod_lote = '$cod_lote'
-											 AND CM.estado <> 'X' AND CM.estado <> 'R'";
-
-		if ($res_datos = mysqli_query($enlace, $q_datos)) {
-			if (mysqli_num_rows($res_datos) > 0) {
-				while ($row_datos = mysqli_fetch_array($res_datos)) {
-					$in_elementos .= $row_datos["id_elemento"] . ", ";
-				}
-			}
-		}
-
-		if (strlen($in_elementos) == 0) {
-			$in_elementos = "''";
-		} else {
-			$in_elementos = substr($in_elementos, 0, -2);
-		}
-
 		$res = ["estado" => 0, "registros" => []];
-		$q = "SELECT Id, abv 
-							FROM tb_ensayos_analisis 
-						 WHERE estado = 'A' 
-							 AND is_valorizacion = 1
-							 AND Id NOT IN ($in_elementos)
-					ORDER BY orden";
 
-		$r = mysqli_query($enlace, $q);
+		// Lógica aplicada:
+		// 1. SELECT principal: Tabla de ensayos (elementos).
+		// 2. NOT IN: Subconsulta para excluir lo que ya se registró en valorizacion_compramineral_detalle.
+		// 3. AND (CASE...): Verifica si el elemento es Oro (33) o Plata (34) y si su ley en cierre es > 0.
 
-		while ($f = mysqli_fetch_assoc($r)) {
-			$res["registros"][] = $f;
+		$q = "
+		SELECT 
+			tea.Id, 
+			tea.abv 
+		FROM 
+			tb_ensayos_analisis tea 
+		WHERE 
+			tea.estado = 'A' 
+			AND tea.is_valorizacion = 1
+			AND tea.Id NOT IN (
+				SELECT 
+					vcd.id_elemento
+				FROM 
+					valorizacion_compramineral_detalle vcd
+				INNER JOIN valorizacion_compramineral vc ON 
+					vcd.id_valorizacion = vc.Id
+				WHERE 
+					vcd.cod_lote = '$cod_lote' 
+					AND vc.estado <> 'X' 
+					AND vc.estado <> 'R'
+			)
+			AND (
+				CASE 
+					WHEN tea.Id = 33 THEN ( -- Validación para ORO (newau)
+						SELECT COALESCE(promedio, 0) 
+						FROM tb_leyes_analisis_cierre 
+						WHERE cod_lote = '$cod_lote' 
+						  AND abv_elemento = 'newau' 
+						  AND id_grupo = 3
+					) > 0
+					WHEN tea.Id = 34 THEN ( -- Validación para PLATA (newag)
+						SELECT COALESCE(promedio, 0) 
+						FROM tb_leyes_analisis_cierre 
+						WHERE cod_lote = '$cod_lote' 
+						  AND abv_elemento = 'newag' 
+						  AND id_grupo = 3
+					) > 0
+					ELSE 0 -- Oculta cualquier otro elemento que no sea Au/Ag
+				END
+			)
+		ORDER BY tea.orden ASC";
+
+		if ($r = mysqli_query($enlace, $q)) {
+			while ($f = mysqli_fetch_assoc($r)) {
+				$res["registros"][] = $f;
+			}
+			// Si la consulta corrió bien, el estado es 1 (incluso si no trae registros)
+			$res["estado"] = 1;
 		}
 
-		$res["estado"] = 1;
 		echo json_encode($res);
-
 		break;
 
 	case "get_ValorizacionCompra_LotesDisponibles":
@@ -70574,68 +70590,99 @@ switch ($_POST["accion"]) {
 		$id_concesion = $_POST["id_concesion"];
 
 		$q = "
+		SELECT
+			dspv.Id,
+			dspv.lote_cod_lote,
+			dspv.lote_id_lote AS ID_CODLOTE,
+			IFNULL(cor.codigo_gel, 'Pendiente') AS CODIGO_GEL,
+			CONCAT(dspv.guiaremitente_serie,'-', dspv.guiaremitente_numero) AS GUIA_REMITENTE,
+			CONCAT(dspv.guiatransportista_serie,'-',dspv.guiatransportista_numero) AS GUIA_TRANSPORTISTA,
+			dspv.lote_pesoinicial_fechahoraregistro,
+			ly_au.promedio AS ley_au_oz,
+			ly_ag.promedio AS ley_ag_oz,
+			ly_hm.promedio AS h2o,
+			ly_rec.promedio AS recup,
+			CASE
+				WHEN rs_ly.gestionleyes_cerrado_isvalorizar = 0 THEN 1 
+				ELSE 0
+			END AS IS_SINVALORCOMERCIAL,
+			(dspv.lote_peso_neto / 1000) AS TMH,
+			ROUND(((100 - ly_hm.promedio) / 100) * 100,3) AS tms,
+			CASE 
+				WHEN(dspv.lote_peso_neto / 1000) <= 1 THEN 1 
+				ELSE 1.1023
+			END AS factor
+		FROM
+			despachos_primertramo_validaciondatos dspv
+		LEFT JOIN consolidado_lotes_cierrecontable clc ON
+			dspv.Id = clc.id_registro
+		LEFT JOIN tb_leyes_analisis_cierre ly_au ON
+			dspv.lote_cod_lote = ly_au.cod_lote AND ly_au.id_grupo = 3 AND ly_au.abv_elemento = 'newau'
+		LEFT JOIN tb_leyes_analisis_cierre ly_ag ON
+			dspv.lote_cod_lote = ly_ag.cod_lote AND ly_ag.id_grupo = 3 AND ly_ag.abv_elemento = 'newag'
+		LEFT JOIN tb_leyes_analisis_cierre ly_hm ON
+			dspv.lote_cod_lote = ly_hm.cod_lote AND ly_hm.id_grupo = 4 AND ly_hm.abv_elemento = 'h2o'
+		LEFT JOIN tb_leyes_analisis_cierre ly_rec ON
+			dspv.lote_cod_lote = ly_rec.cod_lote AND ly_rec.id_grupo = 5 AND ly_rec.abv_elemento = 'recup'
+		LEFT JOIN correlativo_codigosgel cor ON
+			dspv.Id = cor.id_validaciondatos
+		INNER JOIN import_resultadosleyes_detalle rs_ly ON
+			dspv.lote_cod_lote = rs_ly.cod_interno
+		WHERE
+			rs_ly.gestionleyes_cerrado = 1 AND 
+			dspv.lote_id_proveedorminero = $id_proveedor AND 
+			dspv.lote_id_proveedorminero_concesion = $id_concesion AND 
+			NOT EXISTS(
 				SELECT
-						V.Id,
-						V.lote_cod_lote,
-						V.lote_id_lote AS ID_CODLOTE,
-						IFNULL(CG.codigo_gel, 'Pendiente') AS CODIGO_GEL,
-						CONCAT(
-								V.guiaremitente_serie,
-								'-',
-								V.guiaremitente_numero
-						) AS GUIA_REMITENTE,
-						CONCAT(
-								V.guiatransportista_serie,
-								'-',
-								V.guiatransportista_numero
-						) AS GUIA_TRANSPORTISTA,
-						V.lote_pesoinicial_fechahoraregistro,
-						LC_NewAu.promedio AS ley_au_oz,
-						LC_NewAg.promedio AS ley_ag_oz,
-						LC_H2O.promedio AS h2o,
-						LC_RECUP.promedio AS recup,
-						CASE WHEN RD.gestionleyes_cerrado_isvalorizar = 0 THEN 1 ELSE 0
-				END AS IS_SINVALORCOMERCIAL,
-				(V.lote_peso_neto / 1000) AS TMH,
-				ROUND(
-						((100 - LC_H2O.promedio) / 100) * 100,
-						3
-				) AS tms,
-				CASE WHEN(V.lote_peso_neto / 1000) <= 1 THEN 1 ELSE 1.1023
-				END AS factor
+					1
 				FROM
-						despachos_primertramo_validaciondatos V
-				LEFT JOIN consolidado_lotes_cierrecontable CC ON
-						V.Id = CC.id_registro
-				LEFT JOIN tb_leyes_analisis_cierre LC_NewAu ON
-						V.lote_cod_lote = LC_NewAu.cod_lote AND LC_NewAu.id_grupo = 3 AND LC_NewAu.abv_elemento = 'newau'
-				LEFT JOIN tb_leyes_analisis_cierre LC_NewAg ON
-						V.lote_cod_lote = LC_NewAg.cod_lote AND LC_NewAg.id_grupo = 3 AND LC_NewAg.abv_elemento = 'newag'
-				LEFT JOIN tb_leyes_analisis_cierre LC_H2O ON
-						V.lote_cod_lote = LC_H2O.cod_lote AND LC_H2O.id_grupo = 4 AND LC_H2O.abv_elemento = 'h2o'
-				LEFT JOIN tb_leyes_analisis_cierre LC_RECUP ON
-						V.lote_cod_lote = LC_RECUP.cod_lote AND LC_RECUP.id_grupo = 5 AND LC_RECUP.abv_elemento = 'recup'
-				LEFT JOIN correlativo_codigosgel CG ON
-						V.Id = CG.id_validaciondatos
-				INNER JOIN import_resultadosleyes_detalle RD ON
-						V.lote_cod_lote = RD.cod_interno
+					valorizacion_compramineral_detalle vcd
+				INNER JOIN valorizacion_compramineral vc ON
+					vcd.id_valorizacion = vc.Id
+				LEFT JOIN comprobante_pago comp ON
+					comp.id_valorizacion = vc.Id
 				WHERE
-						RD.gestionleyes_cerrado = 1 AND V.lote_id_proveedorminero = '$id_proveedor' AND V.lote_id_proveedorminero_concesion = '$id_concesion' AND NOT EXISTS(
-						SELECT
-								1
-						FROM
-								valorizacion_compramineral_detalle CMD
-						INNER JOIN valorizacion_compramineral CM ON
-								CMD.id_valorizacion = CM.Id
-						LEFT JOIN comprobante_pago comp ON
-								comp.id_valorizacion = CM.Id
-						WHERE
-								CMD.cod_lote = V.lote_cod_lote AND CMD.id_elemento IN(33, 34) AND CM.estado <> 'X' AND CM.estado <> 'R' 
-				)
-				ORDER BY
-						V.Id
-				DESC;
-				";
+					vcd.cod_lote = dspv.lote_cod_lote AND 
+					vcd.id_elemento IN(33, 34) AND -- Busca Au y Ag
+					vc.estado <> 'X' AND 
+					vc.estado <> 'R'
+				GROUP BY 
+					vcd.cod_lote
+				-- solo se excluye si encuentra los 2 elementos ya valorizados
+				HAVING 
+					COUNT(DISTINCT vcd.id_elemento) = 2
+			) AND
+            -- verificar que el lote tenga una ley consolidada promedio mayor a 0
+            -- tanto para oro o plata
+            (
+                -- oro
+                (
+                    SELECT
+                        COALESCE(AVG(anl.valor),0) AS promedio
+                    FROM
+                        tb_leyes_analisis_valor anl
+                    WHERE
+                        anl.cod_lote = dspv.lote_cod_lote AND 
+                        anl.id_grupo = 3 AND 
+                        anl.abv_elemento = 'newau' 
+                        AND anl.is_select = 1
+                ) > 0
+                OR
+                -- plata
+                (
+                    SELECT
+                        COALESCE(AVG(anl.valor),0) AS promedio
+                    FROM
+                        tb_leyes_analisis_valor anl
+                    WHERE
+                        anl.cod_lote = dspv.lote_cod_lote AND 
+                        anl.id_grupo = 3 AND 
+                        anl.abv_elemento = 'newag' 
+                        AND anl.is_select = 1
+                ) > 0
+            )
+		ORDER BY dspv.lote_cod_lote DESC;
+		";
 		$r = mysqli_query($enlace, $q);
 		while ($f = mysqli_fetch_assoc($r)) {
 			$res["registros"][] = $f;
