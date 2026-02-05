@@ -37372,8 +37372,23 @@ switch ($_POST["accion"]) {
 																	 V.guiatransportista_numero,
 
 																	 V.codigo_gel,
-																	 V.codigogel_valorizado,
-																	 V.codigogel_facturado,
+																	EXISTS(
+																		SELECT
+																			vcd.cod_gel
+																		FROM valorizacion_compramineral_detalle vcd
+																		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+																		WHERE vc.is_aprobado = 1 AND V.codigo_gel = vcd.cod_gel
+																		LIMIT 1
+																	) AS codigogel_valorizado,
+																	EXISTS(
+																		SELECT
+																			vcd.cod_gel
+																		FROM valorizacion_compramineral_detalle vcd
+																		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
+																		INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
+																		WHERE cp.estado IN ('A','B','C') AND V.codigo_gel = vcd.cod_gel
+																		LIMIT 1
+																	) AS codigogel_facturado,
 																	 V.codigo_gel_fechahoraregistro,
 																	 V.codigo_gel_usuarioregistro
 
@@ -37473,6 +37488,29 @@ switch ($_POST["accion"]) {
 
 					// $html .= '  </td>';
 
+					/* COLUMNA SEL. - Checkbox de selección para Código GEL */
+					$html .=
+						'  <td id="td_codigogel_1_' .
+						$d .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+					if (strlen($row_validacion["codigo_gel"]) == 0) {
+						$html .=
+							'		<input id="chk_codigogel_3_' .
+							$d .
+							'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
+					} else {
+						if ($row_validacion["is_cerradolote"] == 0) {
+							$html .=
+								'		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel(' .
+								$d .
+								", " .
+								$row_validacion["Id"] .
+								')"><u> Revertir </u></label>';
+						}
+					}
+					$html .= "  </td>";
+
+					/* COLUMNA CÓDIGO GEL */
 					$html .=
 						'  <td id="td_codigogel_2_' .
 						$d .
@@ -37721,6 +37759,7 @@ switch ($_POST["accion"]) {
 						);
 					$html .= "  </td>";
 
+					/* COLUMNA NETO: Peso Neto del lote */
 					$html .=
 						'  <td id="td_pesoneto_' .
 						$d .
@@ -37735,19 +37774,18 @@ switch ($_POST["accion"]) {
 						);
 					$html .= "  </td>";
 
-					// Seteo de columnas de Cierre
-					$cierre_hidden = "none";
+					/* =====================================================
+					   INICIO: COLUMNAS DE CIERRE (3 COLUMNAS)
+					   - COLUMNA 1: Valorizado (codigogel_valorizado)
+					   - COLUMNA 2: Facturado (codigogel_facturado)
+					   - COLUMNA 3: Fecha Hora (cerradolote_fechahoraregistro)
+					   ===================================================== */
 
-					if (
-						$row_validacion["codigogel_valorizado"] == 1 &&
-						$row_validacion["codigogel_facturado"] == 1
-					) {
-						$cierre_hidden = "";
-					}
-
+					/* COLUMNA 1 DE CIERRE: VALORIZADO
+					   Atributo SQL: codigogel_valorizado
+					   Lógica: Si codigogel_valorizado == 1 -> checkbox marcado */
 					$html .=
 						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					// $html .= '		<input id="chk_codigogel_1_'.$d.'" class="form-check-input chk_cierre" type="checkbox" style="transform: scale(1.5);" '.(($row_validacion["codigogel_valorizado"] == 1) ? 'checked' : '').' onchange="f_UpdateDatos('.$d.', 7)" '.(($row_validacion["is_cerradolote"] == 1) ? 'disabled' : '').'>';
 					$html .=
 						'		<input id="chk_codigogel_1_' .
 						$d .
@@ -37755,11 +37793,12 @@ switch ($_POST["accion"]) {
 						($row_validacion["codigogel_valorizado"] == 1
 							? "checked"
 							: "") .
-						' onchange="f_UpdateDatos(' .
-						$d .
-						', 7)" disabled>';
+						' disabled>';
 					$html .= "  </td>";
 
+					/* COLUMNA 2 DE CIERRE: FACTURADO
+					   Atributo SQL: codigogel_facturado
+					   Lógica: Si codigogel_facturado == 1 -> checkbox marcado */
 					$html .=
 						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
 					$html .=
@@ -37769,61 +37808,21 @@ switch ($_POST["accion"]) {
 						($row_validacion["codigogel_facturado"] == 1
 							? "checked"
 							: "") .
-						' onchange="f_UpdateDatos(' .
-						$d .
-						', 8)" ' .
-						($row_validacion["is_cerradolote"] == 1
-							? "disabled"
-							: "") .
-						">";
+						' disabled>';
 					$html .= "  </td>";
 
+					/* COLUMNA 3 DE CIERRE: FECHA HORA DEL CIERRE
+					   Atributo SQL: cerradolote_fechahoraregistro
+					   Lógica: Muestra la fecha/hora del cierre del lote */
 					$html .=
-						'  <td id="td_cierre_1_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-
-					if ($row_validacion["is_cerradolote"] == 0) {
-						$html .=
-							'		<input id="chk_cierre_' .
-							$d .
-							'" class="form-check-input chk_cierre" type="checkbox" style="transform: scale(1.5); display: ' .
-							$cierre_hidden .
-							'">';
-					} else {
-						$html .=
-							'		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_Reabrir(' .
-							$d .
-							", " .
-							$row_validacion["Id"] .
-							')"><u> Reabrir </u></label>';
-					}
-
-					$html .= "  </td>";
-
-					$html .=
-						'  <td id="td_cierre_2_' .
+						'  <td id="td_cierre_fechahora_' .
 						$d .
 						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; min-width: 100px;">';
-
 					if ($row_validacion["is_cerradolote"] == 1) {
 						$html .=
 							"		" .
 							$row_validacion["cerradolote_fechahoraregistro"];
 					}
-
-					$html .= "  </td>";
-
-					$html .=
-						'  <td id="td_cierre_3_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-
-					if ($row_validacion["is_cerradolote"] == 1) {
-						$html .=
-							"		" . $row_validacion["cerradolote_usuarioregistro"];
-					}
-
 					$html .= "  </td>";
 
 					$html .= "</tr>";
