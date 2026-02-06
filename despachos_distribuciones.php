@@ -123,6 +123,12 @@ $backendUrl = 'apis/backend.php';
               <span class="me-3 fs-5">
                 Total Despachos: <strong id="total_despachos" class="text-primary">0</strong>
               </span>
+              <button class="btn btn-danger me-2" id="btn_export_pdf">
+                <i class="bi bi-file-earmark-pdf"></i> Exportar a PDF
+              </button>
+              <button class="btn btn-success me-2" id="btn_export_excel">
+                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+              </button>
               <button class="btn btn-primary" id="btn_open_new_despacho_modal">
                 <i class="bi bi-plus-lg me-1"></i> Nuevo Despacho
               </button>
@@ -616,6 +622,33 @@ $backendUrl = 'apis/backend.php';
         $("#filter_fecha_desde").val('');
         $("#filter_fecha_hasta").val('');
         applyFilters();
+      });
+
+      // Export Handlers
+      $("#btn_export_pdf").click(function() {
+         let pl = $("#filter_planta").val() || "";
+         let pv = $("#filter_proveedor").val() || "";
+         let d1 = dmyToYmd($("#filter_fecha_desde").val()) || "";
+         let d2 = dmyToYmd($("#filter_fecha_hasta").val()) || "";
+
+         let url = `print_despachos_distribuciones.php?planta=${pl}&proveedor=${pv}&desde=${d1}&hasta=${d2}`;
+         window.open(url, '_blank');
+      });
+
+      $("#btn_export_excel").click(function() {
+         // Lógica para Excel (placeholder apuntando al archivo mencionado o alerta)
+         // Por ahora, asumimos que se implementará similar o el usuario proveerá la lógica. 
+         // Redirigimos al archivo que el usuario mencionó, aunque falta la lógica de exportación real en él.
+         let pl = $("#filter_planta").val() || "";
+         let pv = $("#filter_proveedor").val() || "";
+         let d1 = dmyToYmd($("#filter_fecha_desde").val()) || "";
+         let d2 = dmyToYmd($("#filter_fecha_hasta").val()) || "";
+         
+         // Nota: export_to_excel/export_despachos_distribuciones.php actualmente solo tiene consultas.
+         // Si se desea que funcione, se debería modificar ese archivo para generar Excel.
+         // Por ahora, solo abrimos la URL.
+         let url = `export_to_excel/export_despachos_distribuciones.php?planta=${pl}&proveedor=${pv}&desde=${d1}&hasta=${d2}`;
+         window.open(url, '_blank');
       });
 
 
