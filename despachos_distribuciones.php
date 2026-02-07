@@ -625,30 +625,25 @@ $backendUrl = 'apis/backend.php';
       });
 
       // Export Handlers
-      $("#btn_export_pdf").click(function() {
-         let pl = $("#filter_planta").val() || "";
-         let pv = $("#filter_proveedor").val() || "";
-         let d1 = dmyToYmd($("#filter_fecha_desde").val()) || "";
-         let d2 = dmyToYmd($("#filter_fecha_hasta").val()) || "";
+      $("#btn_export_pdf").click(function () {
+        let pl = $("#filter_planta").val() || "";
+        let pv = $("#filter_proveedor").val() || "";
+        let d1 = dmyToYmd($("#filter_fecha_desde").val()) || "";
+        let d2 = dmyToYmd($("#filter_fecha_hasta").val()) || "";
 
-         let url = `print_despachos_distribuciones.php?planta=${pl}&proveedor=${pv}&desde=${d1}&hasta=${d2}`;
-         window.open(url, '_blank');
+        let url = `print_despachos_distribuciones.php?planta=${pl}&proveedor=${pv}&desde=${d1}&hasta=${d2}`;
+        window.open(url, '_blank');
       });
 
-      $("#btn_export_excel").click(function() {
-         // Lógica para Excel (placeholder apuntando al archivo mencionado o alerta)
-         // Por ahora, asumimos que se implementará similar o el usuario proveerá la lógica. 
-         // Redirigimos al archivo que el usuario mencionó, aunque falta la lógica de exportación real en él.
-         let pl = $("#filter_planta").val() || "";
-         let pv = $("#filter_proveedor").val() || "";
-         let d1 = dmyToYmd($("#filter_fecha_desde").val()) || "";
-         let d2 = dmyToYmd($("#filter_fecha_hasta").val()) || "";
-         
-         // Nota: export_to_excel/export_despachos_distribuciones.php actualmente solo tiene consultas.
-         // Si se desea que funcione, se debería modificar ese archivo para generar Excel.
-         // Por ahora, solo abrimos la URL.
-         let url = `export_to_excel/export_despachos_distribuciones.php?planta=${pl}&proveedor=${pv}&desde=${d1}&hasta=${d2}`;
-         window.open(url, '_blank');
+      $("#btn_export_excel").click(function () {
+        let pl = $("#filter_planta").val() || "";
+        let pv = $("#filter_proveedor").val() || "";
+        let d1 = dmyToYmd($("#filter_fecha_desde").val()) || "";
+        let d2 = dmyToYmd($("#filter_fecha_hasta").val()) || "";
+
+        // Excel - versio 1
+        let url = `export_to_excel/export_despachos_distribuciones_data_cruda.php?planta=${pl}&proveedor=${pv}&desde=${d1}&hasta=${d2}`;
+        window.open(url, '_blank');
       });
 
 
