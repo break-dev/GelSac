@@ -77954,7 +77954,7 @@ switch ($_POST["accion"]) {
 		$segunda_placa = mysqli_real_escape_string($enlace, $_POST["segunda_placa"] ?? '');
 		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
 		$estado_inicial = $_POST["estado"] ?? 'A';
-		$detalle = $_POST["detalle"]; // id_despacho_detalle - peso_tomado - tipo_carga: 1:Sacos|2:BigBags
+		$detalle = $_POST["detalle"]; // id_despacho_detalle - peso_tomado - tipo_carga: 1:Sacos|2:BigBags - cantidad_bigbags
 
 		if ($id_unidad <= 0 || $id_despacho <= 0 || empty($detalle)) {
 			echo json_encode(["estado" => 0, "mensaje" => "Datos incompletos"]);
@@ -77966,20 +77966,32 @@ switch ($_POST["accion"]) {
 			$peso = floatval($item['peso_tomado']);
 			$res_chk = mysqli_query($enlace, "SELECT peso_actual FROM despacho_detalle WHERE id = $id_dd");
 			$row_chk = mysqli_fetch_assoc($res_chk);
+
+			// New logic for validation
+			$tipo_carga = intval($item['tipo_carga']);
+			$cantidad_bigbags = intval($item['cantidad_bigbags'] ?? 0);
+
 			if (!$row_chk || round($row_chk['peso_actual'], 2) < round($peso, 2)) {
 				echo json_encode(["estado" => 0, "mensaje" => "Peso insuficiente."]);
 				exit;
 			}
+
+			if ($tipo_carga == 2 && $cantidad_bigbags <= 0) {
+				echo json_encode(["estado" => 0, "mensaje" => "Cantidad de BigBags inválida."]);
+				exit;
+			}
 		}
-		
+
 		$q_cabecera = "INSERT INTO distribucion(id_unidad, id_despacho, segunda_placa, fecha_estimada, estado) VALUES($id_unidad, $id_despacho, '$segunda_placa', '$fecha_estimada', '$estado_inicial')";
-		
+
 		if (mysqli_query($enlace, $q_cabecera)) {
 			$id_distribucion = mysqli_insert_id($enlace);
 			foreach ($detalle as $item) {
 				$id_dd = intval($item['id_despacho_detalle']);
 				$peso = floatval($item['peso_tomado']);
 				$tipo_carga = intval($item['tipo_carga']);
+				$cantidad_bigbags = ($tipo_carga == 2) ? intval($item['cantidad_bigbags']) : 'NULL';
+
 				$res_log = mysqli_query($enlace, "SELECT peso_tomado, peso_actual FROM despacho_detalle WHERE id = $id_dd");
 				$row_log = mysqli_fetch_assoc($res_log);
 				$peso_tomado_log = $row_log['peso_tomado'];
@@ -78002,14 +78014,16 @@ switch ($_POST["accion"]) {
 					numero_parte, 
 					peso_tomado, 
 					peso_actual_log,
-					tipo_carga
+					tipo_carga,
+                    cantidad_bigbags
 				) VALUES(
 					$id_dd, 
 					$id_distribucion, 
 					$num_parte, 
 					$peso, 
 					$peso_actual_log,
-					$tipo_carga
+					$tipo_carga,
+                    $cantidad_bigbags
 				)
 				";
 
@@ -78092,7 +78106,7 @@ switch ($_POST["accion"]) {
 			dst.created_at as fecha_registro,
             CASE
             	WHEN dst.tipo_carga = 1 THEN ('Sacos')
-                WHEN dst.tipo_carga = 2 THEN ('Big Bags')
+                WHEN dst.tipo_carga = 2 THEN (CONCAT('Big Bags | ', dst.cantidad_bigbags))
             END as tipo_carga,
             dst.cantidad_bigbags
 		FROM

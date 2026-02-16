@@ -394,6 +394,7 @@ $backendUrl = 'apis/backend.php';
                   <th class="text-center">Tipo</th>
                   <th class="text-end">Peso Restante</th>
                   <th class="">Tipo de Carga</th>
+                  <th class="">Cant. BigBags</th>
                   <th class="text-end" width="180">Peso a Distribuir</th>
                 </tr>
               </thead>
@@ -1150,7 +1151,7 @@ $backendUrl = 'apis/backend.php';
         $("#dist_unidad").empty().prop('disabled', true);
         $("#dist_segunda_placa").val('');
         $("#dist_fecha").val(new Date().toISOString().split('T')[0]); // Default today
-        $("#tbl_items_distribucion").html('<tr><td colspan="5" class="text-center p-3">Cargando items...</td></tr>');
+        $("#tbl_items_distribucion").html('<tr><td colspan="7" class="text-center p-3">Cargando items...</td></tr>');
         $("#lbl_total_dist_modal").text("0.00");
         $("#btn_guardar_distribucion").prop('disabled', true);
 
@@ -1257,7 +1258,7 @@ $backendUrl = 'apis/backend.php';
         let yyyy = today.getFullYear();
         $("#dist_fecha").val(`${dd}/${mm}/${yyyy}`);
 
-        $("#tbl_items_distribucion").html('<tr><td colspan="5" class="text-center p-3">Cargando items...</td></tr>');
+        $("#tbl_items_distribucion").html('<tr><td colspan="7" class="text-center p-3">Cargando items...</td></tr>');
         $("#lbl_total_dist_modal").text("0.00");
         $("#btn_guardar_distribucion").prop('disabled', true);
 
@@ -1328,6 +1329,10 @@ $backendUrl = 'apis/backend.php';
                             </select>
                         </td>
                         <td>
+                            <input type="number" class="form-control form-control-sm text-end input-cant-bigbags" 
+                                data-idx="${idx}" disabled placeholder="0" step="1">
+                        </td>
+                        <td>
                             <input type="number" class="form-control form-control-sm text-end input-dist-peso" 
                                 data-idx="${idx}" data-max="${restante}" disabled placeholder="0.00" step="0.01">
                         </td>
@@ -1344,18 +1349,39 @@ $backendUrl = 'apis/backend.php';
         let chk = $(this).is(':checked');
         let $inp = $(`.input-dist-peso[data-idx='${idx}']`);
         let $tipo_carga = $(`.select-dist-tipo[data-idx='${idx}']`);
+        let $q_bigbags = $(`.input-cant-bigbags[data-idx='${idx}']`);
 
         $inp.prop('disabled', !chk);
         $tipo_carga.prop('disabled', !chk);
-        if (chk) {
+
+        // Reset BigBags input disabled state logic
+        if (!chk) {
+          $q_bigbags.prop('disabled', true).val('');
+          $inp.val('');
+          $tipo_carga.val('2'); // Default to Big Bags or whatever default
+        } else {
           $inp.focus();
           let pesoRestante = itemsDespachoDistribucion[idx].peso_actual;
           $inp.val(pesoRestante);
-        } else {
-          $inp.val('');
+
+          // Check current type logic
+          let currentType = $tipo_carga.val();
+          $q_bigbags.prop('disabled', (currentType != '2'));
         }
 
         updateTotalDist();
+      });
+
+      $(document).on('change', '.select-dist-tipo', function () {
+        let idx = $(this).data('idx');
+        let val = $(this).val();
+        let $q_bigbags = $(`.input-cant-bigbags[data-idx='${idx}']`);
+
+        if (val == '2') {
+          $q_bigbags.prop('disabled', false).focus();
+        } else {
+          $q_bigbags.prop('disabled', true).val('');
+        }
       });
 
       $(document).on('input', '.input-dist-peso', function () {
@@ -1414,26 +1440,40 @@ $backendUrl = 'apis/backend.php';
             id_unidad: idUnidad,
             segunda_placa: $("#dist_segunda_placa").val(),
             fecha_estimada: fecha,
-            // estado: $("#dist_estado").val(), // Logic removed
             detalle: []
           };
 
           let totalPesoDistribucion = 0;
+          let errorValidation = null;
 
           $(".input-dist-peso:enabled").each(function () {
             let val = parseFloat($(this).val());
             let idx = $(this).data('idx');
             let tipo = $(`.select-dist-tipo[data-idx='${idx}']`).val();
+            let cantBB = parseInt($(`.input-cant-bigbags[data-idx='${idx}']`).val()) || 0;
 
             if (val > 0) {
+              // Validacion Big Bags
+              if (tipo == '2' && cantBB <= 0) {
+                errorValidation = "Debe ingresar la cantidad de Big Bags para el item " + (idx + 1);
+                return false;
+              }
+
               totalPesoDistribucion += val;
               payload.detalle.push({
                 id_despacho_detalle: itemsDespachoDistribucion[idx].id_despacho_detalle,
                 peso_tomado: val,
-                tipo_carga: tipo
+                tipo_carga: tipo,
+                cantidad_bigbags: cantBB
               });
             }
           });
+
+          if (errorValidation) {
+            alert(errorValidation);
+            $btn.prop('disabled', false);
+            return;
+          }
 
           if (payload.detalle.length === 0 && !confirm("¿Guardar sin items?")) return;
 
