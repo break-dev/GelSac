@@ -393,7 +393,8 @@ $backendUrl = 'apis/backend.php';
                   <th>Código Mineral</th>
                   <th class="text-center">Tipo</th>
                   <th class="text-end">Peso Restante</th>
-                  <th class="text-end" width="180">A Distribuir</th>
+                  <th class="">Tipo de Carga</th>
+                  <th class="text-end" width="180">Peso a Distribuir</th>
                 </tr>
               </thead>
               <tbody id="tbl_items_distribucion"></tbody>
@@ -447,6 +448,7 @@ $backendUrl = 'apis/backend.php';
               <tr>
                 <th>Código</th>
                 <th class="text-center">Tipo</th>
+                <th class="text-center">Tipo de Carga</th>
                 <th class="text-end">Peso</th>
                 <th class="text-end">Nro. Partición</th>
               </tr>
@@ -814,6 +816,7 @@ $backendUrl = 'apis/backend.php';
                             <tr>
                                 <td>${i.codigo}</td>
                                 <td class="text-center">${badge}</td>
+                                <td class="text-center">${i.tipo_carga}</td>
                                 <td class="text-end font-monospace">${formatNumber(i.peso_tomado)}</td>
                                 <td class="text-end font-monospace">${i.numero_parte != null ? i.numero_parte : 'Dis. Total'}</td>
                             </tr>
@@ -1319,6 +1322,12 @@ $backendUrl = 'apis/backend.php';
                         <td class="text-center">${badge}</td>
                         <td class="text-end text-muted font-monospace">${formatNumber(restante)}</td>
                         <td>
+                            <select class="form-select form-select-sm select-dist-tipo" data-idx="${idx}" disabled>
+                                <option value="2">Big Bags</option>
+                                <option value="1">Sacos</option>
+                            </select>
+                        </td>
+                        <td>
                             <input type="number" class="form-control form-control-sm text-end input-dist-peso" 
                                 data-idx="${idx}" data-max="${restante}" disabled placeholder="0.00" step="0.01">
                         </td>
@@ -1334,8 +1343,10 @@ $backendUrl = 'apis/backend.php';
         let idx = $(this).data('idx');
         let chk = $(this).is(':checked');
         let $inp = $(`.input-dist-peso[data-idx='${idx}']`);
+        let $tipo_carga = $(`.select-dist-tipo[data-idx='${idx}']`);
 
         $inp.prop('disabled', !chk);
+        $tipo_carga.prop('disabled', !chk);
         if (chk) {
           $inp.focus();
           let pesoRestante = itemsDespachoDistribucion[idx].peso_actual;
@@ -1412,11 +1423,14 @@ $backendUrl = 'apis/backend.php';
           $(".input-dist-peso:enabled").each(function () {
             let val = parseFloat($(this).val());
             let idx = $(this).data('idx');
+            let tipo = $(`.select-dist-tipo[data-idx='${idx}']`).val();
+
             if (val > 0) {
               totalPesoDistribucion += val;
               payload.detalle.push({
                 id_despacho_detalle: itemsDespachoDistribucion[idx].id_despacho_detalle,
-                peso_tomado: val
+                peso_tomado: val,
+                tipo_carga: tipo
               });
             }
           });

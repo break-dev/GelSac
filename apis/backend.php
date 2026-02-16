@@ -77954,7 +77954,7 @@ switch ($_POST["accion"]) {
 		$segunda_placa = mysqli_real_escape_string($enlace, $_POST["segunda_placa"] ?? '');
 		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
 		$estado_inicial = $_POST["estado"] ?? 'A';
-		$detalle = $_POST["detalle"];
+		$detalle = $_POST["detalle"]; // id_despacho_detalle - peso_tomado - tipo_carga: 1:Sacos|2:BigBags
 
 		if ($id_unidad <= 0 || $id_despacho <= 0 || empty($detalle)) {
 			echo json_encode(["estado" => 0, "mensaje" => "Datos incompletos"]);
@@ -77971,14 +77971,15 @@ switch ($_POST["accion"]) {
 				exit;
 			}
 		}
-
+		
 		$q_cabecera = "INSERT INTO distribucion(id_unidad, id_despacho, segunda_placa, fecha_estimada, estado) VALUES($id_unidad, $id_despacho, '$segunda_placa', '$fecha_estimada', '$estado_inicial')";
-
+		
 		if (mysqli_query($enlace, $q_cabecera)) {
 			$id_distribucion = mysqli_insert_id($enlace);
 			foreach ($detalle as $item) {
 				$id_dd = intval($item['id_despacho_detalle']);
 				$peso = floatval($item['peso_tomado']);
+				$tipo_carga = intval($item['tipo_carga']);
 				$res_log = mysqli_query($enlace, "SELECT peso_tomado, peso_actual FROM despacho_detalle WHERE id = $id_dd");
 				$row_log = mysqli_fetch_assoc($res_log);
 				$peso_tomado_log = $row_log['peso_tomado'];
@@ -77994,7 +77995,24 @@ switch ($_POST["accion"]) {
 					$num_parte = $row_parte['num'] ?? 1;
 				}
 
-				$q_det = "INSERT INTO distribucion_detalle(id_despacho_detalle, id_distribucion, numero_parte, peso_tomado, peso_actual_log) VALUES($id_dd, $id_distribucion, $num_parte, $peso, $peso_actual_log)";
+				$q_det = "
+				INSERT INTO distribucion_detalle(
+					id_despacho_detalle, 
+					id_distribucion, 
+					numero_parte, 
+					peso_tomado, 
+					peso_actual_log,
+					tipo_carga
+				) VALUES(
+					$id_dd, 
+					$id_distribucion, 
+					$num_parte, 
+					$peso, 
+					$peso_actual_log,
+					$tipo_carga
+				)
+				";
+
 				mysqli_query($enlace, $q_det);
 				mysqli_query($enlace, "UPDATE despacho_detalle SET peso_actual = peso_actual - $peso WHERE id = $id_dd");
 			}
@@ -78071,7 +78089,12 @@ switch ($_POST["accion"]) {
 			dst.peso_tomado,
 			(dst.peso_actual_log - dst.peso_tomado) as peso_restante,
 			dst.numero_parte,
-			dst.created_at as fecha_registro
+			dst.created_at as fecha_registro,
+            CASE
+            	WHEN dst.tipo_carga = 1 THEN ('Sacos')
+                WHEN dst.tipo_carga = 2 THEN ('Big Bags')
+            END as tipo_carga,
+            dst.cantidad_bigbags
 		FROM
 			distribucion_detalle dst
 		INNER JOIN despacho_detalle dsd on dsd.id = dst.id_despacho_detalle
