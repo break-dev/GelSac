@@ -69505,40 +69505,37 @@ switch ($_POST["accion"]) {
 		$res = [];
 		$estado = 0;
 
-		// Recupera variables
+		// Código de lote BL|BH
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
-		$id_grupo = mysqli_real_escape_string($enlace, $_POST["id_grupo"]);
-		$abv_elemento = mysqli_real_escape_string(
-			$enlace,
-			$_POST["abv_elemento"]
-		);
 
-		$q_valor_promedio =
-			"
-									SELECT 
-										COALESCE(AVG(V.valor),0) as promedio
-									FROM tb_leyes_analisis_valor V
-									WHERE V.cod_lote = '" .
-			$cod_lote .
-			"'
-									AND V.id_grupo = " .
-			$id_grupo .
-			"
-									AND V.abv_elemento = '" .
-			$abv_elemento .
-			"'
-									AND is_select = 1
-								";
+		// el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+		$id_grupo = mysqli_real_escape_string($enlace, $_POST["id_grupo"]);
+
+		// el elemento químico: newau|newag
+		$abv_elemento = mysqli_real_escape_string($enlace, $_POST["abv_elemento"]);
+
+		$q_valor_promedio = "
+            SELECT 
+                COALESCE(AVG(anl.valor), 0) AS promedio
+            FROM 
+                tb_leyes_analisis_valor anl
+            WHERE 
+                -- filtrando por:
+                --
+                -- codigo del lote del primer tramo
+                anl.cod_lote = '$cod_lote' AND 
+                -- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+                anl.id_grupo = $id_grupo AND 
+                -- elementos quimico: newau|newag
+                anl.abv_elemento = '$abv_elemento' AND 
+                -- que haya sido una ley seleccionada
+                anl.is_select = 1
+        ";
 
 		if ($res_valor_promedio = mysqli_query($enlace, $q_valor_promedio)) {
 			if (mysqli_num_rows($res_valor_promedio) > 0) {
 				$estado = 1;
-
-				while (
-					$row_valor_promedio = mysqli_fetch_array(
-						$res_valor_promedio
-					)
-				) {
+				while ($row_valor_promedio = mysqli_fetch_array($res_valor_promedio)) {
 					array_push($res, $row_valor_promedio);
 				}
 			}
@@ -77021,21 +77018,47 @@ switch ($_POST["accion"]) {
 			lot.id_CatalogoLotes AS id_lote,
 			lot.ccod_Lote AS codigo_lote,
 			vcd.cod_gel AS codigo_gel,
+			prov.razon_social as proveedor_nombre,
+			prov.documento as proveedor_doc,
 			lot.peso_actual as peso_humedo,
 			vcd.porc_h20 as porcentaje_humedad,
 			ROUND(lot.peso_actual / (1 + (vcd.porc_h20 / 100)),2) as peso_seco,
-			vcd.ley_oztc as ley,
-			anl.abv_valorizacion as elemento,
-			vcd.total,
-			prov.razon_social as proveedor_nombre,
-			prov.documento as proveedor_doc
+            (
+                SELECT
+                    ROUND(COALESCE(AVG(anl.valor),0),2) AS promedio
+                FROM
+                    tb_leyes_analisis_valor anl
+                WHERE
+                    -- codigo del lote del primer tramo
+                    anl.cod_lote = lot.ccod_Lote AND 
+                    -- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+                    anl.id_grupo = 3 AND 
+                    -- elementos quimico: newau|newag
+                    anl.abv_elemento = 'newau' AND 
+                    -- que haya sido una ley seleccionada
+                    anl.is_select = 1
+            ) as ley_oro,
+            (
+                SELECT
+                    ROUND(COALESCE(AVG(anl.valor),0),2) AS promedio
+                FROM
+                    tb_leyes_analisis_valor anl
+                WHERE
+                    -- codigo del lote del primer tramo
+                    anl.cod_lote = lot.ccod_Lote AND 
+                    -- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+                    anl.id_grupo = 3 AND 
+                    -- elementos quimico: newau|newag
+                    anl.abv_elemento = 'newag' AND 
+                    -- que haya sido una ley seleccionada
+                    anl.is_select = 1
+            ) as ley_plata
 		FROM
 			catalogolotes lot
 		INNER JOIN valorizacion_compramineral_detalle vcd ON
 			vcd.cod_lote = lot.ccod_Lote
 		INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
 		INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
-		INNER JOIN tb_ensayos_analisis anl ON vcd.id_elemento = anl.Id
 		INNER JOIN tb_clientes prov ON prov.Id = vc.id_proveedor
 		WHERE 
 			-- estados de PAGADO: mixto, banco, anticipos
@@ -77166,25 +77189,59 @@ switch ($_POST["accion"]) {
 	case "get_lista_blending_cabecera":
 		$q = "
 		SELECT
-			bl.id as id_blending,
+			bl.id AS id_blending,
 			bl.correlativo,
 			bl.peso_inicial,
 			bl.peso_actual,
-			bl.created_at as fecha_registro,
-			(
-				SELECT 
-					COUNT(bld.id)
-				FROM blending_detalle bld
-				WHERE bld.id_blending = bl.id
-			) as cantidad_lotes,
+			bl.created_at AS fecha_registro,
+			calc.total_lotes AS cantidad_lotes,
 			CASE
 				WHEN bl.estado = 'A' THEN 'Con peso'
 				WHEN bl.estado = 'F' THEN 'Agotado'
 				ELSE 'Desconocido'
-			END AS estado
+			END AS estado,
+			-- Ley de Oro Ponderada (newau)
+			ROUND(calc.suma_ponderada_oro / NULLIF(calc.total_peso_seco, 0), 2) AS ley_oro,
+			-- Ley de Plata Ponderada (newag)
+			ROUND(calc.suma_ponderada_plata / NULLIF(calc.total_peso_seco, 0), 2) AS ley_plata
 		FROM
 			blending bl
-		ORDER BY bl.numero_correlativo DESC;
+		LEFT JOIN (
+			-- Subconsulta centralizada para evitar repetición de JOINs
+			SELECT
+				bld.id_blending,
+				COUNT(bld.id) AS total_lotes,
+				SUM(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) AS total_peso_seco,
+				-- Cálculo intermedio para Oro
+				SUM(
+					(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) * COALESCE((
+						SELECT AVG(anl.valor)
+						FROM tb_leyes_analisis_valor anl
+						WHERE anl.cod_lote = lot.ccod_Lote 
+						AND anl.id_grupo = 3 
+						AND anl.abv_elemento = 'newau' 
+						AND anl.is_select = 1
+					), 0)
+				) AS suma_ponderada_oro,
+				-- Cálculo intermedio para Plata
+				SUM(
+					(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) * COALESCE((
+						SELECT AVG(anl.valor)
+						FROM tb_leyes_analisis_valor anl
+						WHERE anl.cod_lote = lot.ccod_Lote 
+						AND anl.id_grupo = 3 
+						AND anl.abv_elemento = 'newag' 
+						AND anl.is_select = 1
+					), 0)
+				) AS suma_ponderada_plata
+			FROM
+				blending_detalle bld
+			INNER JOIN catalogolotes lot ON bld.id_lote = lot.id_CatalogoLotes
+			INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+			GROUP BY bld.id_blending
+		) calc ON calc.id_blending = bl.id
+		ORDER BY 
+			bl.correlativo DESC;
 		";
 
 		$result = mysqli_query($enlace, $q);
@@ -77212,28 +77269,54 @@ switch ($_POST["accion"]) {
             prov.documento as documento_proveedor,
             prov.razon_social as nombre_proveedor,
 			vcd.cod_gel AS codigo_gel,
+            vcd.cod_lote AS codigo_lote,
 			bld.peso_tomado AS peso_humedo,
 			vcd.porc_h20 AS porcentaje_humedad,
 			ROUND(
 				bld.peso_tomado /(1 +(vcd.porc_h20 / 100)),
 				2
-			) AS peso_seco
+			) AS peso_seco,
+            (
+                SELECT
+                    ROUND(COALESCE(AVG(anl.valor),0),2) AS promedio
+                FROM
+                    tb_leyes_analisis_valor anl
+                WHERE
+                    -- codigo del lote del primer tramo
+                    anl.cod_lote = lot.ccod_Lote AND 
+                    -- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+                    anl.id_grupo = 3 AND 
+                    -- elementos quimico: newau|newag
+                    anl.abv_elemento = 'newau' AND 
+                    -- que haya sido una ley seleccionada
+                    anl.is_select = 1
+            ) as ley_oro,
+            (
+                SELECT
+                    ROUND(COALESCE(AVG(anl.valor),0),2) AS promedio
+                FROM
+                    tb_leyes_analisis_valor anl
+                WHERE
+                    -- codigo del lote del primer tramo
+                    anl.cod_lote = lot.ccod_Lote AND 
+                    -- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+                    anl.id_grupo = 3 AND 
+                    -- elementos quimico: newau|newag
+                    anl.abv_elemento = 'newag' AND 
+                    -- que haya sido una ley seleccionada
+                    anl.is_select = 1
+            ) as ley_plata
 		FROM
 			catalogolotes lot
+		INNER JOIN blending_detalle bld ON
+			bld.id_lote = lot.id_CatalogoLotes
 		INNER JOIN valorizacion_compramineral_detalle vcd ON
 			vcd.cod_lote = lot.ccod_Lote
 		INNER JOIN valorizacion_compramineral vc ON
 			vc.Id = vcd.id_valorizacion
-		INNER JOIN comprobante_pago cp ON
-			cp.id_valorizacion = vc.Id
-		INNER JOIN tb_ensayos_analisis anl ON
-			vcd.id_elemento = anl.Id
-		INNER JOIN blending_detalle bld ON
-			bld.id_lote = lot.id_CatalogoLotes
         INNER JOIN tb_clientes prov on prov.Id = vc.id_proveedor
 		WHERE
-			-- estados de PAGADO: mixto, banco, anticipos
-			cp.estado IN('A', 'B', 'C') AND bld.id_blending = $id_blending
+			bld.id_blending = $id_blending
 		ORDER BY codigo_gel;
 		";
 
@@ -78126,6 +78209,80 @@ switch ($_POST["accion"]) {
 						'$fecha_estimada'
 					)
 				) <= 2;
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$despachos = [];
+
+		while ($row = mysqli_fetch_assoc($result)) {
+			$despachos[] = $row['correlativo'];
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => [
+				"en_uso" => !empty($despachos),
+				"despachos_correlativos" => $despachos
+			]
+		]);
+		break;
+
+	case "get_ley_promedio_oro_by_lote":
+		$codigo_lote = $_POST["codigo_lote"] ?? "";
+
+		$q = "
+		SELECT
+			ROUND(COALESCE(AVG(anl.valor),0),2) AS promedio
+		FROM
+			tb_leyes_analisis_valor anl
+		WHERE
+			-- filtrando por:
+			--
+			-- codigo del lote del primer tramo
+			anl.cod_lote = '$codigo_lote' AND 
+			-- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+			anl.id_grupo = 3 AND 
+			-- elementos quimico: newau|newag
+			anl.abv_elemento = 'newau' AND 
+			-- que haya sido una ley seleccionada
+			anl.is_select = 1
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$despachos = [];
+
+		while ($row = mysqli_fetch_assoc($result)) {
+			$despachos[] = $row['correlativo'];
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"data" => [
+				"en_uso" => !empty($despachos),
+				"despachos_correlativos" => $despachos
+			]
+		]);
+		break;
+
+	case "get_ley_promedio_plata_by_lote":
+		$codigo_lote = $_POST["codigo_lote"] ?? "";
+
+		$q = "
+		SELECT
+			ROUND(COALESCE(AVG(anl.valor),0),2) AS promedio
+		FROM
+			tb_leyes_analisis_valor anl
+		WHERE
+			-- filtrando por:
+			--
+			-- codigo del lote del primer tramo
+			anl.cod_lote = '$codigo_lote' AND 
+			-- el grupo: 1: Lotes, 2: Sacos, 3: Consolidadas (las que importan)
+			anl.id_grupo = 3 AND 
+			-- elementos quimico: newau|newag
+			anl.abv_elemento = 'newag' AND 
+			-- que haya sido una ley seleccionada
+			anl.is_select = 1
 		";
 
 		$result = mysqli_query($enlace, $q);

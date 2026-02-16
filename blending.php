@@ -167,6 +167,8 @@ $backendUrl = 'apis/backend.php';
                   <th class="header-bg-blending text-center">Código</th>
                   <th class="header-bg-blending text-center">Peso Inicial</th>
                   <th class="header-bg-blending text-center">Peso Actual</th>
+                  <th class="header-bg-blending text-center">Ley Au</th>
+                  <th class="header-bg-blending text-center">Ley Ag</th>
                   <th class="header-bg-blending text-center">Estado</th>
                   <th class="header-bg-blending text-center">Fecha</th>
                   <th class="header-bg-blending text-center"># Lotes</th>
@@ -198,11 +200,13 @@ $backendUrl = 'apis/backend.php';
                   <th class="header-bg-detalle text-center">TMH (Peso Húmedo)</th>
                   <th class="header-bg-detalle text-center">H2O</th>
                   <th class="header-bg-detalle text-center">TMS (Peso Seco)</th>
+                  <th class="header-bg-detalle text-center">Ley Au</th>
+                  <th class="header-bg-detalle text-center">Ley Ag</th>
                 </tr>
               </thead>
               <tbody id="tbl_detalle_blending" style="font-size: 13px;">
                 <tr>
-                  <td colspan="4" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
+                  <td colspan="6" class="text-center" id="msg_detalle_blending">Seleccione un blending en el panel
                     izquierdo.</td>
                 </tr>
               </tbody>
@@ -212,6 +216,8 @@ $backendUrl = 'apis/backend.php';
                   <td class="text-end text-primary" id="lbl_total_tmh_blending">0.00</td>
                   <td class="text-end text-primary" id="lbl_avg_h2o_blending">0.000</td>
                   <td class="text-end text-primary" id="lbl_recalc_tms_blending">0.00</td>
+                  <td class="text-end text-primary" id="lbl_avg_au_blending">0.00</td>
+                  <td class="text-end text-primary" id="lbl_avg_ag_blending">0.00</td>
                 </tr>
               </tfoot>
             </table>
@@ -259,12 +265,14 @@ $backendUrl = 'apis/backend.php';
                   <th class="text-center">TMH (Peso Húmedo)</th>
                   <th class="text-center">H2O (Humedad)</th>
                   <th class="text-center">TMS (Peso Seco)</th>
+                  <th class="text-center">Ley Au</th>
+                  <th class="text-center">Ley Ag</th>
                   <th class="text-center" width="50"></th>
                 </tr>
               </thead>
               <tbody id="tbl_lotes_disponibles">
                 <tr>
-                  <td colspan="6" class="text-center text-muted">Seleccione Buscar para ver lotes.</td>
+                  <td colspan="8" class="text-center text-muted">Seleccione Buscar para ver lotes.</td>
                 </tr>
               </tbody>
             </table>
@@ -282,13 +290,15 @@ $backendUrl = 'apis/backend.php';
                   <th class="text-center">TMH (Disponible)</th>
                   <th class="text-center">H2O (Humedad)</th>
                   <th class="text-center">TMS (Disponible)</th>
+                  <th class="text-center">Ley Au</th>
+                  <th class="text-center">Ley Ag</th>
                   <th class="text-center" width="120">Peso a Tomar</th>
                   <th class="text-center" width="50"></th>
                 </tr>
               </thead>
               <tbody id="tbl_lotes_seleccionados">
                 <tr>
-                  <td colspan="7" class="text-center text-muted">No hay lotes seleccionados.</td>
+                  <td colspan="9" class="text-center text-muted">No hay lotes seleccionados.</td>
                 </tr>
               </tbody>
             </table>
@@ -319,6 +329,22 @@ $backendUrl = 'apis/backend.php';
                 <div class="text-success fw-bold" style="font-size: 1.5rem;" id="card_recalc_tms">0.00</div>
                 <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
                   Peso Seco</div>
+              </div>
+              <!-- Divider -->
+              <div class="border-end border-2" style="height: 40px; opacity: 0.2;"></div>
+              <!-- Au -->
+              <div>
+                <div class="text-warning fw-bold" style="font-size: 1.5rem;" id="card_avg_au">0.00</div>
+                <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                  Ley Au</div>
+              </div>
+              <!-- Divider -->
+              <div class="border-end border-2" style="height: 40px; opacity: 0.2;"></div>
+              <!-- Ag -->
+              <div>
+                <div class="text-secondary fw-bold" style="font-size: 1.5rem;" id="card_avg_ag">0.00</div>
+                <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                  Ley Ag</div>
               </div>
             </div>
           </div>
@@ -438,6 +464,8 @@ $backendUrl = 'apis/backend.php';
                     <td class="fw-bold text-center ps-4"><i class="bi bi-caret-right-fill text-muted" style="font-size: 0.8em;"></i> ${b.correlativo}</td>
                     <td class="text-end">${formatNumber(b.peso_inicial)}</td>
                     <td class="text-end">${formatNumber(b.peso_actual)}</td>
+                    <td class="text-end fw-bold">${formatNumber(b.ley_oro)}</td>
+                    <td class="text-end fw-bold">${formatNumber(b.ley_plata)}</td>
                     <td class="text-center ${estadoClass}">${b.estado}</td>
                     <td class="text-center">${f_FormatFecha(b.fecha_registro, 1)}</td>
                     <td class="text-center">${b.cantidad_lotes}</td>
@@ -465,26 +493,39 @@ $backendUrl = 'apis/backend.php';
         let count = detalle.length;
 
         if (detalle.length === 0) {
-          html = '<tr><td colspan="5" class="text-center">No hay detalles para mostrar.</td></tr>';
+          html = '<tr><td colspan="6" class="text-center">No hay detalles para mostrar.</td></tr>';
           $("#lbl_total_tmh_blending").text('0.00');
           $("#lbl_avg_h2o_blending").text('0.000');
           $("#lbl_recalc_tms_blending").text('0.00');
+          $("#lbl_avg_au_blending").text('0.00');
+          $("#lbl_avg_ag_blending").text('0.00');
         } else {
           let lastProvider = null;
+          let sumTMS_Au = 0;
+          let sumTMS_Ag = 0;
 
           detalle.forEach(d => {
             let pesoHumedo = parseFloat(d.peso_humedo) || 0;
             let h2o = parseFloat(d.porcentaje_humedad) || 0;
-            let pesoSeco = parseFloat(d.peso_seco) || 0;
+            let pesoSeco = parseFloat(d.peso_seco) || 0; // Backend sends this calculated, or we can recalc: pesoHumedo / (1 + h2o/100)
+
+            // Recalculate TMS locally to be sure or use backend value? 
+            // The backend sends 'peso_seco' already.
+
+            let au = parseFloat(d.ley_oro) || 0;
+            let ag = parseFloat(d.ley_plata) || 0;
 
             totalTMH += pesoHumedo;
             totalTMS += pesoSeco;
             sumH2O += h2o;
 
+            sumTMS_Au += (pesoSeco * au);
+            sumTMS_Ag += (pesoSeco * ag);
+
             if (d.nombre_proveedor !== lastProvider) {
               html += `
                      <tr class="table-dev">
-                        <td colspan="4" class="fw-bold text-uppercase" style="background-color:#EFEFEF;">
+                        <td colspan="6" class="fw-bold text-uppercase" style="background-color:#EFEFEF;">
                             <i class="bi bi-person-fill"></i> ${d.nombre_proveedor}
                         </td>
                      </tr>
@@ -494,25 +535,28 @@ $backendUrl = 'apis/backend.php';
 
             html += `
                   <tr>
-                    <!-- <td>${d.codigo_gel}</td> -->
                     <td class="ps-4">${d.codigo_gel}</td>
                     <td class="text-end fw-bold text-primary">${formatNumber(pesoHumedo)}</td>
                     <td class="text-end text-muted">${formatNumber(h2o, 3)}</td>
                     <td class="text-end fw-bold text-success">${formatNumber(pesoSeco)}</td>
+                    <td class="text-end">${formatNumber(au)}</td>
+                    <td class="text-end">${formatNumber(ag)}</td>
                   </tr>
                   `;
           });
 
           // Calculate Totals for Footer
           let avgH2O = count > 0 ? (sumH2O / count) : 0;
-          let recalcTMS = 0;
-          if (count > 0) {
-            recalcTMS = totalTMH / (1 + (avgH2O / 100));
-          }
+          let recalcTMS = totalTMS; // Use sum of TMS from backend or recalc? detailed sum is better.
+
+          let avgAu = recalcTMS > 0 ? (sumTMS_Au / recalcTMS) : 0;
+          let avgAg = recalcTMS > 0 ? (sumTMS_Ag / recalcTMS) : 0;
 
           $("#lbl_total_tmh_blending").text(formatNumber(totalTMH));
           $("#lbl_avg_h2o_blending").text(formatNumber(avgH2O, 3));
           $("#lbl_recalc_tms_blending").text(formatNumber(recalcTMS));
+          $("#lbl_avg_au_blending").text(formatNumber(avgAu));
+          $("#lbl_avg_ag_blending").text(formatNumber(avgAg));
         }
         $("#tbl_detalle_blending").html(html);
       }
@@ -563,15 +607,16 @@ $backendUrl = 'apis/backend.php';
 
       function renderLotesDisponibles() {
         let html = '';
-        // Filter out already selected lots - use String comparison to ensure proper matching
         let selectedIds = lotesSeleccionados.map(l => String(l.id_lote));
         let availableLots = lotesDisponibles.filter(l => !selectedIds.includes(String(l.id_lote)));
 
         if (availableLots.length === 0) {
-          html = '<tr><td colspan="6" class="text-center">No hay lotes disponibles.</td></tr>';
+          html = '<tr><td colspan="8" class="text-center">No hay lotes disponibles.</td></tr>';
         } else {
           availableLots.forEach(l => {
             let maxPeso = parseFloat(l.peso_humedo) || 0;
+            let au = parseFloat(l.ley_oro) || 0;
+            let ag = parseFloat(l.ley_plata) || 0;
 
             html += `
                       <tr class="lote-disponible-row" data-id="${l.id_lote}">
@@ -580,6 +625,8 @@ $backendUrl = 'apis/backend.php';
                         <td class="text-center align-middle">${formatNumber(maxPeso)}</td>
                         <td class="text-center text-muted align-middle">${formatNumber(l.porcentaje_humedad, 3)}</td>
                         <td class="text-center text-success fw-bold align-middle">${formatNumber(l.peso_seco)}</td>
+                        <td class="text-center align-middle">${formatNumber(au)}</td>
+                        <td class="text-center align-middle">${formatNumber(ag)}</td>
                         <td class="text-center align-middle">
                             <button class="btn btn-sm btn-success btn-add-lote" 
                                     data-id="${l.id_lote}" 
@@ -588,6 +635,8 @@ $backendUrl = 'apis/backend.php';
                                     data-max="${maxPeso}"
                                     data-h2o="${l.porcentaje_humedad}"
                                     data-tms="${l.peso_seco}"
+                                    data-au="${au}"
+                                    data-ag="${ag}"
                                     title="Agregar lote">
                                 <i class="bi bi-plus-lg"></i>
                             </button>
@@ -602,11 +651,16 @@ $backendUrl = 'apis/backend.php';
       function renderLotesSeleccionados() {
         let html = '';
         if (lotesSeleccionados.length === 0) {
-          html = '<tr><td colspan="7" class="text-center text-muted">No hay lotes seleccionados.</td></tr>';
+          html = '<tr><td colspan="9" class="text-center text-muted">No hay lotes seleccionados.</td></tr>';
         } else {
           lotesSeleccionados.forEach(l => {
             let maxPeso = parseFloat(l.peso_disponible) || 0;
             let pesoActual = parseFloat(l.peso_tomado) || maxPeso;
+
+            // Recalcular tms para el peso tomado
+            // TMS = TMH / (1+(H2O/100))
+            let currentTMH = pesoActual;
+            let currentTMS = currentTMH / (1 + (l.h2o / 100));
 
             html += `
                       <tr class="lote-seleccionado-row" data-id="${l.id_lote}">
@@ -614,7 +668,9 @@ $backendUrl = 'apis/backend.php';
                         <td class="text-center align-middle fw-bold">${l.codigo_gel}</td>
                         <td class="text-center align-middle">${formatNumber(maxPeso)}</td>
                         <td class="text-center text-muted align-middle">${formatNumber(l.h2o, 3)}</td>
-                        <td class="text-center text-success fw-bold align-middle">${formatNumber(l.tms)}</td>
+                        <td class="text-center text-success fw-bold align-middle">${formatNumber(currentTMS)}</td>
+                        <td class="text-center align-middle">${formatNumber(l.au)}</td>
+                        <td class="text-center align-middle">${formatNumber(l.ag)}</td>
                         <td>
                             <input type="number" class="form-control form-control-sm text-end input-peso-seleccionado" 
                                    step="0.01" min="0" max="${maxPeso}"
@@ -645,8 +701,10 @@ $backendUrl = 'apis/backend.php';
         let max = parseFloat($(this).data('max'));
         let h2o = parseFloat($(this).data('h2o'));
         let tms = parseFloat($(this).data('tms'));
+        let au = parseFloat($(this).data('au')) || 0;
+        let ag = parseFloat($(this).data('ag')) || 0;
 
-        // Check if lot is already selected (prevent duplicates)
+        // Verificar si el lote ya ha sido seleccionado 
         let yaSeleccionado = lotesSeleccionados.some(l => String(l.id_lote) === String(id));
         if (yaSeleccionado) {
           alert("Este lote ya ha sido seleccionado.");
@@ -660,7 +718,9 @@ $backendUrl = 'apis/backend.php';
           codigo_gel: codigoGel,
           peso_disponible: max,
           h2o: h2o,
-          tms: tms,
+          tms: tms, // Initial TMS based on max weight
+          au: au,
+          ag: ag,
           peso_tomado: max // Auto-fill with full weight
         });
 
@@ -706,45 +766,54 @@ $backendUrl = 'apis/backend.php';
 
       function updateTotalModal() {
         let totalTMH = 0;
+        let totalTMS = 0;
         let sumH2O = 0;
         let count = 0;
+
+        let sumTMS_Au = 0;
+        let sumTMS_Ag = 0;
 
         lotesSeleccionados.forEach(l => {
           let peso = parseFloat(l.peso_tomado) || 0;
           let h2o = parseFloat(l.h2o) || 0;
+          let au = parseFloat(l.au) || 0;
+          let ag = parseFloat(l.ag) || 0;
 
           if (peso > 0) {
             totalTMH += peso;
-            sumH2O += h2o;
+            sumH2O += h2o; // Just for average H2O
+
+            // Calculate TMS for this lot
+            let tms = peso / (1 + (h2o / 100));
+            totalTMS += tms;
+
+            // Weighted sums
+            sumTMS_Au += (tms * au);
+            sumTMS_Ag += (tms * ag);
+
             count++;
           }
         });
 
         let avgH2O = count > 0 ? (sumH2O / count) : 0;
-        let recalcTMS = 0;
-        if (count > 0) {
-          recalcTMS = totalTMH / (1 + (avgH2O / 100));
-        }
+        let avgAu = totalTMS > 0 ? (sumTMS_Au / totalTMS) : 0;
+        let avgAg = totalTMS > 0 ? (sumTMS_Ag / totalTMS) : 0;
 
         $("#card_total_tmh").text(formatNumber(totalTMH, 2));
         $("#card_avg_h2o").text(formatNumber(avgH2O, 3));
-        $("#card_recalc_tms").text(formatNumber(recalcTMS, 2));
+        $("#card_recalc_tms").text(formatNumber(totalTMS, 2));
+        $("#card_avg_au").text(formatNumber(avgAu, 2));
+        $("#card_avg_ag").text(formatNumber(avgAg, 2));
 
         // Enable/Disable create button
         $("#btn_crear_blending").prop('disabled', count < 1);
       }
 
-      // Remove old updateTotalModal if it exists below or above
-      /*
-      function updateTotalModal() {
-      ...
-      */
-
       // -------------------------
       // Eventos
       // -------------------------
 
-      // 1.1 Popular Filtros
+      // Poblar filtros
       function populateFilters() {
         let uniqueProveedores = {};
         let uniqueCorrelativos = [];
