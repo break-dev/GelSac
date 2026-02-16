@@ -394,7 +394,7 @@ $backendUrl = 'apis/backend.php';
                   <th class="text-center">Tipo</th>
                   <th class="text-end">Peso Restante</th>
                   <th class="">Tipo de Carga</th>
-                  <th class="">Cant. BigBags</th>
+                  <th class="" width="120" >Cant. BigBags</th>
                   <th class="text-end" width="180">Peso a Distribuir</th>
                 </tr>
               </thead>
