@@ -954,7 +954,7 @@ $backendUrl = 'apis/backend.php';
         let $btn = $(this);
         $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
 
-        f_callBackend('get_minerales_to_despacho_by_proveedor', { id_proveedor: idProv })
+        f_callBackend('get_minerales_to_despacho_by_proveedor', { id_proveedor: idProv, id_planta: $("#reg_planta").val() })
           .done(function (r) {
             $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Listar Lotes/Blendings');
 
@@ -978,19 +978,31 @@ $backendUrl = 'apis/backend.php';
               ? '<span class="badge-mineral-type badge-blending">Blending</span>'
               : '<span class="badge-mineral-type badge-lote">Lote</span>';
 
+            // Validation for Blendings
+            let isDisabled = false;
+            let warningIcon = '';
+            
+            if (isBlending && parseInt(m.all_proveedores_asociados) === 0) {
+                isDisabled = true;
+                warningIcon = ` <i class="bi bi-question-circle-fill text-danger ms-2 cursor-pointer" 
+                                  onclick="window.showBlendingIssues(${index}, event)" 
+                                  title="Ver detalles de proveedores no asociados"></i>`;
+            }
+
             // Use unique ID for row/checkbox
             let uniqueId = `min_${isBlending ? 'B' : 'L'}_${m.id_mineral}`;
 
             html += `
-                  <tr class="${isBlending ? 'table-info' : ''}">
+                  <tr class="${isBlending ? 'table-info' : ''} ${isDisabled ? 'table-secondary opacity-75' : ''}">
                       <td class="text-center">
                           <input type="checkbox" class="form-check-input chk-min" 
                             id="${uniqueId}"
-                            data-idx="${index}">
+                            data-idx="${index}"
+                            ${isDisabled ? 'disabled' : ''}>
                       </td>
                       <td>
-                        <label class="form-check-label w-100 cursor-pointer" for="${uniqueId}">
-                            ${m.codigo}
+                        <label class="form-check-label w-100 ${isDisabled ? '' : 'cursor-pointer'}" for="${uniqueId}">
+                            ${m.codigo} ${warningIcon}
                         </label>
                       </td>
                       <td>${badge}</td>
@@ -1519,8 +1531,89 @@ $backendUrl = 'apis/backend.php';
       }
 
       init();
+
+      // --------------------------------------------------------------------------------
+      // MODAL BLENDING ISSUES
+      // --------------------------------------------------------------------------------
+      window.showBlendingIssues = function(index, e) {
+        if(e) e.stopPropagation();
+        let m = mineralesDisponibles[index];
+        if(!m || !m.detalles_blending) return;
+
+        let modal = new window.bootstrap.Modal(document.getElementById("modal_blending_issues"));
+        
+        let html = '';
+        // Group by Provider
+        let groups = {};
+        
+        m.detalles_blending.forEach(d => {
+            if(!groups[d.id_proveedor]) {
+                groups[d.id_proveedor] = { 
+                    items: [], 
+                    id: d.id_proveedor,
+                    razon_social: d.razon_social || 'Desconocido',
+                    documento: d.documento || '---'
+                };
+            }
+            groups[d.id_proveedor].items.push(d);
+        });
+
+        // Loop groups
+        for (let pid in groups) {
+            let g = groups[pid];
+            // Check if this provider is associated (check first item)
+            let isAssociated = (g.items[0].asociado_planta == 1);
+            let colorClass = isAssociated ? 'text-success' : 'text-danger';
+            let icon = isAssociated ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-x-circle-fill"></i>';
+            let title = isAssociated ? 'Proveedor asociado a Planta' : 'Proveedor NO asociado a Planta';
+
+            html += `
+                <div class="card mb-2 border-${isAssociated ? 'success' : 'danger'}">
+                    <div class="card-header ${isAssociated ? 'bg-success text-white' : 'bg-danger text-white'} py-1">
+                        <strong>${g.razon_social}</strong> (${g.documento}) ${isAssociated ? '<span class="float-end badge bg-light text-dark">Apto</span>' : '<span class="float-end badge bg-light text-danger">No Apto</span>'}
+                    </div>
+                    <ul class="list-group list-group-flush">
+            `;
+            
+            g.items.forEach(item => {
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                            Lote: ${item.codigo_lote}
+                            <span>${icon}</span>
+                         </li>`;
+            });
+            
+            html += `</ul></div>`;
+        }
+
+        $("#body_blending_issues").html(html);
+        modal.show();
+      };
+
     });
   </script>
+
+  <!-- Modal Blending Issues -->
+  <div class="modal fade" id="modal_blending_issues" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Información de Blending</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <p class="mb-3">
+                Este blending contiene lotes de proveedores que <strong>no están asociados</strong> a la planta seleccionada.
+            </p>
+            <div id="body_blending_issues" style="max-height: 400px; overflow-y: auto;">
+                <!-- Content -->
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

@@ -71680,7 +71680,7 @@ switch ($_POST["accion"]) {
 		// $q_save .= ", guias_ajustecapacidad = ".((strlen($guia_ajustecapacidad) > 0) ? $guia_ajustecapacidad : 'NULL');
 		$q_save .= ", guias_fechahoraregistro = '" . $g_fecha . "'";
 		$q_save .= ", guias_usuarioregistro = '" . $usuario_registro . "'";
-	$q_save .= " WHERE Id IN (" . $id_distribucion_str . ")";
+		$q_save .= " WHERE Id IN (" . $id_distribucion_str . ")";
 
 		if ($res_save = mysqli_query($enlace, $q_save)) {
 			// Actualizar datos por cada lote
@@ -77274,71 +77274,126 @@ switch ($_POST["accion"]) {
 
 	case "get_minerales_to_despacho_by_proveedor":
 		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+
+		// obtener los lotes del proveedor
 		$q_lotes = "
 		SELECT
 			lot.id_CatalogoLotes AS id_mineral,
 			vcd.cod_gel AS codigo,
 			lot.nPesoNetoBalanza AS peso_inicial,
 			lot.peso_actual,
-			FALSE as is_blending
-		FROM
-			catalogolotes lot
-		INNER JOIN valorizacion_compramineral_detalle vcd ON
-			vcd.cod_lote = lot.ccod_Lote
-		INNER JOIN valorizacion_compramineral vc ON
-			vc.Id = vcd.id_valorizacion
-		INNER JOIN comprobante_pago cp ON
-			cp.id_valorizacion = vc.Id
-		WHERE
-			-- estados de PAGADO: mixto, banco, anticipos
-			cp.estado IN('A', 'B', 'C') AND
-			-- que aun tenga saldo
-			ROUND(lot.peso_actual, 2) > 0 AND vc.id_proveedor = $id_proveedor
+			FALSE as is_blending,
+			1 as all_proveedores_asociados -- Lote individual siempre es 1 por lógica de negocio previa
+		FROM catalogolotes lot
+		INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+		INNER JOIN valorizacion_compramineral vc ON vc.Id = vcd.id_valorizacion
+		INNER JOIN comprobante_pago cp ON cp.id_valorizacion = vc.Id
+		WHERE 
+			cp.estado IN('A', 'B', 'C') AND 
+			ROUND(lot.peso_actual, 2) > 0 AND 
+			vc.id_proveedor = $id_proveedor
 		ORDER BY codigo;
 		";
 
+		// obtener lista de blendings - con un indicador de si se puede o no usar
 		$q_blendings = "
 		SELECT
-			bl.id as id_mineral,
-			bl.correlativo as codigo,
+			bl.id AS id_mineral,
+			bl.correlativo AS codigo,
 			bl.peso_inicial,
 			bl.peso_actual,
-			TRUE as is_blending
+			TRUE AS is_blending,
+			-- FLAG: Si existe al menos un lote sin planta_proveedor, devuelve 0, si no 1
+			(
+				SELECT 
+					CASE 
+						WHEN COUNT(*) > 0 THEN 0 ELSE 1
+					END
+				FROM
+					blending_detalle bld_sub
+				INNER JOIN catalogolotes lot_sub ON
+					lot_sub.id_CatalogoLotes = bld_sub.id_lote
+				INNER JOIN valorizacion_compramineral_detalle vcd_sub ON
+					vcd_sub.cod_lote = lot_sub.ccod_Lote
+				INNER JOIN valorizacion_compramineral vc_sub ON
+					vc_sub.Id = vcd_sub.id_valorizacion
+				LEFT JOIN planta_proveedor plp_sub ON
+					plp_sub.id_proveedor = vc_sub.id_proveedor AND plp_sub.id_planta = $id_planta
+				WHERE
+					bld_sub.id_blending = bl.id AND plp_sub.id_proveedor IS NULL
+			) AS all_proveedores_asociados
 		FROM
 			blending bl
 		WHERE
-			-- activo
-			bl.estado = 'A' AND
-			-- que aun tenga saldo
-			ROUND(bl.peso_actual, 2) > 0 AND 
-            -- que algun lote tenga como dueño al proveedor
-			$id_proveedor IN (
-                SELECT DISTINCT  
-                	vc.id_proveedor
-                FROM blending_detalle bld 
-                INNER JOIN catalogolotes lot on lot.id_CatalogoLotes = bld.id_lote
-                INNER JOIN valorizacion_compramineral_detalle vcd on vcd.cod_lote = lot.ccod_Lote
-                INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
-                INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
-                WHERE cp.estado IN('A', 'B', 'C') AND bld.id_blending = bl.id
-            )
-		ORDER BY bl.numero_correlativo;
+			bl.estado = 'A' AND ROUND(bl.peso_actual, 2) > 0 AND 
+			EXISTS(
+				SELECT
+					1
+				FROM
+					blending_detalle bld_ex
+				INNER JOIN catalogolotes lot_ex ON
+					lot_ex.id_CatalogoLotes = bld_ex.id_lote
+				INNER JOIN valorizacion_compramineral_detalle vcd_ex ON
+					vcd_ex.cod_lote = lot_ex.ccod_Lote
+				INNER JOIN valorizacion_compramineral vc_ex ON
+					vc_ex.Id = vcd_ex.id_valorizacion
+				WHERE
+					bld_ex.id_blending = bl.id AND vc_ex.id_proveedor = $id_proveedor
+			)
+		ORDER BY
+			bl.numero_correlativo;
 		";
 
-		$result = mysqli_query($enlace, $q_lotes);
 		$minerales = [];
 
-		if ($result) {
-			while ($l = mysqli_fetch_assoc($result)) {
+		// Ejecutar Lotes
+		$resLotes = mysqli_query($enlace, $q_lotes);
+		if ($resLotes) {
+			while ($l = mysqli_fetch_assoc($resLotes)) {
+				$l['detalles_blending'] = []; // Lotes individuales no tienen este detalle
 				$minerales[] = $l;
 			}
+		}
 
-			$result = mysqli_query($enlace, $q_blendings);
+		// Ejecutar Blendings
+		$resBlendings = mysqli_query($enlace, $q_blendings);
+		if ($resBlendings) {
+			while ($b = mysqli_fetch_assoc($resBlendings)) {
+				$b['all_proveedores_asociados'] = intval($b['all_proveedores_asociados']);
+				$b['detalles_blending'] = [];
 
-			if ($result) {
-				while ($b = mysqli_fetch_assoc($result)) {
-					$minerales[] = $b;
+				// SI EL FLAG ES 0, BUSCAMOS EL DETALLE DE SUS LOTES Y PROVEEDORES
+				if ($b['all_proveedores_asociados'] === 0) {
+					$id_blending = $b['id_mineral'];
+					$q_detalles = "
+					SELECT
+						lot.ccod_Lote AS codigo_lote,
+						vc.id_proveedor,
+						prov.documento,
+						prov.razon_social,
+						IF(plp.id_proveedor IS NULL, 0, 1) AS asociado_planta
+					FROM
+						blending_detalle bld
+					INNER JOIN catalogolotes lot ON
+						lot.id_CatalogoLotes = bld.id_lote
+					INNER JOIN valorizacion_compramineral_detalle vcd ON
+						vcd.cod_lote = lot.ccod_Lote
+					INNER JOIN valorizacion_compramineral vc ON
+						vc.Id = vcd.id_valorizacion
+					LEFT JOIN planta_proveedor plp ON
+						plp.id_proveedor = vc.id_proveedor AND plp.id_planta = $id_planta
+					LEFT JOIN tb_clientes prov on prov.Id = vc.id_proveedor
+					WHERE
+						bld.id_blending = $id_blending
+					";
+
+					$resDet = mysqli_query($enlace, $q_detalles);
+					while ($det = mysqli_fetch_assoc($resDet)) {
+						$b['detalles_blending'][] = $det;
+					}
 				}
+				$minerales[] = $b;
 			}
 		}
 
