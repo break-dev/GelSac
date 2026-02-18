@@ -8,12 +8,12 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 //
-error_reporting(0);
-ini_set('display_errors', 0);
-ini_set('display_startuo_errors', 0);
+// error_reporting(0);
+// ini_set('display_errors', 0);
+// ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -64055,20 +64055,24 @@ switch ($_POST["accion"]) {
 
 		// Recupera parámetros
 		$documento_cliente = mysqli_real_escape_string(
-			$enlace,
-			$_POST["documento_cliente"]
+			$enlace, 
+			str_replace(["\r", "\n", "\t"], '', trim($_POST["documento_cliente"]))
 		);
 
 		// Obtiene datos
-		$q_clientes =
-			"SELECT 
-															C.*
-												FROM tbconfig_proveedoresmineros_concesion C
-											WHERE C.estado <> 'X' and C.proveedorminero_documento = '" .
-			$documento_cliente .
-			"'";
+		$q_clientes = "
+		SELECT
+			cn.*
+		FROM
+			tbconfig_proveedoresmineros_concesion cn
+		WHERE
+			cn.estado <> 'X' AND 
+			cn.proveedorminero_documento = '$documento_cliente'
+		ORDER BY
+			cn.descripcion
+		";
 
-		$q_clientes .= " ORDER BY C.descripcion";
+		saveLog(["query" => $q_clientes]);
 
 		if ($res_clientes = mysqli_query($enlace, $q_clientes)) {
 			if (mysqli_num_rows($res_clientes) > 0) {
