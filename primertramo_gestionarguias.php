@@ -201,7 +201,8 @@ if (!isset($_SESSION["Id"])) {
                               ?>
 
                               <option value="<?php echo $row_guiaremitente["guia_remitente"]; ?>">
-                                <?php echo $row_guiaremitente["guia_remitente"]; ?></option>
+                                <?php echo $row_guiaremitente["guia_remitente"]; ?>
+                              </option>
 
                               <?php
                             }
@@ -316,6 +317,12 @@ if (!isset($_SESSION["Id"])) {
                             style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;  min-width: 35px;">
                             Guía Transportista
                           </th>
+
+                          <th rowspan="2"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;  min-width: 35px;">
+                            Planta Destino
+                          </th>
+
 
                           <th rowspan="2"
                             style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;  min-width: 35px;">
@@ -559,8 +566,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-5 col-sm-5 col-xs-12" style="margin-left: -20px;">
-              <select id="guia_planta_destino" class="form-control" style="font-size: 14px;">
-                <option value="">Seleccione planta...</option>
+              <select id="planta_destino" class="form-control" style="font-size: 14px;">
+                <option value="">Seleccione una planta...</option>
                 <option value="1">Huanchaco</option>
                 <option value="2">Laredo</option>
               </select>
@@ -596,7 +603,8 @@ if (!isset($_SESSION["Id"])) {
                       ?>
 
                       <option value="<?php echo $row_lista["Id"] ?>">
-                        <?php echo $row_lista["documento"] . ' - ' . $row_lista["razon_social"] ?></option>
+                        <?php echo $row_lista["documento"] . ' - ' . $row_lista["razon_social"] ?>
+                      </option>
 
                       <?php
                     }
@@ -936,7 +944,8 @@ if (!isset($_SESSION["Id"])) {
                       ?>
 
                       <option value="<?php echo $row_lista["Id"] ?>">
-                        <?php echo $row_lista["dni_licencia"] . ' - ' . $row_lista["nombres"] ?></option>
+                        <?php echo $row_lista["dni_licencia"] . ' - ' . $row_lista["nombres"] ?>
+                      </option>
 
                       <?php
                     }
@@ -1234,7 +1243,7 @@ if (!isset($_SESSION["Id"])) {
         }, "json");
     };
 
-    function f_AddGuia(_is_edit, fecha_inicio, _fechahora_iniciotraslado, _fechahora_inicioplanta, _guiaremitente_serie, _guiaremitente_numero, _guiatransportista_serie, _guiatransportista_numero, _id_proveedorminero, _id_proveedorminero_concesion, _placa, _id_empresatransporte, _unidad_codigo_mtc, _unidad_capacidad, _unidad_id_marca, _placa2, _id_empresatransporte2, _unidad_codigo_mtc2, _unidad_capacidad2, _unidad_id_marca2, _motivotraslado, _id_transportista) {
+    function f_AddGuia(_is_edit, fecha_inicio, _fechahora_iniciotraslado, _fechahora_inicioplanta, _guiaremitente_serie, _guiaremitente_numero, _guiatransportista_serie, _guiatransportista_numero, _id_proveedorminero, _id_proveedorminero_concesion, _placa, _id_empresatransporte, _unidad_codigo_mtc, _unidad_capacidad, _unidad_id_marca, _placa2, _id_empresatransporte2, _unidad_codigo_mtc2, _unidad_capacidad2, _unidad_id_marca2, _motivotraslado, _id_transportista, _planta_destino) {
       // Seteando variables hidden
       $("#modograbar_guia").val(((_is_edit == 1) ? 'E' : 'N'));
 
@@ -1280,6 +1289,7 @@ if (!isset($_SESSION["Id"])) {
 
       $("#guia_conductor").val(((_is_edit == 1) ? _id_transportista : '')).trigger('change.select2');
       $("#guia_motivotraslado").val(((_is_edit == 1) ? _motivotraslado : '')).trigger('change.select2');
+      $("#planta_destino").val(((_is_edit == 1) ? _planta_destino : '')).trigger('change.select2');
       $("#tbl_guialistalotes").html('');
       $("#guia_capacidadunidad").val(((_is_edit == 1) ? ((parseFloat(_unidad_capacidad) || 0) + (parseFloat(_unidad_capacidad2) || 0)) : ''));
 
@@ -2162,10 +2172,17 @@ if (!isset($_SESSION["Id"])) {
 
       }
 
+      // PLANTA DE DESTINO: HUANCHACO|LARDO
+      const planta_destino = $("#planta_destino").val();
 
+      if (planta_destino == "") {
+        alert("Debe seleccionar la Planta de Destino.");
+        return;
+      }
       // Grabando datos
       $.post("apis/backend.php", {
         accion: "grabar_Guias_PrimerTramo_GestionGuias",
+        planta_destino: planta_destino,
         modograbar_guia: modograbar_guia,
         guia_fechas: guia_fechas,
         guia_fechaemision: guia_fechaemision,
