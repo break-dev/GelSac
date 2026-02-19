@@ -8,12 +8,12 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 //
-error_reporting(0);
-ini_set('display_errors', 0);
-ini_set('display_startuo_errors', 0);
+// error_reporting(0);
+// ini_set('display_errors', 0);
+// ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -76709,7 +76709,7 @@ switch ($_POST["accion"]) {
 		}
 
 		$q = "
-		SELECT
+		SELECT DISTINCT
 			lot.id_CatalogoLotes AS id_lote,
 			lot.ccod_Lote AS codigo_lote,
 			vcd.cod_gel AS codigo_gel,
@@ -76957,7 +76957,7 @@ switch ($_POST["accion"]) {
 	case "get_blending_detalle_by_blending":
 		$id_blending = intval($_POST["id_blending"] ?? 0);
 		$q = "
-		SELECT
+		SELECT DISTINCT
 			bld.id_blending,
 			bld.id as id_blending_detalle,
 			lot.id_CatalogoLotes AS id_lote,
@@ -77279,7 +77279,7 @@ switch ($_POST["accion"]) {
 
 		// obtener los lotes del proveedor
 		$q_lotes = "
-		SELECT
+		SELECT DISTINCT
 			lot.id_CatalogoLotes AS id_mineral,
 			vcd.cod_gel AS codigo,
 			lot.nPesoNetoBalanza AS peso_inicial,
@@ -77299,7 +77299,7 @@ switch ($_POST["accion"]) {
 
 		// obtener lista de blendings - con un indicador de si se puede o no usar
 		$q_blendings = "
-		SELECT
+		SELECT DISTINCT
 			bl.id AS id_mineral,
 			bl.correlativo AS codigo,
 			bl.peso_inicial,
@@ -77368,7 +77368,7 @@ switch ($_POST["accion"]) {
 				if ($b['all_proveedores_asociados'] === 0) {
 					$id_blending = $b['id_mineral'];
 					$q_detalles = "
-					SELECT
+					SELECT DISTINCT
 						lot.ccod_Lote AS codigo_lote,
 						vc.id_proveedor,
 						prov.documento,

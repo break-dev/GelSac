@@ -978,7 +978,7 @@ $backendUrl = 'apis/backend.php';
 
         // Enviar
         let $btn = $(this);
-        $btn.prop('disabled', true).text("Procesando...");
+        $btn.prop('disabled', true);
 
         f_callBackend("crear_blending", {
           lotes: lotesParaEnviar,
