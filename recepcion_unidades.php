@@ -742,10 +742,6 @@ if (!isset($_SESSION["Id"])) {
 
           <button type="button" class="btn btn-secondary wt_grabarregistro_button" data-bs-dismiss="modal"
             style="font-size: 14px;">Cerrar</button>
-          <!-- <button id="btn_Regresar_2" type="button" class="btn btn-dark wt_grabarregistro_button" style="display: none; font-size: 14px;" onclick="f_RegresarRecepcion(2);">Regresar</button>
-            <button id="btn_Regresar_3" type="button" class="btn btn-dark wt_grabarregistro_button" style="display: none; font-size: 14px;" onclick="f_RegresarRecepcion(3);">Regresar</button>
-            <button id="btn_Next_1" type="button" class="btn btn-warning wt_grabarregistro_button" style="font-size: 14px;" onclick="f_GrabarRecepcion_Next(1);">Continuar</button>
-            <button id="btn_Next_2" type="button" class="btn btn-warning wt_grabarregistro_button" style="display: none; font-size: 14px;" onclick="f_GrabarRecepcion_Next(2);">Continuar</button> -->
           <button id="btn_ConfirmarAcompanantes" type="button" class="btn btn-success wt_grabarregistro_button"
             style="font-size: 14px;" onclick="f_GrabarRecepcion_Confirmar();">Grabar</button>
         </div>
