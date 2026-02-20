@@ -943,10 +943,16 @@ document.addEventListener("DOMContentLoaded", function () {
   // Guardar Distribucion
   $("#btn_guardar_distribucion").click(function () {
     let idUnidad = $("#dist_unidad").val();
+    let id_empresa_transporte = $("#dist_transportista").val();
     let fecha = dmyToYmd($("#dist_fecha").val());
 
     if (!idUnidad) {
       alert("Seleccione una unidad.");
+      return;
+    }
+
+    if (!id_empresa_transporte) {
+      alert("Seleccione una empresa de transporte.");
       return;
     }
 
@@ -973,6 +979,7 @@ document.addEventListener("DOMContentLoaded", function () {
       let payload = {
         id_despacho: selectedDespachoId,
         id_unidad: idUnidad,
+        id_empresa_transporte: id_empresa_transporte,
         segunda_placa: $("#dist_segunda_placa").val(),
         fecha_estimada: fecha,
         detalle: []

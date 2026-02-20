@@ -8,12 +8,12 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 //
-// error_reporting(0);
-// ini_set('display_errors', 0);
-// ini_set('display_startuo_errors', 0);
+error_reporting(0);
+ini_set('display_errors', 0);
+ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -77414,7 +77414,9 @@ switch ($_POST["accion"]) {
 					SELECT 
 						bln.correlativo 
 					FROM blending bln 
-					WHERE bln.id = dsd.id_mineral)
+					WHERE bln.id = dsd.id_mineral
+					LIMIT 1
+					)
 				WHEN dsd.is_blending = 0 THEN (
 					SELECT 
 						vcd.cod_gel
@@ -77423,7 +77425,7 @@ switch ($_POST["accion"]) {
 					INNER JOIN valorizacion_compramineral vc on vc.Id = vcd.id_valorizacion
 					INNER JOIN comprobante_pago cp on cp.id_valorizacion = vc.Id
 					WHERE cp.estado IN('A', 'B', 'C') AND lot.id_CatalogoLotes = dsd.id_mineral
-					
+					LIMIT 1
 				)
 			END AS codigo,
 			dsd.is_blending,
@@ -77700,13 +77702,14 @@ switch ($_POST["accion"]) {
 
 	case "crear_distribucion":
 		$id_unidad = intval($_POST["id_unidad"] ?? 0);
+		$id_empresa_transporte = intval($_POST["id_empresa_transporte"] ?? 0);
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
 		$segunda_placa = mysqli_real_escape_string($enlace, $_POST["segunda_placa"] ?? '');
 		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
 		$estado_inicial = $_POST["estado"] ?? 'A';
 		$detalle = $_POST["detalle"]; // id_despacho_detalle - peso_tomado - tipo_carga: 1:Sacos|2:BigBags - cantidad_bigbags
 
-		if ($id_unidad <= 0 || $id_despacho <= 0 || empty($detalle)) {
+		if ($id_unidad <= 0 || $id_empresa_transporte <= 0 || $id_despacho <= 0 || empty($detalle)) {
 			echo json_encode(["estado" => 0, "mensaje" => "Datos incompletos"]);
 			exit;
 		}
@@ -77732,7 +77735,22 @@ switch ($_POST["accion"]) {
 			}
 		}
 
-		$q_cabecera = "INSERT INTO distribucion(id_unidad, id_despacho, segunda_placa, fecha_estimada, estado) VALUES($id_unidad, $id_despacho, '$segunda_placa', '$fecha_estimada', '$estado_inicial')";
+		$q_cabecera = "
+		INSERT INTO distribucion(
+			id_unidad, 
+			id_despacho, 
+			id_empresa_transporte,
+			segunda_placa, 
+			fecha_estimada, 
+			estado
+		) VALUES(
+		 	$id_unidad, 
+			$id_despacho, 
+			$id_empresa_transporte,
+			'$segunda_placa', 
+			'$fecha_estimada', 
+			'$estado_inicial')
+		";
 
 		if (mysqli_query($enlace, $q_cabecera)) {
 			$id_distribucion = mysqli_insert_id($enlace);
@@ -77811,7 +77829,7 @@ switch ($_POST["accion"]) {
 		FROM
 			distribucion dist
 		INNER JOIN transporte uni on uni.id_transporte = dist.id_unidad
-		INNER JOIN tb_clientes trn on trn.Id = uni.id_Transportista
+		INNER JOIN tb_clientes trn on trn.Id = dist.id_empresa_transporte
 		INNER JOIN tbconfig_tipovehiculo tpv on tpv.Id = uni.id_tipovehiculo
 		WHERE dist.estado = 'A' AND dist.id_despacho = $id_despacho
 		ORDER BY dist.fecha_estimada ASC, dist.id ASC;
@@ -78086,6 +78104,35 @@ switch ($_POST["accion"]) {
 				"despachos_correlativos" => $despachos
 			]
 		]);
+		break;
+
+	case "update_conductor_distribucion":
+		$id_distribucion = $_POST["id_distribucion"] ?? 0;
+		$id_conductor = $_POST["id_conductor"] ?? 0;
+
+		$q = "
+            UPDATE distribucion
+            SET id_conductor = $id_conductor
+            WHERE id = $id_distribucion
+        ";
+
+		// Ejecutamos la consulta y verificamos si fue exitosa
+		if (mysqli_query($enlace, $q)) {
+			// Verificar si realmente se encontró el registro y se actualizó
+			$filas_afectadas = mysqli_affected_rows($enlace);
+
+			echo json_encode([
+				"estado" => 1,
+				"mensaje" => "Actualización exitosa",
+				"filas_afectadas" => $filas_afectadas
+			]);
+		} else {
+			echo json_encode([
+				"estado" => 0,
+				"mensaje" => "Error de base de datos",
+				"error" => mysqli_error($enlace)
+			]);
+		}
 		break;
 
 	default:
