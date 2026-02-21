@@ -26046,6 +26046,7 @@ switch ($_POST["accion"]) {
 		$estado_acompanantes = 0;
 		$estado_imagenes = 0;
 		$id_registro = 0;
+		$id_distribucion = intval($_POST["id_distribucion"]) ?? "NULL";
 
 		// Recupera variables
 		$registro_condicion = mysqli_real_escape_string(
@@ -26125,7 +26126,25 @@ switch ($_POST["accion"]) {
 
 		// Guardando datos
 		$q_save =
-			"INSERT INTO controlingresovehiculo (id_tipoingresounidad, id_placadespacho, placa, placa2, id_transportista, id_tipovehiculo, id_choferes, id_tipocarga, id_zonaorigen, cNotas, tiene_vehiculoparticular, dFechaIngreso, dhoraingresoPlanta, usuario_registro) VALUES (";
+			"
+			INSERT INTO controlingresovehiculo (
+			id_distribucion,
+			id_tipoingresounidad, 
+			id_placadespacho, 
+			placa, 
+			placa2, 
+			id_transportista, 
+			id_tipovehiculo, 
+			id_choferes, 
+			id_tipocarga, 
+			id_zonaorigen, 
+			cNotas, 
+			tiene_vehiculoparticular, 
+			dFechaIngreso, 
+			dhoraingresoPlanta, 
+			usuario_registro
+			) VALUES (";
+		$q_save .= $id_distribucion . ", ";
 		$q_save .= $registro_condicion . ", ";
 		$q_save .= $id_placadespacho . ", ";
 		$q_save .= "'" . $registro_placa . "', ";
@@ -26157,6 +26176,11 @@ switch ($_POST["accion"]) {
 			$estado = 1;
 
 			$id_registro = mysqli_insert_id($enlace);
+
+			if ($registro_condicion == 2 && $id_placadespacho != "NULL") {
+				$q_upd_dist = "UPDATE distribucion SET id_conductor = $registro_conductor, fecha_hora_llegada = NOW() WHERE id = $id_placadespacho";
+				mysqli_query($enlace, $q_upd_dist);
+			}
 
 			// Guardando información de Placa 1
 			$q_exists =
@@ -26822,6 +26846,7 @@ switch ($_POST["accion"]) {
 														 ES.descripcion AS ESTADO_SALIDA,
 														 I.observacion_salida,
 														 I.usuario_registro,
+														 I.id_distribucion,
 
 														 (SELECT COUNT(A.Id)
 																FROM controlingresovehiculo_acompanantes A
@@ -27006,9 +27031,10 @@ switch ($_POST["accion"]) {
 							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
 
 						if (strlen($row_ingreso["fechahora_salida"]) == 0) {
+							$id_distribucion_val = empty($row_ingreso["id_distribucion"]) ? 0 : $row_ingreso["id_distribucion"];
 							$html .=
 								'    <button class="btn btn-danger" type="button" onclick="f_RegistroSalida(' .
-								$row_ingreso["id_controlIngresoVehiculo"] .
+								$row_ingreso["id_controlIngresoVehiculo"] . ', ' . $id_distribucion_val .
 								');" style="color: #ffffff; font-size: 12px; margin-top: -5px;">';
 							$html .= "      <b>Registrar Salida</b>";
 							$html .= "    </button>";
@@ -78106,14 +78132,90 @@ switch ($_POST["accion"]) {
 		]);
 		break;
 
-	case "update_conductor_distribucion":
+	case "get_Placas_Distribucion":
+		$estado = 0;
+		$r = [];
+		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
+
+		$q_placas = "
+		SELECT
+			d.id AS id_distribucion,
+			t.cplaca AS placa1,
+			d.segunda_placa AS placa2,
+			d.fecha_estimada,
+			desp.correlativo,
+			d.id_empresa_transporte,
+			t.id_tipovehiculo,
+			d.id_conductor
+		FROM
+			distribucion d
+		INNER JOIN transporte t ON
+			d.id_unidad = t.id_transporte
+		INNER JOIN despacho desp on desp.id = d.id_despacho
+		WHERE
+			d.fecha_estimada = '$fecha_estimada' AND 
+			d.estado = 'A' AND d.fecha_hora_llegada IS NULL
+		ORDER BY
+			t.cplaca ASC
+		";
+
+		if ($res_placas = mysqli_query($enlace, $q_placas)) {
+			if (mysqli_num_rows($res_placas) > 0) {
+				$estado = 1;
+				while ($row_placas = mysqli_fetch_array($res_placas)) {
+					$r[] = $row_placas;
+				}
+			}
+		}
+
+		echo json_encode(["estado" => $estado, "registros" => $r]);
+		break;
+
+	case "update_conductor_and_observacion_distribucion":
+		$id_vigilante = $_SESSION["Id"];
 		$id_distribucion = $_POST["id_distribucion"] ?? 0;
 		$id_conductor = $_POST["id_conductor"] ?? 0;
+		$observacion = $_POST["observacion"] ?? "";
 
 		$q = "
-            UPDATE distribucion
-            SET id_conductor = $id_conductor
-            WHERE id = $id_distribucion
+            UPDATE distribucion SET 
+				id_conductor = $id_conductor, 
+				observacion = '$observacion',
+				id_vigilante = $id_vigilante
+            WHERE 
+				id = $id_distribucion
+        ";
+
+		// Ejecutamos la consulta y verificamos si fue exitosa
+		if (mysqli_query($enlace, $q)) {
+			// Verificar si realmente se encontró el registro y se actualizó
+			$filas_afectadas = mysqli_affected_rows($enlace);
+
+			echo json_encode([
+				"estado" => 1,
+				"mensaje" => "Actualización exitosa",
+				"filas_afectadas" => $filas_afectadas
+			]);
+		} else {
+			echo json_encode([
+				"estado" => 0,
+				"mensaje" => "Error de base de datos",
+				"error" => mysqli_error($enlace)
+			]);
+		}
+		break;
+
+	case "update_fecha_salida_observacion_distribucion":
+		$id_distribucion = $_POST["id_distribucion"] ?? 0;
+		$fecha_hora_salida = mysqli_real_escape_string($enlace, $_POST["fecha_hora_salida"] ?? '');
+		$observacion_salida = $_POST["fecha_hora_salida"] ?? "NULL";
+
+		$q = "
+            UPDATE distribucion SET 
+				fecha_hora_salida = $fecha_hora_salida,
+				observacion_salida = $observacion_salida
+            WHERE 
+				id = $id_distribucion
         ";
 
 		// Ejecutamos la consulta y verificamos si fue exitosa
