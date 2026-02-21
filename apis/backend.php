@@ -78237,6 +78237,205 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
+	case "get_distribuciones_to_despacho":
+		$estado = 0;
+		$mensaje = '';
+		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
+		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
+		$filtro_placa = mysqli_real_escape_string($enlace, $_POST["filtro_placa"] ?? '');
+
+		$filtro_por_fechas = "";
+		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+			$filtro_por_fechas = " AND (DATE(d.fecha_hora_llegada) BETWEEN '$fecha_inicio' AND '$fecha_fin' OR (d.fecha_hora_llegada IS NULL AND DATE(d.fecha_estimada) BETWEEN '$fecha_inicio' AND '$fecha_fin')) ";
+		}
+
+		$filtro_por_placa = "";
+		if (!empty($filtro_placa)) {
+			$filtro_por_placa = " AND (t.cplaca LIKE '%$filtro_placa%' OR d.segunda_placa LIKE '%$filtro_placa%') ";
+		}
+
+		$q_unidades = "
+		SELECT
+			d.id AS id_distribucion,
+			DATE_FORMAT(d.fecha_hora_llegada, '%d/%m/%Y %H:%i:%s') as fecha_hora_llegada,
+			DATE_FORMAT(d.fecha_estimada, '%d/%m/%Y') as fecha_estimada,
+			t.cplaca AS placa1,
+			d.segunda_placa AS placa2,
+			desp.correlativo,
+			cli.documento as transportista_ruc,
+			cli.razon_social as transportista_rs,
+			tv.descripcion as tipo_vehiculo,
+			con.dni_licencia as conductor_dni,
+			con.nombres as conductor_nombres,
+			d.observacion,
+            d.estado,
+			(
+				SELECT SUM(dd.peso_tomado) 
+				FROM distribucion_detalle dd 
+				WHERE dd.id_distribucion = d.id
+			) as peso_esperado,
+			(
+				SELECT COUNT(*) 
+				FROM distribucion_detalle dd2 
+				WHERE dd2.id_distribucion = d.id AND (dd2.peso_neto IS NULL OR dd2.peso_neto <= 0)
+			) as incompletos,
+			(
+				SELECT COUNT(*) 
+				FROM distribucion_detalle dd3 
+				WHERE dd3.id_distribucion = d.id AND dd3.peso_tara > 0
+			) as con_tara,
+			(
+				SELECT COUNT(*) 
+				FROM distribucion_detalle dd4 
+				WHERE dd4.id_distribucion = d.id
+			) as total_detalles
+		FROM
+			distribucion d
+		INNER JOIN transporte t ON d.id_unidad = t.id_transporte
+		INNER JOIN despacho desp ON d.id_despacho = desp.id
+		LEFT JOIN tb_clientes cli ON d.id_empresa_transporte = cli.id
+		LEFT JOIN tbconfig_tipovehiculo tv ON t.id_tipovehiculo = tv.id
+		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
+		WHERE
+			d.fecha_hora_llegada IS NOT NULL AND 
+			d.fecha_hora_salida IS NULL
+			$filtro_por_fechas
+			$filtro_por_placa
+		ORDER BY
+			d.fecha_estimada DESC, d.fecha_hora_llegada DESC
+		";
+
+		$result = mysqli_query($enlace, $q_unidades);
+		$data = [];
+
+		if ($result) {
+			while ($row = mysqli_fetch_assoc($result)) {
+				$data[] = $row;
+			}
+			$estado = 1;
+		} else {
+			$mensaje = mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "data" => $data, "mensaje" => $mensaje]);
+		break;
+
+	case "get_detalle_distribucion_to_despacho":
+		$estado = 0;
+		$mensaje = '';
+
+		$id_distribucion = intval($_POST['id_distribucion'] ?? 0);
+		$q_detalles = "
+		SELECT
+			dis.id AS id_distribucion_detalle,
+			dis.tipo_carga,
+			dis.cantidad_bigbags,
+			dis.numero_parte,
+			dis.peso_tomado,
+			CASE
+				WHEN dsd.is_blending = 1 THEN(
+					-- peso seco promedio del blending (Peso Seco Total / Peso Humedo Total)
+					SELECT 
+						(SUM(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) / SUM(bld.peso_tomado)) * dis.peso_tomado
+					FROM blending_detalle bld
+					INNER JOIN catalogolotes lot ON bld.id_lote = lot.id_CatalogoLotes
+					INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+					WHERE bld.id_blending = dsd.id_mineral
+				)
+				WHEN dsd.is_blending != 1 THEN(
+					SELECT DISTINCT
+						ROUND(dis.peso_tomado / (1 + (vcd.porc_h20 / 100)),2) as peso_seco
+					FROM catalogolotes lot
+					INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+					WHERE dsd.id_mineral = lot.id_CatalogoLotes
+				)
+			END AS peso_seco,
+			dis.peso_tara,
+			dis.peso_bruto,
+			dis.peso_neto,
+			dsd.is_blending,
+			CASE WHEN dsd.is_blending = 1 THEN(
+			SELECT
+				bld.correlativo
+			FROM
+				blending bld
+			WHERE
+				bld.id = dsd.id_mineral
+			LIMIT 1
+		) ELSE(
+			SELECT
+				vcd.cod_gel
+			FROM
+				catalogolotes lot
+			INNER JOIN valorizacion_compramineral_detalle vcd ON
+				vcd.cod_lote = lot.ccod_Lote
+			WHERE
+				lot.id_CatalogoLotes = dsd.id_mineral
+			LIMIT 1
+		)
+		END AS codigo_mineral
+		FROM
+			distribucion_detalle dis
+		INNER JOIN despacho_detalle dsd ON
+			dsd.id = dis.id_despacho_detalle
+		WHERE
+			dis.id_distribucion = $id_distribucion;
+		";
+		$res_detalles = mysqli_query($enlace, $q_detalles);
+
+		$data = [];
+		if ($res_detalles) {
+			while ($row = mysqli_fetch_assoc($res_detalles)) {
+				$data[] = $row;
+			}
+			$estado = 1;
+		} else {
+			$mensaje = mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "data" => $data, "mensaje" => $mensaje]);
+		break;
+
+	case "update_PesajesSegundoTramo":
+		$id_distribucion_detalle = intval($_POST["id_distribucion_detalle"] ?? 0);
+		$peso_tara = floatval($_POST["peso_tara"] ?? 0);
+		$peso_bruto = floatval($_POST["peso_bruto"] ?? 0);
+		$peso_neto = floatval($_POST["peso_neto"] ?? 0);
+		$cantidad_bigbags = isset($_POST["cantidad_bigbags"]) && is_numeric($_POST["cantidad_bigbags"]) ? intval($_POST["cantidad_bigbags"]) : 'NULL';
+
+		$q_update = "
+			UPDATE distribucion_detalle 
+			SET 
+				peso_tara = $peso_tara,
+				peso_bruto = $peso_bruto,
+				peso_neto = $peso_neto,
+				cantidad_bigbags = $cantidad_bigbags
+			WHERE id = $id_distribucion_detalle
+		";
+
+		if (mysqli_query($enlace, $q_update)) {
+			// Find parent distribucion
+			$q_dist = "SELECT id_distribucion FROM distribucion_detalle WHERE id = $id_distribucion_detalle";
+			$res_dist = mysqli_query($enlace, $q_dist);
+			if ($row_dist = mysqli_fetch_assoc($res_dist)) {
+				$id_distribucion = $row_dist['id_distribucion'];
+				// Check if ALL details for this distribucion have peso_neto > 0
+				$q_check = "SELECT COUNT(*) as incompletos FROM distribucion_detalle WHERE id_distribucion = $id_distribucion AND (peso_neto IS NULL OR peso_neto <= 0)";
+				$res_check = mysqli_query($enlace, $q_check);
+				if ($row_check = mysqli_fetch_assoc($res_check)) {
+					if ($row_check['incompletos'] == 0) {
+						mysqli_query($enlace, "UPDATE distribucion SET estado = 'C' WHERE id = $id_distribucion");
+					} else {
+						mysqli_query($enlace, "UPDATE distribucion SET estado = 'A' WHERE id = $id_distribucion");
+					}
+				}
+			}
+			echo json_encode(["estado" => 1, "mensaje" => "Pesos actualizados correctamente."]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al actualizar los pesos."]);
+		}
+		break;
+
 	default:
 		# code...
 		break;
