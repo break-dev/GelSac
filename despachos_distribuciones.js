@@ -189,9 +189,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
       dataList.forEach(d => {
         let totalItems = parseInt(d.blending_usados) + parseInt(d.lotes_usados);
-        let estadoBadge = (d.estado == 'I' || d.estado == '0')
-          ? '<span class="badge bg-danger" style="font-size:12px !important;">Anulado</span>'
-          : '<span class="badge bg-success" style="font-size:12px !important;">Activo</span>';
+        let estadoBadge = '';
+        if (d.estado == 'I' || d.estado == '0') {
+          estadoBadge = '<span class="badge bg-danger" style="font-size:12px !important;">Anulado</span>';
+        } else {
+          estadoBadge = '<span class="badge bg-success" style="font-size:12px !important;">Activo</span>';
+        }
 
         // Group Header
         if (d.id_planta !== lastPlantId) {
@@ -278,6 +281,28 @@ document.addEventListener("DOMContentLoaded", function () {
             dists.forEach(d => {
               let meta = encodeURIComponent(JSON.stringify(d));
 
+              let badgeEstado = '';
+              let badgePeso = '';
+
+              if (d.estado === 'A') {
+                badgeEstado = '<span class="badge bg-secondary" style="font-size: 11px;">Registrado</span>';
+              } else if (d.estado === 'B') {
+                badgeEstado = '<span class="badge bg-primary" style="font-size: 11px;">En planta</span>';
+              } else if (d.estado === 'C') {
+                badgeEstado = '<span class="badge bg-success" style="font-size: 11px;">Salió de planta</span>';
+              }
+
+              if (d.estado_peso === 'A') {
+                badgePeso = '<span class="badge bg-success" style="font-size: 11px;">Pesado Completo</span>';
+              } else if (d.estado_peso === 'B') {
+                badgePeso = '<span class="badge bg-warning text-dark" style="font-size: 11px;">Pesado Incompleto</span>';
+              }
+
+              let deleteButton = '';
+              if (d.estado === 'A' || d.estado === '0') {
+                deleteButton = `<button class="btn btn-sm btn-link text-danger" onclick="anularDistribucion(${d.id_distribucion}, event)" title="Anular Distribución"><i class="bi bi-trash-fill"></i></button>`;
+              }
+
               html += `
                     <tr>
                       <td class="text-center fw-bold">${contador}</td>
@@ -286,15 +311,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div class="text-muted" title="${d.nombre_transportista}">${d.nombre_transportista}</div>
                       </td>
                       <td class="text-center">${formatDateToDMY(d.fecha_estimada)}</td>
-                      <td class="text-end fw-bold text-success">${formatNumber(d.peso_acumulado)}</td>
                       <td class="text-center">
-                          <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')">
+                        <div class="mb-1">${badgeEstado}</div>
+                        <div>${badgePeso}</div>
+                      </td>
+                      <td class="text-end fw-bold text-success align-middle">${formatNumber(d.peso_acumulado)}</td>
+                      <td class="text-center align-middle">
+                          <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')" title="Ver Detalles">
                             <i class="bi bi-eye-fill"></i>
                           </button>
-
-                          <button class="btn btn-sm btn-link text-danger" onclick="anularDistribucion(${d.id_distribucion}, event)">
-                            <i class="bi bi-trash-fill"></i>
-                          </button>
+                          ${deleteButton}
                       </td>
                     </tr>`;
               contador++;
@@ -312,9 +338,30 @@ document.addEventListener("DOMContentLoaded", function () {
     let meta = JSON.parse(decodeURIComponent(metaStr));
 
     // Set Header Info
-    $("#view_dist_transportista").text(meta.nombre_transportista);
-    $("#view_dist_placa").text(`${meta.tipo_vehiculo} - ${meta.placa} ${meta.segunda_placa ? '/ ' + meta.segunda_placa : ''}`);
+    let badgeEstado = '';
+    let badgePeso = '';
+
+    if (meta.estado === 'A') {
+      badgeEstado = '<span class="badge bg-secondary" style="font-size: 11px;">Registrado</span>';
+    } else if (meta.estado === 'B') {
+      badgeEstado = '<span class="badge bg-primary" style="font-size: 11px;">En planta</span>';
+    } else if (meta.estado === 'C') {
+      badgeEstado = '<span class="badge bg-success" style="font-size: 11px;">Salió de planta</span>';
+    }
+
+    if (meta.estado_peso === 'A') {
+      badgePeso = '<span class="badge bg-success" style="font-size: 11px;">Pesado Completo</span>';
+    } else if (meta.estado_peso === 'B') {
+      badgePeso = '<span class="badge bg-warning text-dark" style="font-size: 11px;">Pesado Incompleto</span>';
+    }
+
+    $("#view_dist_transportista").html(`<strong>${meta.documento_transportista}</strong> - ${meta.nombre_transportista}`);
+    $("#view_dist_estados").html(`${badgeEstado} <br> ${badgePeso || '<span class="badge bg-light text-dark border">Sin pesaje</span>'}`);
+    $("#view_dist_placa").html(`<strong>Unidad:</strong> ${meta.placa} | <strong>Vehículo:</strong> ${meta.tipo_vehiculo} | <strong>Adicional:</strong> ${meta.segunda_placa ? meta.segunda_placa : 'Ninguna'}`);
+
     $("#view_dist_fecha").text(formatDateToDMY(meta.fecha_estimada));
+    $("#view_dist_llegada").text(meta.fecha_hora_llegada ? meta.fecha_hora_llegada : 'No registrado');
+    $("#view_dist_salida").text(meta.fecha_hora_salida ? meta.fecha_hora_salida : 'No registrado');
     $("#view_dist_total").text(formatNumber(meta.peso_acumulado));
 
     $("#tbl_view_dist_items").html('<tr><td colspan="3" class="text-center">Cargando detalles...</td></tr>');
@@ -336,12 +383,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? '<span class="badge-mineral-type badge-blending">Blending</span>'
                 : '<span class="badge-mineral-type badge-lote">Lote</span>';
 
+              let txtCarga = (i.tipo_carga == 2) ? `Big Bags (${i.cantidad_bigbags || 0})` : `Granel`;
               html += `
                             <tr>
                                 <td>${i.codigo}</td>
                                 <td class="text-center">${badge}</td>
-                                <td class="text-center">${i.tipo_carga}</td>
-                                <td class="text-end font-monospace">${formatNumber(i.peso_tomado)}</td>
+                                <td class="text-center">${txtCarga}</td>
+                                <td class="text-end font-monospace">${formatNumber(i.peso_tara || 0)}</td>
+                                <td class="text-end font-monospace">${formatNumber(i.peso_bruto || 0)}</td>
+                                <td class="text-end font-monospace fw-bold text-success">${formatNumber(i.peso_neto || 0)}</td>
+                                <td class="text-end font-monospace">${formatNumber(i.peso_tomado || 0)}</td>
                                 <td class="text-end font-monospace">${i.numero_parte != null ? i.numero_parte : 'Dis. Total'}</td>
                             </tr>
                           `;

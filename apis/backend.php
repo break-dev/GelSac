@@ -26178,7 +26178,7 @@ switch ($_POST["accion"]) {
 			$id_registro = mysqli_insert_id($enlace);
 
 			if ($registro_condicion == 2 && $id_placadespacho != "NULL") {
-				$q_upd_dist = "UPDATE distribucion SET id_conductor = $registro_conductor, fecha_hora_llegada = NOW() WHERE id = $id_placadespacho";
+				$q_upd_dist = "UPDATE distribucion SET id_conductor = $registro_conductor, fecha_hora_llegada = NOW(), estado = 'B' WHERE id = $id_placadespacho";
 				mysqli_query($enlace, $q_upd_dist);
 			}
 
@@ -77851,13 +77851,16 @@ switch ($_POST["accion"]) {
 			) as peso_acumulado,
 			dist.fecha_estimada,
 			dist.created_at as fecha_registro,
-			dist.estado
+			dist.fecha_hora_llegada,
+			dist.fecha_hora_salida,
+			dist.estado,
+			dist.estado_peso
 		FROM
 			distribucion dist
 		INNER JOIN transporte uni on uni.id_transporte = dist.id_unidad
 		INNER JOIN tb_clientes trn on trn.Id = dist.id_empresa_transporte
 		INNER JOIN tbconfig_tipovehiculo tpv on tpv.Id = uni.id_tipovehiculo
-		WHERE dist.estado = 'A' AND dist.id_despacho = $id_despacho
+		WHERE dist.id_despacho = $id_despacho
 		ORDER BY dist.fecha_estimada ASC, dist.id ASC;
 		";
 		$result = mysqli_query($enlace, $q);
@@ -77895,6 +77898,9 @@ switch ($_POST["accion"]) {
 			dsd.is_blending,
 			dst.peso_actual_log,
 			dst.peso_tomado,
+			dst.peso_tara,
+			dst.peso_bruto,
+			dst.peso_neto,
 			(dst.peso_actual_log - dst.peso_tomado) as peso_restante,
 			dst.numero_parte,
 			dst.created_at as fecha_registro,
@@ -77960,6 +77966,16 @@ switch ($_POST["accion"]) {
 
 	case "anular_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+		$q_dists = "SELECT id, estado FROM distribucion WHERE id_despacho = $id_despacho";
+		$r_dists = mysqli_query($enlace, $q_dists);
+		while ($dis = mysqli_fetch_assoc($r_dists)) {
+			// No se puede anular un despacho si tiene alguna unidad ya en planta o que de planta
+			if ($dis['estado'] == 'B' || $dis['estado'] == 'C') {
+				echo json_encode(["estado" => 0, "mensaje" => "No se puede eliminar. Existen unidades en planta o emitidas."]);
+				exit;
+			}
+		}
+
 		// Revertir pesos a Origen (Blending o Lote)
 		$q_det = "SELECT id, id_mineral, is_blending, peso_tomado FROM despacho_detalle WHERE id_despacho = $id_despacho";
 		$res_det = mysqli_query($enlace, $q_det);
@@ -77978,7 +77994,6 @@ switch ($_POST["accion"]) {
 
 		// Eliminar Distribuciones asociadas
 		// Obtener IDs de distribuciones
-		$q_dists = "SELECT id FROM distribucion WHERE id_despacho = $id_despacho";
 		$r_dists = mysqli_query($enlace, $q_dists);
 		while ($dis = mysqli_fetch_assoc($r_dists)) {
 			$id_dist = $dis['id'];
@@ -77997,6 +78012,16 @@ switch ($_POST["accion"]) {
 
 	case "anular_distribucion":
 		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+
+		// Validar estado de distribucion
+		$q_val_dis = "SELECT estado FROM distribucion WHERE id = $id_distribucion";
+		$res_val_dis = mysqli_query($enlace, $q_val_dis);
+		if ($row_val_dis = mysqli_fetch_assoc($res_val_dis)) {
+			if ($row_val_dis['estado'] == 'B' || $row_val_dis['estado'] == 'C') {
+				echo json_encode(["estado" => 0, "mensaje" => "No se puede eliminar. La unidad ya ingreso a planta."]);
+				exit;
+			}
+		}
 
 		// Devolver peso al despacho_detalle
 		$q_det = "SELECT id_despacho_detalle, peso_tomado FROM distribucion_detalle WHERE id_distribucion = $id_distribucion";
@@ -78181,7 +78206,8 @@ switch ($_POST["accion"]) {
             UPDATE distribucion SET 
 				id_conductor = $id_conductor, 
 				observacion = '$observacion',
-				id_vigilante = $id_vigilante
+				id_vigilante = $id_vigilante,
+				estado = 'B'
             WHERE 
 				id = $id_distribucion
         ";
@@ -78213,7 +78239,8 @@ switch ($_POST["accion"]) {
 		$q = "
             UPDATE distribucion SET 
 				fecha_hora_salida = $fecha_hora_salida,
-				observacion_salida = $observacion_salida
+				observacion_salida = $observacion_salida,
+				estado = 'C'
             WHERE 
 				id = $id_distribucion
         ";
@@ -78269,6 +78296,7 @@ switch ($_POST["accion"]) {
 			con.nombres as conductor_nombres,
 			d.observacion,
             d.estado,
+			d.estado_peso,
 			(
 				SELECT SUM(dd.peso_tomado) 
 				FROM distribucion_detalle dd 
@@ -78424,9 +78452,9 @@ switch ($_POST["accion"]) {
 				$res_check = mysqli_query($enlace, $q_check);
 				if ($row_check = mysqli_fetch_assoc($res_check)) {
 					if ($row_check['incompletos'] == 0) {
-						mysqli_query($enlace, "UPDATE distribucion SET estado = 'C' WHERE id = $id_distribucion");
+						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'A' WHERE id = $id_distribucion");
 					} else {
-						mysqli_query($enlace, "UPDATE distribucion SET estado = 'A' WHERE id = $id_distribucion");
+						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'B' WHERE id = $id_distribucion");
 					}
 				}
 			}

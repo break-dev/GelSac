@@ -58,23 +58,19 @@ document.addEventListener("DOMContentLoaded", function () {
                         let bg_header = "";
                         let text_status = "";
 
-                        if (!row.fecha_hora_llegada) {
+                        if (row.estado === 'A') {
                             estado_pesaje = "Esperando Llegada";
                             border_color = "border-secondary";
                             bg_header = "bg-secondary bg-opacity-10";
                             text_status = "text-secondary";
-                        } else {
-                            let total = parseInt(row.total_detalles) || 0;
-                            let incompletos = parseInt(row.incompletos) || 0;
-                            let con_tara = parseInt(row.con_tara) || 0;
-
-                            if (total > 0 && incompletos === 0) {
+                        } else if (row.estado === 'B' || row.estado === 'C') {
+                            if (row.estado_peso === 'A') {
                                 estado_pesaje = "Pesaje Completo";
                                 border_color = "border-success";
                                 bg_header = "bg-success bg-opacity-10";
                                 text_status = "text-success fw-bold";
-                            } else if (con_tara > 0) {
-                                estado_pesaje = "En proceso";
+                            } else if (row.estado_peso === 'B') {
+                                estado_pesaje = "Pesaje Incompleto";
                                 border_color = "border-warning border-opacity-75";
                                 bg_header = "bg-warning bg-opacity-10";
                                 text_status = "text-warning text-dark fw-bold";
@@ -401,23 +397,19 @@ document.addEventListener("DOMContentLoaded", function () {
                         let bg_header = "";
                         let text_status = "";
 
-                        if (!row.fecha_hora_llegada) {
+                        if (row.estado === 'A') {
                             estado_pesaje = "Esperando Llegada";
                             border_color = "border-secondary";
                             bg_header = "bg-secondary bg-opacity-10";
                             text_status = "text-secondary";
-                        } else {
-                            let total = parseInt(row.total_detalles) || 0;
-                            let incompletos = parseInt(row.incompletos) || 0;
-                            let con_tara = parseInt(row.con_tara) || 0;
-
-                            if (total > 0 && incompletos === 0) {
+                        } else if (row.estado === 'B' || row.estado === 'C') {
+                            if (row.estado_peso === 'A') {
                                 estado_pesaje = "Pesaje Completo";
                                 border_color = "border-success";
                                 bg_header = "bg-success bg-opacity-10";
                                 text_status = "text-success fw-bold";
-                            } else if (con_tara > 0) {
-                                estado_pesaje = "En proceso";
+                            } else if (row.estado_peso === 'B') {
+                                estado_pesaje = "Pesaje Incompleto";
                                 border_color = "border-warning border-opacity-75";
                                 bg_header = "bg-warning bg-opacity-10";
                                 text_status = "text-warning text-dark fw-bold";

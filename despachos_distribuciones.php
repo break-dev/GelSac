@@ -429,17 +429,27 @@ $backendUrl = 'apis/backend.php';
         </div>
         <div class="modal-body">
           <div class="row mb-3">
-            <div class="col-6">
+            <div class="col-8">
               <strong>Transportista:</strong> <br> <span id="view_dist_transportista" class="text-muted">...</span>
             </div>
-            <div class="col-6">
+            <div class="col-4">
+              <strong>Estado / Pesaje:</strong> <br> <span id="view_dist_estados" class="text-muted">...</span>
+            </div>
+            <div class="col-12 mt-2">
               <strong>Unidad / Placa:</strong> <br> <span id="view_dist_placa" class="text-muted">...</span>
             </div>
-            <div class="col-6 mt-2">
+            <div class="col-4 mt-2">
               <strong>Fecha Estimada:</strong> <br> <span id="view_dist_fecha" class="text-muted">...</span>
             </div>
-            <div class="col-6 mt-2">
-              <strong>Peso Total:</strong> <br> <span id="view_dist_total" class="fw-bold text-success">...</span>
+            <div class="col-4 mt-2">
+              <strong>Llegada:</strong> <br> <span id="view_dist_llegada" class="text-muted">...</span>
+            </div>
+            <div class="col-4 mt-2">
+              <strong>Salida:</strong> <br> <span id="view_dist_salida" class="text-muted">...</span>
+            </div>
+            <div class="col-12 mt-2">
+              <strong>Peso Acumulado / Esperado:</strong> <br> <span id="view_dist_total"
+                class="fw-bold text-success">...</span>
             </div>
           </div>
 
@@ -450,7 +460,10 @@ $backendUrl = 'apis/backend.php';
                 <th>Código</th>
                 <th class="text-center">Tipo</th>
                 <th class="text-center">Tipo de Carga</th>
-                <th class="text-end">Peso</th>
+                <th class="text-end">P. Tara</th>
+                <th class="text-end">P. Bruto</th>
+                <th class="text-end">P. Neto</th>
+                <th class="text-end">P. Tomado</th>
                 <th class="text-end">Nro. Partición</th>
               </tr>
             </thead>
@@ -465,7 +478,6 @@ $backendUrl = 'apis/backend.php';
   </div>
 
   <select id="voiceList" style="display:none;"></select>
-  <?php include('global/auxiliares_js.php'); ?>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"
     integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
@@ -475,10 +487,13 @@ $backendUrl = 'apis/backend.php';
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+  <?php include('global/auxiliares_js.php'); ?>
+
   <script>
     const backendUrl = '<?php echo $backendUrl; ?>';
   </script>
-  <script src="./despachos_distribuciones.js"></script>
+  <script src="./despachos_distribuciones.js?v=<?php echo time(); ?>"></script>
 
   <!-- Modal Blending Issues -->
   <div class="modal fade" id="modal_blending_issues" tabindex="-1" aria-hidden="true">
