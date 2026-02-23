@@ -177,3 +177,4 @@ files
 bc
 images/qr
 **/logs
+**/tmp_files

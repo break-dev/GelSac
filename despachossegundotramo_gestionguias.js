@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-
   // Variables globales
   var allDistribuciones = [];
   var agrupacionesMap = {}; // Key -> Object
@@ -963,6 +962,10 @@ document.addEventListener("DOMContentLoaded", function () {
           guiaDataB64 +
           '\')))));" title="Editar"><i class="bi bi-pencil"></i></button>';
         html +=
+          '<button class="btn btn-sm btn-outline-secondary me-1" onclick="event.stopPropagation(); window.f_ImprimirGuia(' +
+          g.id +
+          ');" title="Imprimir PDF"><i class="bi bi-printer"></i></button>';
+        html +=
           '<button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window.f_AnularGuia(' +
           g.id +
           ');" title="Anular"><i class="bi bi-trash"></i></button>';
@@ -1039,6 +1042,13 @@ document.addEventListener("DOMContentLoaded", function () {
       $("[id^=tr_detail_]").hide(); // Ocultar todas las de detalles
       detailRow.fadeIn(200);
     }
+  };
+
+  // ========================
+  // IMPRIMIR GUÍA (PDF)
+  // ========================
+  window.f_ImprimirGuia = function (idGuia) {
+    window.open("print_segundotramo_guia_gestion.php?id=" + idGuia, "_blank");
   };
 
   // ========================
