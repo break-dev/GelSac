@@ -78326,7 +78326,16 @@ switch ($_POST["accion"]) {
 		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
 		WHERE
 			d.fecha_hora_llegada IS NOT NULL AND 
-			d.fecha_hora_salida IS NULL
+			d.fecha_hora_salida IS NULL AND
+            -- solo listar si aun tiene lotes por pesar: peso neto null
+            EXISTS(
+                SELECT
+                	dsd.id
+                FROM distribucion_detalle dsd
+                WHERE 
+                	dsd.id_distribucion = d.id AND
+                	dsd.peso_neto IS NULL
+            )
 			$filtro_por_fechas
 			$filtro_por_placa
 		ORDER BY
