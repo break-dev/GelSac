@@ -78473,6 +78473,605 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
+	// =====================================================================
+	// GUÍAS SEGUNDO TRAMO
+	// =====================================================================
+
+	case "get_distribuciones_pendientes_guia_2t":
+		$estado = 0;
+		$mensaje = '';
+		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
+		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
+		$filtro_placa = mysqli_real_escape_string($enlace, $_POST["filtro_placa"] ?? '');
+
+		$filtro_fechas = "";
+		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+			$filtro_fechas = " AND DATE(d.fecha_estimada) BETWEEN '$fecha_inicio' AND '$fecha_fin' ";
+		}
+
+		$filtro_placa_sql = "";
+		if (!empty($filtro_placa)) {
+			$filtro_placa_sql = " AND (t.cplaca LIKE '%$filtro_placa%' OR d.segunda_placa LIKE '%$filtro_placa%') ";
+		}
+
+		$q = "
+		SELECT
+			d.id AS id_distribucion,
+			d.id_unidad,
+			d.id_empresa_transporte,
+			d.id_despacho,
+			d.id_conductor,
+			d.segunda_placa,
+			DATE_FORMAT(d.fecha_estimada, '%Y-%m-%d') AS fecha_estimada,
+			DATE_FORMAT(d.fecha_hora_llegada, '%d/%m/%Y %H:%i') AS fecha_hora_llegada,
+			d.estado,
+			d.estado_peso,
+			d.id_guia_segundo_tramo,
+			t.cplaca AS placa1,
+			desp.correlativo AS correlativo_despacho,
+			cli.documento AS transportista_ruc,
+			cli.razon_social AS transportista_rs,
+			con.dni_licencia AS conductor_dni,
+			con.nombres AS conductor_nombre,
+			(
+				SELECT SUM(dd.peso_tomado) 
+				FROM distribucion_detalle dd 
+				WHERE dd.id_distribucion = d.id
+			) AS peso_total_tomado,
+			(
+				SELECT SUM(dd.peso_neto) 
+				FROM distribucion_detalle dd 
+				WHERE dd.id_distribucion = d.id
+			) AS peso_total_neto,
+			(
+				SELECT SUM(dd.peso_bruto) 
+				FROM distribucion_detalle dd 
+				WHERE dd.id_distribucion = d.id
+			) AS peso_total_bruto,
+			(
+				SELECT SUM(dd.peso_tara) 
+				FROM distribucion_detalle dd 
+				WHERE dd.id_distribucion = d.id
+			) AS peso_total_tara,
+			(
+				SELECT COUNT(*) 
+				FROM distribucion_detalle dd 
+				WHERE dd.id_distribucion = d.id
+			) AS total_lotes
+		FROM
+			distribucion d
+		INNER JOIN transporte t ON d.id_unidad = t.id_transporte
+		INNER JOIN despacho desp ON d.id_despacho = desp.id
+		LEFT JOIN tb_clientes cli ON d.id_empresa_transporte = cli.id
+		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
+		WHERE
+			d.estado_peso = 'A'
+			AND (d.id_guia_segundo_tramo IS NULL OR d.id_guia_segundo_tramo = 0)
+			AND d.estado IN ('B','C')
+			$filtro_fechas
+			$filtro_placa_sql
+		ORDER BY
+			d.fecha_estimada DESC, t.cplaca ASC
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$data = [];
+		if ($result) {
+			while ($row = mysqli_fetch_assoc($result)) {
+				$data[] = $row;
+			}
+			$estado = 1;
+		} else {
+			$mensaje = mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "data" => $data, "mensaje" => $mensaje]);
+		break;
+
+	case "get_guias_generadas_2t":
+		$estado = 0;
+		$mensaje = '';
+		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
+		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
+
+		$filtro_fechas = "";
+		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+			$filtro_fechas = " AND DATE(g.fecha_hora_emision) BETWEEN '$fecha_inicio' AND '$fecha_fin' ";
+		}
+
+		$q = "
+		SELECT
+			g.id,
+			g.id_distribucion,
+			g.id_concesion,
+			g.id_marca_tolva,
+			g.id_empresa_transporte_tolva,
+			DATE_FORMAT(g.fecha_inicio_traslado,'%d/%m/%Y') AS fecha_inicio_traslado,
+			DATE_FORMAT(g.fecha_hora_emision,'%d/%m/%Y %H:%i') AS fecha_hora_emision,
+			DATE_FORMAT(g.fecha_hora_planta,'%d/%m/%Y %H:%i') AS fecha_hora_planta,
+			g.planta_origen,
+			CASE 
+				WHEN g.planta_origen = 1 THEN 'Huanchaco' 
+				WHEN g.planta_origen = 2 THEN 'Laredo' ELSE '-'
+			END AS planta_origen_nombre,
+			g.guia_remitente_serie,
+			g.guia_remitente_numero,
+			g.guia_transportista_serie,
+			g.guia_transportista_numero,
+			g.sin_guia_transportista,
+			g.motivo_traslado,
+			g.serie_tolva,
+			g.numero_tolva,
+			g.numero_mtc_tolva,
+			g.estado,
+			conc.descripcion AS concesion_nombre,
+			marca.descripcion AS marca_tolva_nombre,
+			emp_tolva.razon_social AS empresa_tolva_nombre,
+			-- info de las distribuciones asociadas
+			(
+				SELECT
+					GROUP_CONCAT(DISTINCT t2.cplaca SEPARATOR ', ')
+				FROM
+					distribucion d2
+				INNER JOIN transporte t2 ON d2.id_unidad = t2.id_transporte
+				WHERE d2.id_guia_segundo_tramo = g.id
+			) AS placas,
+			(
+				SELECT
+					GROUP_CONCAT(DISTINCT cli2.razon_social SEPARATOR ', ')
+				FROM
+					distribucion d2
+				LEFT JOIN tb_clientes cli2 ON d2.id_empresa_transporte = cli2.id
+				WHERE d2.id_guia_segundo_tramo = g.id
+			) AS empresa_transporte,
+			(
+				SELECT
+					SUM(dd2.peso_neto)
+				FROM
+					distribucion d2
+				INNER JOIN distribucion_detalle dd2 ON dd2.id_distribucion = d2.id
+				WHERE d2.id_guia_segundo_tramo = g.id
+			) AS peso_total_neto,
+			(
+				SELECT
+					SUM(dd2.peso_bruto)
+				FROM
+					distribucion d2
+				INNER JOIN distribucion_detalle dd2 ON dd2.id_distribucion = d2.id
+				WHERE d2.id_guia_segundo_tramo = g.id
+			) AS peso_total_bruto,
+			(
+				SELECT
+					SUM(dd2.peso_tara)
+				FROM
+					distribucion d2
+				INNER JOIN distribucion_detalle dd2 ON dd2.id_distribucion = d2.id
+				WHERE d2.id_guia_segundo_tramo = g.id
+			) AS peso_total_tara,
+			(
+				SELECT
+					COUNT(DISTINCT dd2.id)
+				FROM
+					distribucion d2
+				INNER JOIN distribucion_detalle dd2 ON dd2.id_distribucion = d2.id
+				WHERE d2.id_guia_segundo_tramo = g.id
+			) AS total_lotes
+		FROM
+			guia_segundo_tramo g
+		LEFT JOIN tbconfig_proveedoresmineros_concesion conc ON
+			g.id_concesion = conc.Id
+		LEFT JOIN tbconfig_unidadesmarca marca ON
+			g.id_marca_tolva = marca.Id
+		LEFT JOIN tb_clientes emp_tolva ON
+			g.id_empresa_transporte_tolva = emp_tolva.id
+		WHERE
+			g.estado != '0' 
+			$filtro_fechas
+		ORDER BY
+			g.id DESC
+		";
+
+		$result = mysqli_query($enlace, $q);
+		$data = [];
+		if ($result) {
+			while ($row = mysqli_fetch_assoc($result)) {
+				// obtener lotes detallados
+				$id_guia = $row['id'];
+				$q_lotes = "
+					SELECT
+						dd.id AS id_detalle,
+						dd.tipo_carga,
+						dd.cantidad_bigbags,
+						dd.numero_parte,
+						dd.peso_tomado,
+						dd.peso_tara,
+						dd.peso_bruto,
+						dd.peso_neto,
+						CASE WHEN dsd.is_blending = 1 THEN (
+							SELECT bld.correlativo FROM blending bld WHERE bld.id = dsd.id_mineral LIMIT 1
+						) ELSE (
+							SELECT lot.ccod_Lote FROM catalogolotes lot WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
+						) END AS codigo_mineral,
+						dsd.is_blending,
+						dist.id_despacho,
+						desp.correlativo AS correlativo_despacho
+					FROM distribucion dist
+					INNER JOIN distribucion_detalle dd ON dd.id_distribucion = dist.id
+					INNER JOIN despacho_detalle dsd ON dsd.id = dd.id_despacho_detalle
+					INNER JOIN despacho desp ON desp.id = dist.id_despacho
+					WHERE dist.id_guia_segundo_tramo = $id_guia
+					ORDER BY dist.id, dd.id
+				";
+				$res_lotes = mysqli_query($enlace, $q_lotes);
+				$lotes = [];
+				if ($res_lotes) {
+					while ($lote = mysqli_fetch_assoc($res_lotes)) {
+						$lotes[] = $lote;
+					}
+				}
+				$row['lotes'] = $lotes;
+				$data[] = $row;
+			}
+			$estado = 1;
+		} else {
+			$mensaje = mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "data" => $data, "mensaje" => $mensaje]);
+		break;
+
+	case "grabar_guia_segundo_tramo":
+		$estado = 0;
+		$mensaje = '';
+
+		$ids_distribuciones = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
+		$id_concesion = intval($_POST["id_concesion"] ?? 0);
+		$id_marca_tolva = intval($_POST["id_marca_tolva"] ?? 0);
+		$id_empresa_transporte_tolva = intval($_POST["id_empresa_transporte_tolva"] ?? 0);
+		$fecha_inicio_traslado = mysqli_real_escape_string($enlace, $_POST["fecha_inicio_traslado"] ?? '');
+		$fecha_hora_emision = mysqli_real_escape_string($enlace, $_POST["fecha_hora_emision"] ?? '');
+		$fecha_hora_planta = mysqli_real_escape_string($enlace, $_POST["fecha_hora_planta"] ?? '');
+		$planta_origen = intval($_POST["planta_origen"] ?? 0);
+		$guia_remitente_serie = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_remitente_serie"] ?? '')));
+		$guia_remitente_numero = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_remitente_numero"] ?? '')));
+		$guia_transportista_serie = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_transportista_serie"] ?? '')));
+		$guia_transportista_numero = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_transportista_numero"] ?? '')));
+		$sin_guia_transportista = intval($_POST["sin_guia_transportista"] ?? 0);
+		$motivo_traslado = mysqli_real_escape_string($enlace, $_POST["motivo_traslado"] ?? '');
+		$serie_tolva = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["serie_tolva"] ?? '')));
+		$numero_tolva = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["numero_tolva"] ?? '')));
+		$numero_mtc_tolva = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["numero_mtc_tolva"] ?? '')));
+
+		$id_distribucion_ref = !empty($ids_distribuciones) ? intval($ids_distribuciones[0]) : 0;
+
+		$fecha_hora_emision_sql = !empty($fecha_hora_emision) ? "'$fecha_hora_emision'" : "NULL";
+		$fecha_hora_planta_sql = !empty($fecha_hora_planta) ? "'$fecha_hora_planta'" : "NULL";
+		$fecha_inicio_traslado_sql = !empty($fecha_inicio_traslado) ? "'$fecha_inicio_traslado'" : "NULL";
+		$id_concesion_sql = $id_concesion > 0 ? $id_concesion : "NULL";
+		$id_marca_tolva_sql = $id_marca_tolva > 0 ? $id_marca_tolva : "NULL";
+		$id_empresa_transporte_tolva_sql = $id_empresa_transporte_tolva > 0 ? $id_empresa_transporte_tolva : "NULL";
+
+		$q_insert = "
+			INSERT INTO guia_segundo_tramo (
+				id_distribucion, id_concesion, id_marca_tolva, id_empresa_transporte_tolva,
+				fecha_inicio_traslado, fecha_hora_emision, fecha_hora_planta,
+				planta_origen, guia_remitente_serie, guia_remitente_numero,
+				guia_transportista_serie, guia_transportista_numero, sin_guia_transportista,
+				motivo_traslado, serie_tolva, numero_tolva, numero_mtc_tolva,
+				created_at, estado
+			) VALUES (
+				$id_distribucion_ref, $id_concesion_sql, $id_marca_tolva_sql, $id_empresa_transporte_tolva_sql,
+				$fecha_inicio_traslado_sql, $fecha_hora_emision_sql, $fecha_hora_planta_sql,
+				$planta_origen, '$guia_remitente_serie', '$guia_remitente_numero',
+				'$guia_transportista_serie', '$guia_transportista_numero', $sin_guia_transportista,
+				'$motivo_traslado', '$serie_tolva', '$numero_tolva', '$numero_mtc_tolva',
+				NOW(), 1
+			)
+		";
+
+		if (mysqli_query($enlace, $q_insert)) {
+			$id_guia_nuevo = mysqli_insert_id($enlace);
+			// Vincular distribuciones
+			foreach ($ids_distribuciones as $id_dist) {
+				$id_dist = intval($id_dist);
+				mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = $id_guia_nuevo WHERE id = $id_dist");
+			}
+			$estado = 1;
+			$mensaje = "Guía generada correctamente.";
+		} else {
+			$mensaje = "Error al crear la guía: " . mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "mensaje" => $mensaje]);
+		break;
+
+	case "editar_guia_segundo_tramo":
+		$estado = 0;
+		$mensaje = '';
+
+		$ids_distribuciones = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
+		$id_guia_editar = intval($_POST["id_guia"] ?? 0);
+		$id_concesion = intval($_POST["id_concesion"] ?? 0);
+		$id_marca_tolva = intval($_POST["id_marca_tolva"] ?? 0);
+		$id_empresa_transporte_tolva = intval($_POST["id_empresa_transporte_tolva"] ?? 0);
+		$fecha_inicio_traslado = mysqli_real_escape_string($enlace, $_POST["fecha_inicio_traslado"] ?? '');
+		$fecha_hora_emision = mysqli_real_escape_string($enlace, $_POST["fecha_hora_emision"] ?? '');
+		$fecha_hora_planta = mysqli_real_escape_string($enlace, $_POST["fecha_hora_planta"] ?? '');
+		$planta_origen = intval($_POST["planta_origen"] ?? 0);
+		$guia_remitente_serie = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_remitente_serie"] ?? '')));
+		$guia_remitente_numero = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_remitente_numero"] ?? '')));
+		$guia_transportista_serie = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_transportista_serie"] ?? '')));
+		$guia_transportista_numero = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["guia_transportista_numero"] ?? '')));
+		$sin_guia_transportista = intval($_POST["sin_guia_transportista"] ?? 0);
+		$motivo_traslado = mysqli_real_escape_string($enlace, $_POST["motivo_traslado"] ?? '');
+		$serie_tolva = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["serie_tolva"] ?? '')));
+		$numero_tolva = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["numero_tolva"] ?? '')));
+		$numero_mtc_tolva = mysqli_real_escape_string($enlace, strtoupper(trim($_POST["numero_mtc_tolva"] ?? '')));
+
+		$id_distribucion_ref = !empty($ids_distribuciones) ? intval($ids_distribuciones[0]) : 0;
+
+		$fecha_hora_emision_sql = !empty($fecha_hora_emision) ? "'$fecha_hora_emision'" : "NULL";
+		$fecha_hora_planta_sql = !empty($fecha_hora_planta) ? "'$fecha_hora_planta'" : "NULL";
+		$fecha_inicio_traslado_sql = !empty($fecha_inicio_traslado) ? "'$fecha_inicio_traslado'" : "NULL";
+		$id_concesion_sql = $id_concesion > 0 ? $id_concesion : "NULL";
+		$id_marca_tolva_sql = $id_marca_tolva > 0 ? $id_marca_tolva : "NULL";
+		$id_empresa_transporte_tolva_sql = $id_empresa_transporte_tolva > 0 ? $id_empresa_transporte_tolva : "NULL";
+
+		if ($id_guia_editar > 0) {
+			$q_update = "
+				UPDATE guia_segundo_tramo SET
+					id_distribucion = $id_distribucion_ref,
+					id_concesion = $id_concesion_sql,
+					id_marca_tolva = $id_marca_tolva_sql,
+					id_empresa_transporte_tolva = $id_empresa_transporte_tolva_sql,
+					fecha_inicio_traslado = $fecha_inicio_traslado_sql,
+					fecha_hora_emision = $fecha_hora_emision_sql,
+					fecha_hora_planta = $fecha_hora_planta_sql,
+					planta_origen = $planta_origen,
+					guia_remitente_serie = '$guia_remitente_serie',
+					guia_remitente_numero = '$guia_remitente_numero',
+					guia_transportista_serie = '$guia_transportista_serie',
+					guia_transportista_numero = '$guia_transportista_numero',
+					sin_guia_transportista = $sin_guia_transportista,
+					motivo_traslado = '$motivo_traslado',
+					serie_tolva = '$serie_tolva',
+					numero_tolva = '$numero_tolva',
+					numero_mtc_tolva = '$numero_mtc_tolva'
+				WHERE id = $id_guia_editar
+			";
+
+			if (mysqli_query($enlace, $q_update)) {
+				// Limpiar FKs antiguas
+				mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = NULL WHERE id_guia_segundo_tramo = $id_guia_editar");
+				// Re-vincular distribuciones
+				foreach ($ids_distribuciones as $id_dist) {
+					$id_dist = intval($id_dist);
+					mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = $id_guia_editar WHERE id = $id_dist");
+				}
+				$estado = 1;
+				$mensaje = "Guía actualizada correctamente.";
+			} else {
+				$mensaje = "Error al actualizar la guía: " . mysqli_error($enlace);
+			}
+		} else {
+			$mensaje = "ID de guía no válido para editar.";
+		}
+
+		echo json_encode(["estado" => $estado, "mensaje" => $mensaje]);
+		break;
+
+	case "anular_guia_segundo_tramo":
+		$estado = 0;
+		$mensaje = '';
+		$id_guia = intval($_POST["id_guia"] ?? 0);
+
+		if ($id_guia <= 0) {
+			echo json_encode(["estado" => 0, "mensaje" => "ID de guía inválido."]);
+			exit;
+		}
+
+		// Desvincular distribuciones
+		$q_unlink = "UPDATE distribucion SET id_guia_segundo_tramo = NULL WHERE id_guia_segundo_tramo = $id_guia";
+		mysqli_query($enlace, $q_unlink);
+
+		// Anular la guía
+		$q_anular = "DELETE guia_segundo_tramo WHERE id = $id_guia";
+		if (mysqli_query($enlace, $q_anular)) {
+			$estado = 1;
+			$mensaje = "Guía anulada correctamente.";
+		} else {
+			$mensaje = "Error al anular la guía: " . mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "mensaje" => $mensaje]);
+		break;
+
+	case "get_lotes_distribucion_grupo_2t":
+		$estado = 0;
+		$ids_distribuciones = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
+		$data = [];
+
+		if (!empty($ids_distribuciones)) {
+			$ids_str = implode(',', array_map('intval', $ids_distribuciones));
+			$q = "
+			SELECT
+				dd.id AS id_detalle,
+				dd.id_distribucion,
+				dd.tipo_carga,
+				dd.cantidad_bigbags,
+				dd.numero_parte,
+				dd.peso_tomado,
+				dd.peso_tara,
+				dd.peso_bruto,
+				dd.peso_neto,
+				dsd.is_blending,
+				CASE WHEN dsd.is_blending = 1 THEN (
+					SELECT bld.correlativo FROM blending bld WHERE bld.id = dsd.id_mineral LIMIT 1
+				) ELSE (
+					SELECT lot.ccod_Lote FROM catalogolotes lot WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
+				) END AS codigo_mineral,
+				desp.correlativo AS correlativo_despacho,
+				t.cplaca AS placa
+			FROM distribucion_detalle dd
+			INNER JOIN distribucion dist ON dd.id_distribucion = dist.id
+			INNER JOIN despacho_detalle dsd ON dsd.id = dd.id_despacho_detalle
+			INNER JOIN despacho desp ON desp.id = dist.id_despacho
+			INNER JOIN transporte t ON dist.id_unidad = t.id_transporte
+			WHERE dd.id_distribucion IN ($ids_str)
+			ORDER BY dist.id, dd.id
+			";
+
+			$result = mysqli_query($enlace, $q);
+			if ($result) {
+				while ($row = mysqli_fetch_assoc($result)) {
+					$data[] = $row;
+				}
+				$estado = 1;
+			}
+		}
+
+		echo json_encode(["estado" => $estado, "data" => $data]);
+		break;
+
+	// =========================================================================
+	// ENDPOINTS PARA GUIAS SEGUNDO TRAMO
+	// =========================================================================
+
+	case "get_Guia2T_concesiones":
+		$ids_despachos = mysqli_real_escape_string($enlace, $_POST["ids_despachos"] ?? '');
+		
+		// Proveemos un fallback para evitar errores SQL si está vacío
+		$in_clause = "0";
+		if (!empty($ids_despachos)) {
+			// Asumiendo que viene como "1,2,3" limpiamos caracteres extraños
+			$ids_clean = preg_replace('/[^0-9,]/', '', $ids_despachos);
+			if (!empty($ids_clean)) {
+				$in_clause = $ids_clean;
+			}
+		}
+
+		$q = "
+		SELECT
+			con.Id AS Id,
+			con.descripcion
+		FROM
+			tbconfig_proveedoresmineros_concesion con
+		INNER JOIN tb_clientes prov ON
+			prov.documento = con.proveedorminero_documento
+		INNER JOIN despacho des ON
+			des.id_proveedor = prov.id
+		WHERE
+			des.id IN ($in_clause) AND con.estado = 'A'
+		GROUP BY con.Id, con.descripcion
+		ORDER BY con.descripcion
+		";
+		$data = [];
+		if ($r = mysqli_query($enlace, $q)) {
+			while ($row = mysqli_fetch_assoc($r)) {
+				$data[] = $row;
+			}
+			echo json_encode(["estado" => 1, "data" => $data]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
+		}
+		break;
+
+	case "get_Guia2T_marcas_tolva":
+		$q = "SELECT id AS Id, descripcion FROM tbconfig_unidadesmarca WHERE estado = 'A' ORDER BY descripcion";
+		$data = [];
+		if ($r = mysqli_query($enlace, $q)) {
+			while ($row = mysqli_fetch_assoc($r)) {
+				$data[] = $row;
+			}
+			echo json_encode(["estado" => 1, "data" => $data]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
+		}
+		break;
+
+	case "get_Guia2T_empresas_transporte":
+		$q = "
+		SELECT
+			trn.Id AS Id,
+			trn.documento,
+			trn.razon_social
+		FROM
+			tb_clientes trn
+		WHERE
+			trn.cod_clientecondicion = 2 AND
+			trn.estado = 'A'
+		ORDER BY trn.razon_social
+		";
+		$data = [];
+		if ($r = mysqli_query($enlace, $q)) {
+			while ($row = mysqli_fetch_assoc($r)) {
+				$data[] = $row;
+			}
+			echo json_encode(["estado" => 1, "data" => $data]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
+		}
+		break;
+
+	case "get_distribuciones_pendientes_guia_2t":
+		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
+		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
+		$filtro_placa = mysqli_real_escape_string($enlace, $_POST["filtro_placa"] ?? '');
+
+		$filtro_fechas = "";
+		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+			$filtro_fechas = " AND DATE(d.fecha_estimada) BETWEEN '$fecha_inicio' AND '$fecha_fin' ";
+		}
+
+		$filtro_placa_sql = "";
+		if (!empty($filtro_placa)) {
+			$filtro_placa_sql = " AND (t.cplaca LIKE '%$filtro_placa%' OR d.segunda_placa LIKE '%$filtro_placa%') ";
+		}
+
+		$q = "
+		SELECT
+			d.id AS id_distribucion,
+			DATE_FORMAT(d.fecha_estimada, '%Y-%m-%d') as fecha_estimada,
+			t.cplaca AS placa1,
+			d.segunda_placa AS placa2,
+			cli.documento as transportista_ruc,
+			cli.razon_social as transportista_rs,
+			con.nombres as conductor_nombre,
+			tv.descripcion as tipo_vehiculo,
+			d.id_despacho,
+			desp.correlativo as correlativo_despacho,
+			d.id_unidad,
+			d.id_empresa_transporte,
+			(SELECT COUNT(*) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as total_lotes,
+			(SELECT SUM(dd.peso_neto) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_neto,
+			(SELECT SUM(dd.peso_bruto) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_bruto,
+			(SELECT SUM(dd.peso_tara) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_tara,
+			(SELECT SUM(dd.peso_tomado) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_tomado
+		FROM distribucion d
+		INNER JOIN transporte t ON d.id_unidad = t.id_transporte
+		LEFT JOIN despacho desp ON d.id_despacho = desp.id
+		LEFT JOIN tb_clientes cli ON d.id_empresa_transporte = cli.id
+		LEFT JOIN tbconfig_tipovehiculo tv ON t.id_tipovehiculo = tv.id
+		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
+		WHERE 
+			d.estado_peso = 'A' 
+			AND d.id_guia_segundo_tramo IS NULL
+			$filtro_fechas
+			$filtro_placa_sql
+		ORDER BY d.fecha_estimada DESC
+		";
+
+		$data = [];
+		if ($r = mysqli_query($enlace, $q)) {
+			while ($row = mysqli_fetch_assoc($r)) {
+				$data[] = $row;
+			}
+			echo json_encode(["estado" => 1, "data" => $data]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
+		}
+		break;
+
 	default:
 		# code...
 		break;
