@@ -479,14 +479,11 @@ $backendUrl = 'apis/backend.php';
         }, 'json');
       }
 
-      // Formato de moneda
-      function formatCurrency(amount, showSymbol = true) {
-        if (amount === null || amount === undefined || amount === "") return '';
-        const num = parseFloat(amount);
-        if (isNaN(num)) return '';
-        const formatted = num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        return showSymbol ? `$ ${formatted}` : formatted;
+      function formatearMoneda(valor) {
+        if (!valor || isNaN(valor)) return '0.00';
+        return parseFloat(valor).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       }
+
 
       // Formato de fecha (DD/MM/YYYY)
       function formatDate(dateString) {
@@ -558,7 +555,7 @@ $backendUrl = 'apis/backend.php';
               <!-- Info Anticipo -->
               <td class="text-center text-primary">${ant.factura}</td>
               <td class="text-center">${formatDate(ant.fecha)}</td>
-              <td class="text-end text-primary">${formatCurrency(ant.importe_inicial)}</td>
+              <td class="text-end text-primary">${formatearMoneda(ant.importe_inicial)}</td>
               
               <!-- Resto de columnas vacías para el header del grupo -->
               <td colspan="12" style="background-color: #f8f9fa;"></td>
@@ -592,21 +589,21 @@ $backendUrl = 'apis/backend.php';
                 
                 <!-- Acción Anticipo -->
                 <td class="text-center">${tr.porcentaje_aplicado}</td> <!-- Aplicado % -->
-                <td class="text-end">${formatCurrency(tr.monto_aplicado)}</td> <!-- Aplicado Parc -->
+                <td class="text-end">${formatearMoneda(tr.monto_aplicado)}</td> <!-- Aplicado Parc -->
                 <td class="text-center small font-monospace">${tr.lotes || ''}</td> <!-- Lote -->
                 
                 <!-- Factura Venta -->
                 <td class="text-center fw-bold">${tr.factura_amortiza_serie}</td>
                 <td class="text-center">${formatDate(tr.fecha_factura)}</td>
-                <td class="text-end">${formatCurrency(tr.importe_factura_usd)}</td>
-                <td class="text-end bg-warning fw-bold">${formatCurrency(tr.importe_amortiza_adelanto_usd)}</td>
+                <td class="text-end">${formatearMoneda(tr.importe_factura_usd)}</td>
+                <td class="text-end bg-warning fw-bold">${formatearMoneda(tr.importe_amortiza_adelanto_usd)}</td>
                 
                 <!-- Vacíos solicitados -->
-                <td class="text-end">${tr.saldo_factura_amortiza || '-'}</td>
-                <td class="text-end">${tr.saldo_neto_factura_amortiza || '-'}</td>
+                <td class="text-end">${tr.saldo_factura_amortiza ? formatearMoneda(tr.saldo_factura_amortiza) : '-'}</td>
+                <td class="text-end">${tr.saldo_neto_factura_amortiza ? formatearMoneda(tr.saldo_neto_factura_amortiza) : '-'}</td>
                 
                 <!-- Saldo Deuda (Saldo Restante del Anticipo) -->
-                <td class="text-end fw-bold text-primary">${formatCurrency(tr.saldo_deuda_usd)}</td>
+                <td class="text-end fw-bold text-primary">${formatearMoneda(tr.saldo_deuda_usd)}</td>
                 
                 <!-- Estado y Val -->
                 <td class="text-center">${estadoBadge}</td>
