@@ -78477,7 +78477,9 @@ switch ($_POST["accion"]) {
 		SELECT
 			d.id AS id_distribucion,
 			t.cplaca AS placa1,
-			CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa) AS placa2,
+			IF(d.serie_segunda_placa IS NOT NULL AND d.numero_segunda_placa IS NOT NULL AND d.serie_segunda_placa != '' AND d.numero_segunda_placa != '', 
+			   CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa), 
+			   '') AS placa2,
 			d.fecha_estimada,
 			desp.correlativo,
 			d.id_empresa_transporte,
@@ -78498,7 +78500,7 @@ switch ($_POST["accion"]) {
 		if ($res_placas = mysqli_query($enlace, $q_placas)) {
 			if (mysqli_num_rows($res_placas) > 0) {
 				$estado = 1;
-				while ($row_placas = mysqli_fetch_array($res_placas)) {
+				while ($row_placas = mysqli_fetch_assoc($res_placas)) {
 					$r[] = $row_placas;
 				}
 			}

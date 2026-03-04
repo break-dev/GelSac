@@ -1,11 +1,9 @@
-
-
 function f_Init() {
   // Genera menús
   f_GetMenuPrincipal();
 
   // Titulo de Pantalla
-  $("#nv_titulo").html('| Recepción de Unidades');
+  $("#nv_titulo").html("| Recepción de Unidades");
 
   // Carga Filtros
   f_LoadFiltroClientes();
@@ -23,51 +21,69 @@ function f_Init() {
   f_LoadResultados();
 }
 
-
-
-
-
 function f_LoadListaTransportistas(_id_cliente) {
   var _html = '<option selected value="">Seleccione una opción...</option>';
 
-  $("#registro_transportista").html('');
+  $("#registro_transportista").html("");
 
-  $.post("apis/backend.php", { accion: "get_listaclientes", cod_condicion: 2 },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_listaclientes", cod_condicion: 2 },
     function (data) {
       if (data.estado == 1) {
         $.each(data.res, function (key, val) {
-          _html += '<option value="' + val.Id + '" ' + ((_id_cliente > 0) ? ((_id_cliente == val.Id) ? 'selected' : '') : '') + '>' + val.razon_social.toUpperCase() + '</option>';
+          _html +=
+            '<option value="' +
+            val.Id +
+            '" ' +
+            (_id_cliente > 0 ? (_id_cliente == val.Id ? "selected" : "") : "") +
+            ">" +
+            val.razon_social.toUpperCase() +
+            "</option>";
         });
-      }
-      else {
+      } else {
         // alert("No se encontraron resultados.");
       }
 
       $("#registro_transportista").html(_html);
-
-    }, "json");
-};
+    },
+    "json",
+  );
+}
 
 function f_LoadListaConductores(_id_conductor) {
   var _html = '<option selected value="">Seleccione una opción...</option>';
 
-  $("#registro_conductor").html('');
+  $("#registro_conductor").html("");
 
-  $.post("apis/backend.php", { accion: "get_ListaConductores" },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_ListaConductores" },
     function (data) {
       if (data.estado == 1) {
         $.each(data.registros, function (key, val) {
-          _html += '<option value="' + val.Id + '" ' + ((_id_conductor > 0) ? ((_id_conductor == val.Id) ? 'selected' : '') : '') + '>' + val.nombres.toUpperCase() + '</option>';
+          _html +=
+            '<option value="' +
+            val.Id +
+            '" ' +
+            (_id_conductor > 0
+              ? _id_conductor == val.Id
+                ? "selected"
+                : ""
+              : "") +
+            ">" +
+            val.nombres.toUpperCase() +
+            "</option>";
         });
-      }
-      else {
+      } else {
         // alert("No se encontraron resultados.");
       }
 
       $("#registro_conductor").html(_html);
-
-    }, "json");
-};
+    },
+    "json",
+  );
+}
 
 function f_ShowTipoCarga() {
   var id_condicion = $("#registro_condicion").val();
@@ -84,48 +100,64 @@ function f_LoadListaTipoCarga() {
 
   var id_condicion = $("#registro_condicion").val();
 
-  $("#registro_tipocarga").html('');
+  $("#registro_tipocarga").html("");
 
-  $.post("apis/backend.php", { accion: "get_ListaTipoCarga", id_condicion: id_condicion },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_ListaTipoCarga", id_condicion: id_condicion },
     function (data) {
       if (data.estado == 1) {
         $.each(data.registros, function (key, val) {
-          _html += '<option value="' + val.Id + '">' + val.descripcion + '</option>';
+          _html +=
+            '<option value="' + val.Id + '">' + val.descripcion + "</option>";
         });
-      }
-      else {
+      } else {
         // alert("No se encontraron resultados.");
       }
 
       $("#registro_tipocarga").html(_html);
-
-    }, "json");
+    },
+    "json",
+  );
 
   // Seteando la Zona de Origen
-  $("#registro_zonaorigen").val('');
-  $("#registro_zonaorigen").trigger('change');
+  $("#registro_zonaorigen").val("");
+  $("#registro_zonaorigen").trigger("change");
 }
 
 function f_LoadListaZonaOrigen(_id_zonaorigen) {
-  var _html = '<option></option>';
+  var _html = "<option></option>";
 
-  $("#registro_zonaorigen").html('');
+  $("#registro_zonaorigen").html("");
 
-  $.post("apis/backend.php", { accion: "get_ListaZonaOrigen" },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_ListaZonaOrigen" },
     function (data) {
       if (data.estado == 1) {
         $.each(data.registros, function (key, val) {
-          _html += '<option value="' + val.Id + '" ' + ((_id_zonaorigen > 0) ? ((_id_zonaorigen == val.Id) ? 'selected' : '') : '') + '>' + val.descripcion.toUpperCase() + '</option>';
+          _html +=
+            '<option value="' +
+            val.Id +
+            '" ' +
+            (_id_zonaorigen > 0
+              ? _id_zonaorigen == val.Id
+                ? "selected"
+                : ""
+              : "") +
+            ">" +
+            val.descripcion.toUpperCase() +
+            "</option>";
         });
-      }
-      else {
+      } else {
         // alert("No se encontraron resultados.");
       }
 
       $("#registro_zonaorigen").html(_html);
-
-    }, "json");
-};
+    },
+    "json",
+  );
+}
 
 function f_GetListaTipoDocumento(_is_juridico) {
   var _html = '<option selected value="">Elija una opción...</option>';
@@ -136,24 +168,39 @@ function f_GetListaTipoDocumento(_is_juridico) {
     }
   }
 
-  $.post("apis/backend.php", { accion: "get_listatipodocumento" },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_listatipodocumento" },
     function (data) {
       if (data.estado == 1) {
         $.each(data.res, function (key, val) {
-          _html += '<option value="' + val.Id + '" ' + ((_is_juridico == 1) ? ((val.Id == 2) ? 'selected' : '') : ((val.Id == 1) ? 'selected' : '')) + '>' + val.descripcion + '</option>';
+          _html +=
+            '<option value="' +
+            val.Id +
+            '" ' +
+            (_is_juridico == 1
+              ? val.Id == 2
+                ? "selected"
+                : ""
+              : val.Id == 1
+                ? "selected"
+                : "") +
+            ">" +
+            val.descripcion +
+            "</option>";
         });
 
         $("#cliente_tipodocumento").html(_html);
+      } else {
+        $("#cliente_tipodocumento").html("");
       }
-      else {
-        $("#cliente_tipodocumento").html('');
-      }
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_LoadResultados() {
-  var _html = '';
+  var _html = "";
 
   var fecha_inicio = $("#fecha_inicio").val();
   var fecha_fin = $("#fecha_fin").val();
@@ -163,55 +210,65 @@ function f_LoadResultados() {
 
   f_LoadingResumen(1);
 
-  $("#tbl_detalle").html('');
+  $("#tbl_detalle").html("");
 
-  $.post("apis/backend.php", { accion: "get_ListaIngresoUnidades", fecha_inicio: fecha_inicio, fecha_fin: fecha_fin, filtro_condicioningreso: filtro_condicioningreso, filtro_transportista: filtro_transportista, filtro_placa: filtro_placa },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "get_ListaIngresoUnidades",
+      fecha_inicio: fecha_inicio,
+      fecha_fin: fecha_fin,
+      filtro_condicioningreso: filtro_condicioningreso,
+      filtro_transportista: filtro_transportista,
+      filtro_placa: filtro_placa,
+    },
     function (data) {
       if (data.estado == 1) {
         $("#tbl_detalle").html(data.html);
       }
 
       f_LoadingResumen(0);
-
-    }, "json");
-};
+    },
+    "json",
+  );
+}
 
 function f_AdminRecepcion() {
-  f_OpenModal('modal_addrecepcion');
+  f_OpenModal("modal_addrecepcion");
 
   $("#hd_idregistro").val(0);
-  $("#hd_modograbar").val('N');
+  $("#hd_modograbar").val("N");
 
-  $("#registro_condicion").val('');
-  $("#registro_condicion").trigger('change');
+  $("#registro_condicion").val("");
+  $("#registro_condicion").trigger("change");
 
-  $("#registro_placa1").val('');
-  $("#registro_placa2").val('');
+  $("#registro_placa1").val("");
+  $("#registro_placa2").val("");
 
-  $("#registro_transportista").val('');
-  $("#registro_transportista").trigger('change');
+  $("#registro_transportista").val("");
+  $("#registro_transportista").trigger("change");
 
-  $("#registro_tipovehiculo").val('');
-  $("#registro_tipovehiculo").trigger('change');
+  $("#registro_tipovehiculo").val("");
+  $("#registro_tipovehiculo").trigger("change");
 
-  $("#registro_conductor").val('');
-  $("#registro_conductor").trigger('change');
+  $("#registro_conductor").val("");
+  $("#registro_conductor").trigger("change");
 
-  $("#registro_tipocarga").val('');
-  $("#registro_tipocarga").trigger('change');
+  $("#registro_tipocarga").val("");
+  $("#registro_tipocarga").trigger("change");
 
-  $("#registro_zonaorigen").val('');
-  $("#registro_zonaorigen").trigger('change');
+  $("#registro_zonaorigen").val("");
+  $("#registro_zonaorigen").trigger("change");
 
-  $("#registro_observacion").val('');
-  $("#chk_vehiculoparticular").prop('checked', false);
+  $("#registro_observacion").val("");
+  $("#chk_vehiculoparticular").prop("checked", false);
 
-  $("#tbl_acompanantes").html('');
-  $("#tbl_imagenes").html('');
+  $("#tbl_acompanantes").html("");
+  $("#tbl_imagenes").html("");
 
-  $("#div_recepcion1").css('display', 'block');
-  $("#div_recepcion2").css('display', 'none');
-  $("#div_recepcion3").css('display', 'none');
+  $("#div_recepcion1").css("display", "block");
+  $("#div_recepcion2").css("display", "none");
+  $("#div_recepcion3").css("display", "none");
 
   $("#btn_Regresar_2").hide();
   $("#btn_Regresar_3").hide();
@@ -237,26 +294,26 @@ function f_AddTransportista() {
   $("#hd_modograbar").val(tipo);
 
   // Cargando datos
-  f_OpenModal('modal_addcliente');
+  f_OpenModal("modal_addcliente");
 
   $("#hd_idcliente").val(0);
   $("#cliente_condicion").val(2);
-  $("#cliente_tipocliente").val('');
-  $("#cliente_tipodocumento").val('');
-  $("#cliente_documento").val('');
-  $("#cliente_razonsocial").val('');
-  $("#cliente_telefono1").val('');
-  $("#cliente_telefono2").val('');
-  $("#cliente_correo").val('');
-  $("#cliente_direccion").val('');
+  $("#cliente_tipocliente").val("");
+  $("#cliente_tipodocumento").val("");
+  $("#cliente_documento").val("");
+  $("#cliente_razonsocial").val("");
+  $("#cliente_telefono1").val("");
+  $("#cliente_telefono2").val("");
+  $("#cliente_correo").val("");
+  $("#cliente_direccion").val("");
 }
 
 function f_GetInfoCliente(_id_modulo) {
   var is_ruc = 0;
-  var documento = '';
+  var documento = "";
 
   if (_id_modulo == 1) {
-    is_ruc = (($("#cliente_tipodocumento").val() == 2) ? 1 : 0);
+    is_ruc = $("#cliente_tipodocumento").val() == 2 ? 1 : 0;
     documento = $("#cliente_documento").val();
   }
 
@@ -270,22 +327,22 @@ function f_GetInfoCliente(_id_modulo) {
     documento = $("#acompanante_dni").val();
   }
 
-  var arr_response = '';
+  var arr_response = "";
 
   // Limpiando objetos
   if (_id_modulo == 1) {
-    $("#cliente_razonsocial").val('');
-    $("#cliente_direccion").val('');
+    $("#cliente_razonsocial").val("");
+    $("#cliente_direccion").val("");
     $("#wt_razonsocial2").hide();
   }
 
   if (_id_modulo == 2) {
-    $("#conductor_nombres").val('');
+    $("#conductor_nombres").val("");
     $("#wt_conductor").hide();
   }
 
   if (_id_modulo == 3) {
-    $("#acompanante_nombres").val('');
+    $("#acompanante_nombres").val("");
     $("#wt_acompanante").hide();
   }
 
@@ -303,43 +360,51 @@ function f_GetInfoCliente(_id_modulo) {
       $("#wt_acompanante").show();
     }
 
-    $.post("apis/backend.php", { accion: "get_infocliente", is_ruc: is_ruc, documento: documento },
+    $.post(
+      "apis/backend.php",
+      { accion: "get_infocliente", is_ruc: is_ruc, documento: documento },
       function (data) {
         if (data.estado == 1) {
-          arr_response = data.res.replace(/"/g, '').replace(/{/g, '').replace(/}/g, '').split(',');
+          arr_response = data.res
+            .replace(/"/g, "")
+            .replace(/{/g, "")
+            .replace(/}/g, "")
+            .split(",");
 
           if (is_ruc == 1) {
-            $("#cliente_razonsocial").val(arr_response[0].split(':')[1].trim());
-            $("#cliente_direccion").val(arr_response[4].split(':')[1].trim());
-          }
-          else {
+            $("#cliente_razonsocial").val(arr_response[0].split(":")[1].trim());
+            $("#cliente_direccion").val(arr_response[4].split(":")[1].trim());
+          } else {
             if (_id_modulo == 1) {
-              $("#cliente_razonsocial").val(arr_response[0].split(':')[1].trim());
-              $("#cliente_direccion").val('');
+              $("#cliente_razonsocial").val(
+                arr_response[0].split(":")[1].trim(),
+              );
+              $("#cliente_direccion").val("");
             }
 
             if (_id_modulo == 2) {
-              $("#conductor_nombres").val(arr_response[0].split(':')[1].trim());
+              $("#conductor_nombres").val(arr_response[0].split(":")[1].trim());
               $("#conductor_licencia").val($("#conductor_dni").val().trim());
             }
 
             if (_id_modulo == 3) {
-              $("#acompanante_nombres").val(arr_response[0].split(':')[1].trim());
+              $("#acompanante_nombres").val(
+                arr_response[0].split(":")[1].trim(),
+              );
             }
           }
-        }
-        else {
+        } else {
           if (_id_modulo == 1) {
-            $("#cliente_razonsocial").val('NO ENCONTRADO');
-            $("#cliente_direccion").val('');
+            $("#cliente_razonsocial").val("NO ENCONTRADO");
+            $("#cliente_direccion").val("");
           }
 
           if (_id_modulo == 2) {
-            $("#conductor_nombres").val('NO ENCONTRADO');
+            $("#conductor_nombres").val("NO ENCONTRADO");
           }
 
           if (_id_modulo == 3) {
-            $("#acompanante_nombres").val('NO ENCONTRADO');
+            $("#acompanante_nombres").val("NO ENCONTRADO");
           }
         }
 
@@ -354,8 +419,9 @@ function f_GetInfoCliente(_id_modulo) {
         if (_id_modulo == 3) {
           $("#wt_acompanante").hide();
         }
-
-      }, "json");
+      },
+      "json",
+    );
   }
 }
 
@@ -370,12 +436,12 @@ function f_AddConductor() {
   // Identificando el tipo de grabación
 
   // Cargando datos
-  f_OpenModal('modal_addconductor');
+  f_OpenModal("modal_addconductor");
 
-  $("#conductor_tipodocumento").val('');
-  $("#conductor_dni").val('');
-  $("#conductor_licencia").val('');
-  $("#conductor_nombres").val('');
+  $("#conductor_tipodocumento").val("");
+  $("#conductor_dni").val("");
+  $("#conductor_licencia").val("");
+  $("#conductor_nombres").val("");
 }
 
 function f_AddZonaOrigen() {
@@ -389,24 +455,32 @@ function f_AddZonaOrigen() {
   // Identificando el tipo de grabación
 
   // Cargando datos
-  f_OpenModal('modal_addzonaorigen');
+  f_OpenModal("modal_addzonaorigen");
 
-  $("#zona_origen").val('');
+  $("#zona_origen").val("");
 }
 
 function f_GrabarRecepcion_Next(_id_div) {
   if (_id_div == 1) {
     // Recupera variables
     var registro_condicion = $("#registro_condicion").val();
-    var registro_placa = f_CleanInjection($("#registro_placa1").val()) + '-' + f_CleanInjection($("#registro_placa2").val());
+    var registro_placa =
+      f_CleanInjection($("#registro_placa1").val()) +
+      "-" +
+      f_CleanInjection($("#registro_placa2").val());
     var registro_transportista = $("#registro_transportista").val();
-    var registro_tipovehiculo = $("#registro_tipovehiculo").val().split('|')[0];
-    var tiene_carreta = $("#registro_tipovehiculo").val().split('|')[1];
-    var registro_placa2 = f_CleanInjection($("#registro_placa1_2").val()) + '-' + f_CleanInjection($("#registro_placa2_2").val());
+    var registro_tipovehiculo = $("#registro_tipovehiculo").val().split("|")[0];
+    var tiene_carreta = $("#registro_tipovehiculo").val().split("|")[1];
+    var registro_placa2 =
+      f_CleanInjection($("#registro_placa1_2").val()) +
+      "-" +
+      f_CleanInjection($("#registro_placa2_2").val());
     var registro_conductor = $("#registro_conductor").val();
     var registro_tipocarga = $("#registro_tipocarga").val();
     var registro_zonaorigen = $("#registro_zonaorigen").val();
-    var registro_observacion = f_CleanInjection($("#registro_observacion").val());
+    var registro_observacion = f_CleanInjection(
+      $("#registro_observacion").val(),
+    );
 
     var id_placadespacho = $("#registro_placasdespacho").val();
 
@@ -522,9 +596,8 @@ function f_GrabarRecepcion_Next(_id_div) {
 
         return;
       }
-    }
-    else {
-      registro_placa2 = '';
+    } else {
+      registro_placa2 = "";
     }
 
     if (registro_conductor == null) {
@@ -552,20 +625,23 @@ function f_GrabarRecepcion_Next(_id_div) {
     }
 
     // Obtiene total de acompañantes
-    var table = document.getElementById('tbl_acompanantes');
-    var a = table.rows.length
+    var table = document.getElementById("tbl_acompanantes");
+    var a = table.rows.length;
 
     // Setea tabla de Acompañantes
     if (a == 0) {
       var _html = $("#tbl_acompanantes").html();
 
-      _html += '<td colspan="6" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-      _html += '  <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px; margin-top: -5px;" onclick="f_AddAcompanante();">';
-      _html += '    <b>+ Agregar Acompañante</b>';
-      _html += '  </button>';
-      _html += '</td>';
+      _html +=
+        '<td colspan="6" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+      _html +=
+        '  <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px; margin-top: -5px;" onclick="f_AddAcompanante();">';
+      _html += "    <b>+ Agregar Acompañante</b>";
+      _html += "  </button>";
+      _html += "</td>";
 
-      document.getElementById('tbl_acompanantes').insertRow(-1).innerHTML = _html;
+      document.getElementById("tbl_acompanantes").insertRow(-1).innerHTML =
+        _html;
     }
 
     // Continuar al siguiente grupo de datos
@@ -594,14 +670,17 @@ function f_GrabarRecepcion_Next(_id_div) {
     // $("#btn_ConfirmarAcompanantes").show();
 
     // Obtiene total de Imágenes
-    var table = document.getElementById('tbl_imagenes');
-    var a = table.rows.length
+    var table = document.getElementById("tbl_imagenes");
+    var a = table.rows.length;
 
     // Obteniendo Id temporal autogenerado
     var _time = new Date();
-    _time = _time.getHours().toString().padStart(2, '0') + ":" + _time.getMinutes().toString().padStart(2, '0');
+    _time =
+      _time.getHours().toString().padStart(2, "0") +
+      ":" +
+      _time.getMinutes().toString().padStart(2, "0");
 
-    var tmp_Id = 'tmp_imagenes-<?php echo $g_date ?>-' + _time;
+    var tmp_Id = "tmp_imagenes-<?php echo $g_date ?>-" + _time;
 
     // Setea tabla de Imágenes adicionales
     if (a == 0) {
@@ -611,81 +690,127 @@ function f_GrabarRecepcion_Next(_id_div) {
       var is_placa2 = 0;
       var is_placa2_x = 0;
 
-      if ($('#div_placa2').css('display') == 'flex') {
+      if ($("#div_placa2").css("display") == "flex") {
         is_placa2 = 1;
         is_placa2_x = is_placa2;
       }
 
       // Cargando las 3 imágenes por defecto
       var i = 1;
-      var descripcion = '';
+      var descripcion = "";
 
       while (i <= 4) {
         // Definiendo descripción
         if (i == 1) {
-          descripcion = 'BREVETE';
+          descripcion = "BREVETE";
         }
 
         if (i == 2) {
-          descripcion = 'PLACA 1';
+          descripcion = "PLACA 1";
         }
 
         if (i == 3) {
-          descripcion = 'TOLVA';
+          descripcion = "TOLVA";
         }
 
         if (i == 4) {
-          descripcion = 'TARJETA CIRCULACIÓN';
+          descripcion = "TARJETA CIRCULACIÓN";
         }
 
         // Seteando html
-        _html += '<tr>';
-        _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+        _html += "<tr>";
+        _html +=
+          '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
         // _html += '   <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
-        _html += '  </td>';
+        _html += "  </td>";
 
-        _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
-        _html += '    ' + ((i == 4 && is_placa2 == 1) ? 5 : ((i == 3 && is_placa2 == 1) ? 4 : i));
-        _html += '    <input id="tmp_imagenes_id_' + ((i == 4 && is_placa2 == 1) ? 5 : ((i == 3 && is_placa2 == 1) ? 4 : i)) + '" type="hidden" value="' + tmp_Id + '_' + ((i == 4 && is_placa2 == 1) ? 5 : ((i == 3 && is_placa2 == 1) ? 4 : i)) + '">';
-        _html += '  </td>';
+        _html +=
+          '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+        _html +=
+          "    " +
+          (i == 4 && is_placa2 == 1 ? 5 : i == 3 && is_placa2 == 1 ? 4 : i);
+        _html +=
+          '    <input id="tmp_imagenes_id_' +
+          (i == 4 && is_placa2 == 1 ? 5 : i == 3 && is_placa2 == 1 ? 4 : i) +
+          '" type="hidden" value="' +
+          tmp_Id +
+          "_" +
+          (i == 4 && is_placa2 == 1 ? 5 : i == 3 && is_placa2 == 1 ? 4 : i) +
+          '">';
+        _html += "  </td>";
 
-        _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
-        _html += '    ' + descripcion;
-        _html += '  </td>';
+        _html +=
+          '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
+        _html += "    " + descripcion;
+        _html += "  </td>";
 
-        _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-        _html += '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_' + ((i == 4 && is_placa2 == 1) ? 5 : ((i == 3 && is_placa2 == 1) ? 4 : i)) + '" onclick="f_ShowImagenes(this.src, 1, ' + "'" + descripcion + "'" + ');">';
-        _html += '  </td>';
+        _html +=
+          '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+        _html +=
+          '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_' +
+          (i == 4 && is_placa2 == 1 ? 5 : i == 3 && is_placa2 == 1 ? 4 : i) +
+          '" onclick="f_ShowImagenes(this.src, 1, ' +
+          "'" +
+          descripcion +
+          "'" +
+          ');">';
+        _html += "  </td>";
 
-        _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-        _html += '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(' + ((i == 4 && is_placa2 == 1) ? 5 : ((i == 3 && is_placa2 == 1) ? 4 : i)) + ');">';
-        _html += '  </td>';
-        _html += '</tr>';
+        _html +=
+          '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+        _html +=
+          '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(' +
+          (i == 4 && is_placa2 == 1 ? 5 : i == 3 && is_placa2 == 1 ? 4 : i) +
+          ');">';
+        _html += "  </td>";
+        _html += "</tr>";
 
         // Si tiene Placa 2
         if (i == 2 && is_placa2_x == 1) {
-          _html += '<tr>';
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+          _html += "<tr>";
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
           // _html += '   <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
-          _html += '  </td>';
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
-          _html += '    ' + (i + 1);
-          _html += '    <input id="tmp_imagenes_id_' + (i + 1) + '" type="hidden" value="' + tmp_Id + '_' + (i + 1) + '">';
-          _html += '  </td>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+          _html += "    " + (i + 1);
+          _html +=
+            '    <input id="tmp_imagenes_id_' +
+            (i + 1) +
+            '" type="hidden" value="' +
+            tmp_Id +
+            "_" +
+            (i + 1) +
+            '">';
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
-          _html += '    PLACA 2';
-          _html += '  </td>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
+          _html += "    PLACA 2";
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-          _html += '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_' + (i + 1) + '" onclick="f_ShowImagenes(this.src, 1, ' + "'" + 'PLACA 2' + "'" + ');">';
-          _html += '  </td>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+          _html +=
+            '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_' +
+            (i + 1) +
+            '" onclick="f_ShowImagenes(this.src, 1, ' +
+            "'" +
+            "PLACA 2" +
+            "'" +
+            ');">';
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-          _html += '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(' + (i + 1) + ');">';
-          _html += '  </td>';
-          _html += '</tr>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+          _html +=
+            '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(' +
+            (i + 1) +
+            ');">';
+          _html += "  </td>";
+          _html += "</tr>";
 
           is_placa2_x = 0;
         }
@@ -694,55 +819,68 @@ function f_GrabarRecepcion_Next(_id_div) {
       }
 
       // Agregando fila para imágenes adicionales
-      _html += '<tr>';
-      _html += '  <td colspan="5" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-      _html += '    <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px;" onclick="f_AddImagenAdicional();">';
-      _html += '      <b>+ Agregar Imagen</b>';
-      _html += '    </button>';
-      _html += '  </td>';
-      _html += '</tr>';
+      _html += "<tr>";
+      _html +=
+        '  <td colspan="5" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+      _html +=
+        '    <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px;" onclick="f_AddImagenAdicional();">';
+      _html += "      <b>+ Agregar Imagen</b>";
+      _html += "    </button>";
+      _html += "  </td>";
+      _html += "</tr>";
 
       // Agregando html
-      $('#tbl_imagenes').html(_html);
-    }
-    else {
+      $("#tbl_imagenes").html(_html);
+    } else {
       // Verifica por si la placa 2 está activa
-      if ($('#div_placa2').css('display') == 'none') {
-        if ($('#tbl_imagenes tr:eq(2) td:eq(2)').html().trim() == 'PLACA 2') {
-          $('#tbl_imagenes tr:eq(2)').remove();
+      if ($("#div_placa2").css("display") == "none") {
+        if ($("#tbl_imagenes tr:eq(2) td:eq(2)").html().trim() == "PLACA 2") {
+          $("#tbl_imagenes tr:eq(2)").remove();
         }
-      }
-      else {
-        if ($('#tbl_imagenes tr:eq(2) td:eq(2)').html().trim() != 'PLACA 2') {
-          var _html = '<tr>';
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+      } else {
+        if ($("#tbl_imagenes tr:eq(2) td:eq(2)").html().trim() != "PLACA 2") {
+          var _html = "<tr>";
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
           // _html += '   <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
-          _html += '  </td>';
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
-          _html += '    3';
-          _html += '    <input id="tmp_imagenes_id_3" type="hidden" value="' + tmp_Id + '_3' + '">';
-          _html += '  </td>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+          _html += "    3";
+          _html +=
+            '    <input id="tmp_imagenes_id_3" type="hidden" value="' +
+            tmp_Id +
+            "_3" +
+            '">';
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
-          _html += '    PLACA 2';
-          _html += '  </td>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
+          _html += "    PLACA 2";
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-          _html += '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_3" onclick="f_ShowImagenes(this.src, 1, ' + "'PLACA 2'" + ');">';
-          _html += '  </td>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+          _html +=
+            '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_3" onclick="f_ShowImagenes(this.src, 1, ' +
+            "'PLACA 2'" +
+            ');">';
+          _html += "  </td>";
 
-          _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-          _html += '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(3);">';
-          _html += '  </td>';
-          _html += '</tr>';
+          _html +=
+            '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+          _html +=
+            '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(3);">';
+          _html += "  </td>";
+          _html += "</tr>";
 
-          $('#tbl_imagenes tr:eq(1)').after(_html);
+          $("#tbl_imagenes tr:eq(1)").after(_html);
         }
       }
 
       // Obtiene total de Imágenes
-      var table = document.getElementById('tbl_imagenes');
+      var table = document.getElementById("tbl_imagenes");
       var _rows = table.rows.length - 1;
 
       // Reinicia los contadores
@@ -786,17 +924,17 @@ function f_RegresarRecepcion(_id_div) {
 
 function f_AddAcompanante() {
   // Cargando datos
-  f_OpenModal('modal_addacompanante');
+  f_OpenModal("modal_addacompanante");
 
-  $("#acompanante_dni").val('');
-  $("#acompanante_nombres").val('');
+  $("#acompanante_dni").val("");
+  $("#acompanante_nombres").val("");
 }
 
 function f_AddImagenAdicional() {
   // Cargando datos
-  f_OpenModal('modal_addimagenadicional');
+  f_OpenModal("modal_addimagenadicional");
 
-  $("#imagenadicional_descripcion").val('');
+  $("#imagenadicional_descripcion").val("");
 }
 
 function f_GrabarAcompanante() {
@@ -828,63 +966,94 @@ function f_GrabarAcompanante() {
   }
 
   // Eliminando la ultima fila (Botón de agregar acompañantes)
-  var table = document.getElementById('tbl_acompanantes');
-  var a = table.rows.length
+  var table = document.getElementById("tbl_acompanantes");
+  var a = table.rows.length;
 
   table.deleteRow(a - 1);
 
   // Obteniendo Id temporal autogenerado
   var _time = new Date();
-  _time = _time.getHours().toString().padStart(2, '0') + ":" + _time.getMinutes().toString().padStart(2, '0');
+  _time =
+    _time.getHours().toString().padStart(2, "0") +
+    ":" +
+    _time.getMinutes().toString().padStart(2, "0");
 
-  var tmp_Id = 'tmp-<?php echo $g_date ?>-' + _time;
+  var tmp_Id = "tmp-<?php echo $g_date ?>-" + _time;
 
   // Agregar nuevo acompañante
-  var _html = '';
+  var _html = "";
 
-  _html += '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '  ' + a;
-  _html += '  <input id="tmp_id_' + a + '" type="hidden" value="' + tmp_Id + '_' + a + '">';
-  _html += '</td>';
+  _html +=
+    '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html += "  " + a;
+  _html +=
+    '  <input id="tmp_id_' +
+    a +
+    '" type="hidden" value="' +
+    tmp_Id +
+    "_" +
+    a +
+    '">';
+  _html += "</td>";
 
-  _html += '<td class="del_tr" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '  <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
-  _html += '</td>';
+  _html +=
+    '<td class="del_tr" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html +=
+    '  <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
+  _html += "</td>";
 
-  _html += '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '  ' + acompanante_dni;
-  _html += '</td>';
+  _html +=
+    '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html += "  " + acompanante_dni;
+  _html += "</td>";
 
-  _html += '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '  ' + acompanante_nombres.toUpperCase();
-  _html += '</td>';
+  _html +=
+    '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html += "  " + acompanante_nombres.toUpperCase();
+  _html += "</td>";
 
-  _html += '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '  <img class="imagen" src="" alt="" style="width: 80px; display: none;cursor: pointer" id="img_acompanante_' + a + '" onclick="f_ShowDocumentoAcompanante(this.src, ' + "'" + acompanante_nombres.toUpperCase() + "', 1" + ');">';
-  _html += '</td>';
+  _html +=
+    '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html +=
+    '  <img class="imagen" src="" alt="" style="width: 80px; display: none;cursor: pointer" id="img_acompanante_' +
+    a +
+    '" onclick="f_ShowDocumentoAcompanante(this.src, ' +
+    "'" +
+    acompanante_nombres.toUpperCase() +
+    "', 1" +
+    ');">';
+  _html += "</td>";
 
-  _html += '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '  <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddAcompanante_Imagen(' + a + ');">';
-  _html += '</td>';
+  _html +=
+    '<td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html +=
+    '  <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddAcompanante_Imagen(' +
+    a +
+    ');">';
+  _html += "</td>";
 
-  document.getElementById('tbl_acompanantes').insertRow(-1).innerHTML = _html;
+  document.getElementById("tbl_acompanantes").insertRow(-1).innerHTML = _html;
 
   // Agregar fila para Nuevo Acompañante
-  _html = '<td colspan="6" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-  _html += '  <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px; margin-top: -5px;" onclick="f_AddAcompanante();">';
-  _html += '    <b>+ Agregar Acompañante</b>';
-  _html += '  </button>';
-  _html += '</td>';
+  _html =
+    '<td colspan="6" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+  _html +=
+    '  <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px; margin-top: -5px;" onclick="f_AddAcompanante();">';
+  _html += "    <b>+ Agregar Acompañante</b>";
+  _html += "  </button>";
+  _html += "</td>";
 
-  document.getElementById('tbl_acompanantes').insertRow(-1).innerHTML = _html;
+  document.getElementById("tbl_acompanantes").insertRow(-1).innerHTML = _html;
 
   // Cerrando Modal
-  f_cerrarModal('modal_addacompanante');
+  f_cerrarModal("modal_addacompanante");
 }
 
 function f_GrabarImagenAdicional() {
   // Recupera variables
-  var imagenadicional_descripcion = f_CleanInjection($("#imagenadicional_descripcion").val().trim());
+  var imagenadicional_descripcion = f_CleanInjection(
+    $("#imagenadicional_descripcion").val().trim(),
+  );
 
   // Validando datos
   if (imagenadicional_descripcion == null) {
@@ -899,63 +1068,91 @@ function f_GrabarImagenAdicional() {
   }
 
   // Eliminando la ultima fila (Botón de agregar acompañantes)
-  var table = document.getElementById('tbl_imagenes');
-  var i = table.rows.length
+  var table = document.getElementById("tbl_imagenes");
+  var i = table.rows.length;
 
   table.deleteRow(i - 1);
 
   // Obteniendo Id temporal autogenerado
   var _time = new Date();
-  _time = _time.getHours().toString().padStart(2, '0') + ":" + _time.getMinutes().toString().padStart(2, '0');
+  _time =
+    _time.getHours().toString().padStart(2, "0") +
+    ":" +
+    _time.getMinutes().toString().padStart(2, "0");
 
-  var tmp_Id = 'tmp-<?php echo $g_date ?>-' + _time;
+  var tmp_Id = "tmp-<?php echo $g_date ?>-" + _time;
 
   // Agregar nuevo acompañante
-  var _html = '';
+  var _html = "";
 
-  _html += '  <td class="del_tr2" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
-  _html += '    <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
-  _html += '  </td>';
+  _html +=
+    '  <td class="del_tr2" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+  _html +=
+    '    <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer;">X</label>';
+  _html += "  </td>";
 
-  _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
-  _html += '    ' + i;
-  _html += '    <input id="tmp_imagenes_id_' + i + '" type="hidden" value="' + tmp_Id + '_' + i + '">';
-  _html += '  </td>';
+  _html +=
+    '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px;">';
+  _html += "    " + i;
+  _html +=
+    '    <input id="tmp_imagenes_id_' +
+    i +
+    '" type="hidden" value="' +
+    tmp_Id +
+    "_" +
+    i +
+    '">';
+  _html += "  </td>";
 
-  _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
-  _html += '    ' + imagenadicional_descripcion.toUpperCase();
-  _html += '  </td>';
+  _html +=
+    '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px; width: 30px; font-weight: bold;">';
+  _html += "    " + imagenadicional_descripcion.toUpperCase();
+  _html += "  </td>";
 
-  _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_' + i + '" onclick="f_ShowImagenes(this.src, 1, ' + "'" + imagenadicional_descripcion + "'" + ');">';
-  _html += '  </td>';
+  _html +=
+    '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html +=
+    '    <img class="imagen" src="" alt="" style="width: 80px; display: none;" id="img_imagenes_' +
+    i +
+    '" onclick="f_ShowImagenes(this.src, 1, ' +
+    "'" +
+    imagenadicional_descripcion +
+    "'" +
+    ');">';
+  _html += "  </td>";
 
-  _html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
-  _html += '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(' + i + ');">';
-  _html += '  </td>';
+  _html +=
+    '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-size: 12px;">';
+  _html +=
+    '    <img src="<?php echo $img_camara ?>" style="width: 30px; cursor: pointer;" onclick="f_AddImagenes(' +
+    i +
+    ');">';
+  _html += "  </td>";
 
-  document.getElementById('tbl_imagenes').insertRow(-1).innerHTML = _html;
+  document.getElementById("tbl_imagenes").insertRow(-1).innerHTML = _html;
 
   // Agregar fila para Nuevo Acompañante
-  _html = ' <td colspan="5" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-  _html += '    <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px;" onclick="f_AddImagenAdicional();">';
-  _html += '      <b>+ Agregar Imagen</b>';
-  _html += '    </button>';
-  _html += '  </td>';
+  _html =
+    ' <td colspan="5" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+  _html +=
+    '    <button class="btn btn-primary" type="button" style="color: #ffffff; font-size: 14px;" onclick="f_AddImagenAdicional();">';
+  _html += "      <b>+ Agregar Imagen</b>";
+  _html += "    </button>";
+  _html += "  </td>";
 
-  document.getElementById('tbl_imagenes').insertRow(-1).innerHTML = _html;
+  document.getElementById("tbl_imagenes").insertRow(-1).innerHTML = _html;
 
   // Cerrando Modal
-  f_cerrarModal('modal_addimagenadicional');
+  f_cerrarModal("modal_addimagenadicional");
 }
 
-$(document).on('click', '.del_tr', function (event) {
+$(document).on("click", ".del_tr", function (event) {
   event.preventDefault();
 
-  $(this).closest('tr').remove();
+  $(this).closest("tr").remove();
 
   // Obtiene total de Acompañantes
-  var table = document.getElementById('tbl_acompanantes');
+  var table = document.getElementById("tbl_acompanantes");
   var _rows = table.rows.length - 1;
 
   // Reinicia los contadores
@@ -970,13 +1167,13 @@ $(document).on('click', '.del_tr', function (event) {
   });
 });
 
-$(document).on('click', '.del_tr2', function (event) {
+$(document).on("click", ".del_tr2", function (event) {
   event.preventDefault();
 
-  $(this).closest('tr').remove();
+  $(this).closest("tr").remove();
 
   // Obtiene total de Imágenes
-  var table = document.getElementById('tbl_imagenes');
+  var table = document.getElementById("tbl_imagenes");
   var _rows = table.rows.length - 1;
 
   // Reinicia los contadores
@@ -992,14 +1189,14 @@ $(document).on('click', '.del_tr2', function (event) {
 });
 
 function f_AddAcompanante_Imagen(_id_row) {
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
+  var input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
   input.onchange = function (event) {
     var file = event.target.files[0];
     var reader = new FileReader();
     reader.onload = function (e) {
-      var imagen = document.getElementById('img_acompanante_' + _id_row);
+      var imagen = document.getElementById("img_acompanante_" + _id_row);
       imagen.src = e.target.result;
     };
     reader.readAsDataURL(file);
@@ -1010,14 +1207,14 @@ function f_AddAcompanante_Imagen(_id_row) {
 }
 
 function f_AddImagenes(_id_row) {
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
+  var input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
   input.onchange = function (event) {
     var file = event.target.files[0];
     var reader = new FileReader();
     reader.onload = function (e) {
-      var imagen = document.getElementById('img_imagenes_' + _id_row);
+      var imagen = document.getElementById("img_imagenes_" + _id_row);
       imagen.src = e.target.result;
     };
     reader.readAsDataURL(file);
@@ -1032,20 +1229,21 @@ function f_ShowDocumentoAcompanante(_id_img, _nombres, _is_local) {
   $("#modal_showdocumentoacompananteLabel").html(_nombres);
 
   // Limpiando objeto img
-  $("#img_documentoacompanante").attr('src', '');
+  $("#img_documentoacompanante").attr("src", "");
 
   // Obtiene el SRC si lo tuviera
   if (_is_local == 1) {
     // Cargando Imagen
-    var modalImg = document.getElementById('img_documentoacompanante');
+    var modalImg = document.getElementById("img_documentoacompanante");
     modalImg.src = _id_img;
-  }
-  else {
-    var _src = '';
+  } else {
+    var _src = "";
 
     f_LoadingDocumentoAcompanante(1);
 
-    $.post("apis/backend.php", { accion: "get_ControlIngreso_AcompanantesSRC", id_img: _id_img },
+    $.post(
+      "apis/backend.php",
+      { accion: "get_ControlIngreso_AcompanantesSRC", id_img: _id_img },
       function (data) {
         if (data.estado == 1) {
           _src = data.src;
@@ -1053,152 +1251,165 @@ function f_ShowDocumentoAcompanante(_id_img, _nombres, _is_local) {
         }
 
         // Cargando Imagen
-        var modalImg = document.getElementById('img_documentoacompanante');
-        modalImg.src = 'files/recepcion/' + _src_url;
+        var modalImg = document.getElementById("img_documentoacompanante");
+        modalImg.src = "files/recepcion/" + _src_url;
 
         f_LoadingDocumentoAcompanante(0);
-      });
+      },
+    );
   }
 
   // Abre modal
-  f_OpenModal('modal_showdocumentoacompanante');
+  f_OpenModal("modal_showdocumentoacompanante");
 }
 
 function f_ShowImagenes(_id_img, _is_local, _item) {
   // Colocando el título a la pantalla
-  $("#modal_showimagenesLabel").html('Imagen: ' + _item);
+  $("#modal_showimagenesLabel").html("Imagen: " + _item);
 
   // Limpiando objeto img
-  $("#img_imagenes").attr('src', '');
+  $("#img_imagenes").attr("src", "");
 
   // Cargando datos
   if (_is_local == 1) {
-    var modalImg = document.getElementById('img_imagenes');
+    var modalImg = document.getElementById("img_imagenes");
     modalImg.src = _id_img;
-  }
-  else {
-    var _src = '';
+  } else {
+    var _src = "";
 
     f_LoadingImagenes(1);
 
-    $.post("apis/backend.php", { accion: "get_ControlIngreso_ImagenesSRC", id_img: _id_img },
+    $.post(
+      "apis/backend.php",
+      { accion: "get_ControlIngreso_ImagenesSRC", id_img: _id_img },
       function (data) {
         if (data.estado == 1) {
           _src = data.src;
         }
 
         // Cargando Imagen
-        var modalImg = document.getElementById('img_imagenes');
+        var modalImg = document.getElementById("img_imagenes");
         modalImg.src = _src;
 
         f_LoadingImagenes(0);
-      });
+      },
+    );
   }
 
   // Abre modal
-  f_OpenModal('modal_showimagenes');
+  f_OpenModal("modal_showimagenes");
 }
-
 
 function f_ShowImagenesCarousel(_id_controlingreso) {
   // Colocando el título a la pantalla
-  $("#modal_showimagenescarouselLabel").html('Imágenes Adicionales');
+  $("#modal_showimagenescarouselLabel").html("Imágenes Adicionales");
 
-  $("#div_imagenes_adicionales").html('');
+  $("#div_imagenes_adicionales").html("");
 
   f_LoadingImagenes(1);
 
   // Cargando datos
-  $.post("apis/backend.php", { accion: "get_ControlIngreso_ImagenesURL", id_controlingreso: _id_controlingreso },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "get_ControlIngreso_ImagenesURL",
+      id_controlingreso: _id_controlingreso,
+    },
     function (data) {
       if (data.estado == 1) {
         $("#div_imagenes_adicionales").html(data.html);
       }
       f_LoadingImagenes(0);
-    });
+    },
+  );
 
   // Abre modal
-  f_OpenModal('modal_showimagenescarousel');
+  f_OpenModal("modal_showimagenescarousel");
 }
-
 
 function f_RegistroSalida(_id_registro, _id_distribucion) {
   $("#hd_idregistrosalida").val(_id_registro);
   $("#hd_iddistribucion_salida").val(_id_distribucion || 0);
 
-  $("#salida_estado").val('');
-  $("#salida_observacion").val('');
+  $("#salida_estado").val("");
+  $("#salida_observacion").val("");
 
   // Cargando datos de acompañantes
   f_LoadingSalidaAcompanantes(1);
 
-  $("#tbl_acompanantes_salida").html('');
+  $("#tbl_acompanantes_salida").html("");
 
-  $.post("apis/backend.php", { accion: "get_ListaAcompanantes", id_registro: _id_registro },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_ListaAcompanantes", id_registro: _id_registro },
     function (data) {
       if (data.estado == 1) {
         $("#tbl_acompanantes_salida").html(data.html);
       }
 
       f_LoadingSalidaAcompanantes(0);
+    },
+    "json",
+  );
 
-    }, "json");
-
-  f_OpenModal('modal_registrosalida');
+  f_OpenModal("modal_registrosalida");
 }
 
 function f_TieneCarreta() {
-  $("#registro_placa1_2").val('');
-  $("#registro_placa2_2").val('');
+  $("#registro_placa1_2").val("");
+  $("#registro_placa2_2").val("");
 
-  if ($("#registro_tipovehiculo").val().trim().length == 0) {
+  var valTipoVehiculo = $("#registro_tipovehiculo").val();
+  if (!valTipoVehiculo || valTipoVehiculo.trim().length == 0) {
     $("#div_placa2").hide();
-  }
-  else {
-    var tiene_carreta = $("#registro_tipovehiculo").val().split('|')[1];
+  } else {
+    var tiene_carreta = $("#registro_tipovehiculo").val().split("|")[1];
 
     if (tiene_carreta == 0) {
       $("#div_placa2").hide();
-    }
-    else {
+    } else {
       $("#div_placa2").show();
     }
   }
 }
 
 function f_ShowInformacion(_id_registro) {
-  f_OpenModal('modal_showinfo');
+  f_OpenModal("modal_showinfo");
 
   f_LoadingShowInfo(1);
 
   // Limpiando objetos
-  $("#info_ingreso").val('');
-  $("#info_condicion").val('');
-  $("#info_placa1").val('');
-  $("#info_transportista_documento").val('');
-  $("#info_transportista").val('');
-  $("#info_tipovehiculo").val('');
-  $("#info_placa2").val('');
-  $("#info_conductor").val('');
-  $("#info_tipocarga").val('');
-  $("#info_zonaorigen").val('');
-  $("#info_zonaorigen").val('');
-  $("#info_observacion").val('');
-  $("#chk_tienevehiculoparticular").prop('checked', false);
+  $("#info_ingreso").val("");
+  $("#info_condicion").val("");
+  $("#info_placa1").val("");
+  $("#info_transportista_documento").val("");
+  $("#info_transportista").val("");
+  $("#info_tipovehiculo").val("");
+  $("#info_placa2").val("");
+  $("#info_conductor").val("");
+  $("#info_tipocarga").val("");
+  $("#info_zonaorigen").val("");
+  $("#info_zonaorigen").val("");
+  $("#info_observacion").val("");
+  $("#chk_tienevehiculoparticular").prop("checked", false);
 
-  $("#tbl_infosalidas").html('');
-  $("#tbl_infoacompanantes").html('');
-  $("#tbl_infoimagenes").html('');
+  $("#tbl_infosalidas").html("");
+  $("#tbl_infoacompanantes").html("");
+  $("#tbl_infoimagenes").html("");
 
   // Cargando datos
-  $.post("apis/backend.php", { accion: "get_ListaIngresoUnidades_Info", id_registro: _id_registro },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_ListaIngresoUnidades_Info", id_registro: _id_registro },
     function (data) {
       if (data.estado == 1) {
         $.each(data.res, function (key, val) {
           // Título de Ventana
           $("#modal_showinfoLabel").html(val.placa);
           // Llenando los datos principales
-          $("#info_ingreso").val(val.dFechaIngreso + ' ' + val.dhoraingresoPlanta);
+          $("#info_ingreso").val(
+            val.dFechaIngreso + " " + val.dhoraingresoPlanta,
+          );
           $("#info_condicion").val(val.CLIENTE_CONDICION);
           $("#info_placa1").val(val.placa);
           $("#info_transportista_documento").val(val.documento);
@@ -1209,8 +1420,7 @@ function f_ShowInformacion(_id_registro) {
             $("#div_placa2_info").show();
 
             $("#info_placa2").val(val.placa2);
-          }
-          else {
+          } else {
             $("#div_placa2_info").hide();
           }
 
@@ -1227,7 +1437,10 @@ function f_ShowInformacion(_id_registro) {
           // }
 
           $("#info_observacion").val(val.cNotas);
-          $("#chk_tienevehiculoparticular").prop('checked', ((val.tiene_vehiculoparticular == 1) ? true : false));
+          $("#chk_tienevehiculoparticular").prop(
+            "checked",
+            val.tiene_vehiculoparticular == 1 ? true : false,
+          );
         });
 
         // Llenando la Salida
@@ -1241,8 +1454,9 @@ function f_ShowInformacion(_id_registro) {
       }
 
       f_LoadingShowInfo(0);
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_ExportToExcel() {
@@ -1253,7 +1467,17 @@ function f_ExportToExcel() {
   var filtro_transportista = $("#filtro_transportista").val();
   var filtro_placa = $("#filtro_placa").val();
 
-  window.location.href = "export_to_excel/recepcion_unidades.php?fecha_inicio=" + fecha_inicio + "&fecha_fin=" + fecha_fin + "&filtro_condicioningreso=" + filtro_condicioningreso + "&filtro_transportista=" + filtro_transportista + "&filtro_placa=" + filtro_placa;
+  window.location.href =
+    "export_to_excel/recepcion_unidades.php?fecha_inicio=" +
+    fecha_inicio +
+    "&fecha_fin=" +
+    fecha_fin +
+    "&filtro_condicioningreso=" +
+    filtro_condicioningreso +
+    "&filtro_transportista=" +
+    filtro_transportista +
+    "&filtro_placa=" +
+    filtro_placa;
 }
 
 function f_LoadFiltroClientes() {
@@ -1262,15 +1486,22 @@ function f_LoadFiltroClientes() {
   var fecha_fin = $("#fecha_fin").val();
 
   // Cargando clientes
-  $("#filtro_transportista").html('');
+  $("#filtro_transportista").html("");
 
-  $.post("apis/backend.php", { accion: "get_ClientesIngresoUnidadesxFechas", fecha_inicio: fecha_inicio, fecha_fin: fecha_fin },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "get_ClientesIngresoUnidadesxFechas",
+      fecha_inicio: fecha_inicio,
+      fecha_fin: fecha_fin,
+    },
     function (data) {
       if (data.estado == 1) {
         $("#filtro_transportista").html(data.html);
       }
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_ShowListaPlacasDespacho(_id_placa) {
@@ -1283,8 +1514,7 @@ function f_ShowListaPlacasDespacho(_id_placa) {
     $("#div_PlacaIngreso").show();
 
     return;
-  }
-  else {
+  } else {
     $("#div_FechasDespacho").show();
     $("#div_PlacasDespacho").show();
     $("#div_PlacaIngreso").hide();
@@ -1293,18 +1523,23 @@ function f_ShowListaPlacasDespacho(_id_placa) {
   var fecha_despacho = $("#registro_fechadespacho").val();
 
   // Cargando lista de Placas para Despacho
-  var _html = '<option></option>';
+  var _html = "<option></option>";
 
-  $("#registro_placasdespacho").html('');
+  $("#registro_placasdespacho").html("");
 
-  $.post("apis/backend.php", { accion: "get_Placas_Distribucion", fecha_estimada: fecha_despacho },
+  $.post(
+    "apis/backend.php",
+    { accion: "get_Placas_Distribucion", fecha_estimada: fecha_despacho },
     function (data) {
       if (data.estado == 1) {
         $.each(data.registros, function (key, val) {
-          const selected = (_id_placa > 0 && _id_placa == val.id_distribucion) ? 'selected' : '';
-          const placa1 = val.placa1 ? val.placa1.toUpperCase() : '';
-          const placa2 = val.placa2 ? ` / ${val.placa2.toUpperCase()}` : '';
-          const correlativo = val.correlativo ? ` - Despacho: ${val.correlativo}` : '';
+          const selected =
+            _id_placa > 0 && _id_placa == val.id_distribucion ? "selected" : "";
+          const placa1 = val.placa1 ? val.placa1.toUpperCase() : "";
+          const placa2 = val.placa2 ? ` / ${val.placa2.toUpperCase()}` : "";
+          const correlativo = val.correlativo
+            ? ` - Despacho: ${val.correlativo}`
+            : "";
 
           _html += `<option value="${val.id_distribucion}" 
             data-placa1="${val.placa1}" 
@@ -1316,8 +1551,9 @@ function f_ShowListaPlacasDespacho(_id_placa) {
       }
 
       $("#registro_placasdespacho").html(_html);
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_ShowPlacaNoExiste() {
@@ -1325,43 +1561,67 @@ function f_ShowPlacaNoExiste() {
   var placa_despacho_des = $("#registro_placasdespacho option:selected").text();
 
   $("#div_PlacaIngreso").hide();
-  $("#lbl_PlacaIngreso").html('Placa 1:');
+  $("#lbl_PlacaIngreso").html("Placa 1:");
 
-  $("#registro_placa1").val('');
-  $("#registro_placa2").val('');
-  $("#registro_placa1_2").val('');
-  $("#registro_placa2_2").val('');
+  $("#registro_placa1").val("");
+  $("#registro_placa2").val("");
+  $("#registro_placa1_2").val("");
+  $("#registro_placa2_2").val("");
 
   if (placa_despacho == 9.9) {
     $("#div_PlacaIngreso").show();
 
-    $("#lbl_PlacaIngreso").html('');
-  }
-  else if (placa_despacho != null && placa_despacho != '') {
+    $("#lbl_PlacaIngreso").html("");
+  } else if (placa_despacho != null && placa_despacho != "") {
     // Setea la Placa internamente en el campo de Placa de Ingreso
     var opt = $("#registro_placasdespacho option:selected");
 
-    var placa1_parts = (opt.data('placa1') || '').split('-');
-    $("#registro_placa1").val(placa1_parts[0] || '');
-    $("#registro_placa2").val(placa1_parts[1] || '');
+    var placa1_parts = (opt.data("placa1") || "").split("-");
+    $("#registro_placa1").val(placa1_parts[0] || "");
+    $("#registro_placa2").val(placa1_parts[1] || "");
 
-    var placa2_parts = (opt.data('placa2') || '').split('-');
-    $("#registro_placa1_2").val(placa2_parts[0] || '');
-    $("#registro_placa2_2").val(placa2_parts[1] || '');
+    var placa2_parts = (opt.data("placa2") || "").split("-");
+    $("#registro_placa1_2").val(placa2_parts[0] || "");
+    $("#registro_placa2_2").val(placa2_parts[1] || "");
 
-    if (opt.data('id_transportista')) {
-      $("#registro_transportista").val(opt.data('id_transportista')).trigger('change');
+    if (opt.data("id_transportista")) {
+      $("#registro_transportista")
+        .val(opt.data("id_transportista"))
+        .trigger("change");
     }
-    if (opt.data('id_tipovehiculo')) {
-      $("#registro_tipovehiculo").val(opt.data('id_tipovehiculo') + '|' + (opt.data('placa2') ? '1' : '0')).trigger('change');
+    if (opt.data("id_tipovehiculo")) {
+      var idTipoVehiculo = opt.data("id_tipovehiculo");
+      // Buscar la opción cuyo valor empiece con "idTipoVehiculo|"
+      $("#registro_tipovehiculo option").each(function () {
+        if (
+          $(this)
+            .val()
+            .startsWith(idTipoVehiculo + "|")
+        ) {
+          $("#registro_tipovehiculo").val($(this).val()).trigger("change");
+          return false; // Break loop
+        }
+      });
     }
+
+    // Lock the fields since they are auto-populated from distribution
+    $(
+      "#registro_placa1, #registro_placa2, #registro_placa1_2, #registro_placa2_2",
+    ).prop("readonly", true);
+    $("#registro_transportista, #registro_tipovehiculo").prop("disabled", true);
+  } else {
+    // Unlock fields if no distribution is selected
+    $(
+      "#registro_placa1, #registro_placa2, #registro_placa1_2, #registro_placa2_2",
+    ).prop("readonly", false);
+    $("#registro_transportista, #registro_tipovehiculo").prop(
+      "disabled",
+      false,
+    );
   }
 
   f_ToggleCamposDespachoMineral();
 }
-
-
-
 
 function f_KeyUpPlaca() {
   var placa1 = $("#registro_placa1").val().trim();
@@ -1373,24 +1633,26 @@ function f_KeyUpPlaca() {
 
   // Obtiene los datos de Placa
   if (placa1.length == 3 && placa2.length == 3) {
-    $.post("apis/backend.php", { accion: "get_InfoUnidad", placa: placa1 + '-' + placa2 },
+    $.post(
+      "apis/backend.php",
+      { accion: "get_InfoUnidad", placa: placa1 + "-" + placa2 },
       function (data) {
         if (data.estado == 1) {
           $("#registro_transportista").val(data.id_transportista);
           $("#registro_tipovehiculo").val(data.id_tipovehiculo);
           $("#registro_conductor").val(data.id_conductor);
-        }
-        else {
-          $("#registro_transportista").val('');
-          $("#registro_tipovehiculo").val('');
-          $("#registro_conductor").val('');
+        } else {
+          $("#registro_transportista").val("");
+          $("#registro_tipovehiculo").val("");
+          $("#registro_conductor").val("");
         }
 
-        $("#registro_transportista").trigger('change');
-        $("#registro_tipovehiculo").trigger('change');
-        $("#registro_conductor").trigger('change');
-
-      }, "json");
+        $("#registro_transportista").trigger("change");
+        $("#registro_tipovehiculo").trigger("change");
+        $("#registro_conductor").trigger("change");
+      },
+      "json",
+    );
   }
 }
 
@@ -1402,19 +1664,19 @@ function f_KeyUpPlaca2() {
   }
 }
 
-$("#modal_addrecepcion").on('shown.bs.modal', function () {
+$("#modal_addrecepcion").on("shown.bs.modal", function () {
   $("#registro_placa1").focus();
 });
 
-$("#modal_addcliente").on('shown.bs.modal', function () {
+$("#modal_addcliente").on("shown.bs.modal", function () {
   $("#cliente_tipocliente").focus();
 });
 
-$("#modal_addconductor").on('shown.bs.modal', function () {
+$("#modal_addconductor").on("shown.bs.modal", function () {
   $("#conductor_dni").focus();
 });
 
-$("#modal_addzonaorigen").on('shown.bs.modal', function () {
+$("#modal_addzonaorigen").on("shown.bs.modal", function () {
   $("#zona_origen").focus();
 });
 
@@ -1422,12 +1684,11 @@ function f_LoadingGrabarIngreso(_is_show) {
   if (_is_show == 1) {
     $("#wt_grabarregistro").show();
 
-    $(".wt_grabarregistro_button").prop('disabled', true);
-  }
-  else {
+    $(".wt_grabarregistro_button").prop("disabled", true);
+  } else {
     $("#wt_grabarregistro").hide();
 
-    $(".wt_grabarregistro_button").prop('disabled', false);
+    $(".wt_grabarregistro_button").prop("disabled", false);
   }
 }
 
@@ -1435,20 +1696,18 @@ function f_LoadingRegistroSalida(_is_show) {
   if (_is_show == 1) {
     $("#wt_grabarsalida").show();
 
-    $(".wt_grabarsalida_button").prop('disabled', true);
-  }
-  else {
+    $(".wt_grabarsalida_button").prop("disabled", true);
+  } else {
     $("#wt_grabarsalida").hide();
 
-    $(".wt_grabarsalida_button").prop('disabled', false);
+    $(".wt_grabarsalida_button").prop("disabled", false);
   }
 }
 
 function f_LoadingSalidaAcompanantes(_is_show) {
   if (_is_show == 1) {
     $("#wt_loadingacompanantes").show();
-  }
-  else {
+  } else {
     $("#wt_loadingacompanantes").hide();
   }
 }
@@ -1456,8 +1715,7 @@ function f_LoadingSalidaAcompanantes(_is_show) {
 function f_LoadingResumen(_is_show) {
   if (_is_show == 1) {
     $("#wt_resumen").show();
-  }
-  else {
+  } else {
     $("#wt_resumen").hide();
   }
 }
@@ -1465,8 +1723,7 @@ function f_LoadingResumen(_is_show) {
 function f_LoadingDocumentoAcompanante(_is_show) {
   if (_is_show == 1) {
     $("#wt_documentoacompanante").show();
-  }
-  else {
+  } else {
     $("#wt_documentoacompanante").hide();
   }
 }
@@ -1474,8 +1731,7 @@ function f_LoadingDocumentoAcompanante(_is_show) {
 function f_LoadingImagenes(_is_show) {
   if (_is_show == 1) {
     $("#wt_imagenes").show();
-  }
-  else {
+  } else {
     $("#wt_imagenes").hide();
   }
 }
@@ -1483,34 +1739,40 @@ function f_LoadingImagenes(_is_show) {
 function f_LoadingShowInfo(_is_show) {
   if (_is_show == 1) {
     $("#wt_info").show();
-  }
-  else {
+  } else {
     $("#wt_info").hide();
   }
 }
-
-
-
 
 function f_GrabarRecepcion_Confirmar() {
   // Recupera variables
   var registro_condicion = $("#registro_condicion").val();
 
-  var registro_placa = f_CleanInjection($("#registro_placa1").val().trim()) + '-' + f_CleanInjection($("#registro_placa2").val().trim());
+  var registro_placa =
+    f_CleanInjection($("#registro_placa1").val().trim()) +
+    "-" +
+    f_CleanInjection($("#registro_placa2").val().trim());
   registro_placa = registro_placa.toUpperCase();
 
   var registro_transportista = $("#registro_transportista").val();
-  var registro_tipovehiculo = $("#registro_tipovehiculo").val().split('|')[0];
-  var tiene_carreta = $("#registro_tipovehiculo").val().split('|')[1];
+  var registro_tipovehiculo = $("#registro_tipovehiculo").val().split("|")[0];
+  var tiene_carreta = $("#registro_tipovehiculo").val().split("|")[1];
 
-  var registro_placa2 = f_CleanInjection($("#registro_placa1_2").val().trim()) + '-' + f_CleanInjection($("#registro_placa2_2").val().trim());
+  var registro_placa2 =
+    f_CleanInjection($("#registro_placa1_2").val().trim()) +
+    "-" +
+    f_CleanInjection($("#registro_placa2_2").val().trim());
   registro_placa2 = registro_placa2.toUpperCase();
 
   var registro_conductor = $("#registro_conductor").val();
   var registro_tipocarga = $("#registro_tipocarga").val();
   var registro_zonaorigen = $("#registro_zonaorigen").val();
-  var registro_observacion = f_CleanInjection($("#registro_observacion").val().trim().toUpperCase());
-  var vehiculo_particular = (($("#chk_vehiculoparticular").prop('checked')) ? 1 : 0);
+  var registro_observacion = f_CleanInjection(
+    $("#registro_observacion").val().trim().toUpperCase(),
+  );
+  var vehiculo_particular = $("#chk_vehiculoparticular").prop("checked")
+    ? 1
+    : 0;
 
   var id_placadespacho = $("#registro_placasdespacho").val();
 
@@ -1658,7 +1920,7 @@ function f_GrabarRecepcion_Confirmar() {
   f_LoadingGrabarIngreso(1);
 
   // Obtiene total de acompañantes
-  var table = document.getElementById('tbl_acompanantes');
+  var table = document.getElementById("tbl_acompanantes");
   var _rows_acompanantes = table.rows.length - 1;
 
   // Recorre la tabla de Acompañanates y obtiene los datos
@@ -1666,20 +1928,20 @@ function f_GrabarRecepcion_Confirmar() {
   var arr_acompanantes = [];
   var arr_acompanantes_datos = [];
 
-  $('#tbl_acompanantes tr').each(function () {
+  $("#tbl_acompanantes tr").each(function () {
     if (a <= _rows_acompanantes) {
       var _acompanante = {
         cod_auto: a,
         dni: $(this).find("td").eq(2).html(),
         nombres: $(this).find("td").eq(3).html(),
-        imagen: $(this).find('.imagen').attr('src')
+        imagen: $(this).find(".imagen").attr("src"),
       };
 
       var _acompanante_datos = {
         cod_auto: a,
         dni: $(this).find("td").eq(2).html(),
         nombres: $(this).find("td").eq(3).html(),
-        tiene_imagen: (($(this).find('.imagen').attr('src').length > 0) ? 1 : 0)
+        tiene_imagen: $(this).find(".imagen").attr("src").length > 0 ? 1 : 0,
       };
 
       arr_acompanantes.push(_acompanante);
@@ -1690,7 +1952,7 @@ function f_GrabarRecepcion_Confirmar() {
   });
 
   // Obtiene total de Imágenes adicionales
-  var table = document.getElementById('tbl_imagenes');
+  var table = document.getElementById("tbl_imagenes");
   var _rows_imagenes = table.rows.length - 1;
 
   // Recorre la tabla de Acompañanates y obtiene los datos
@@ -1698,11 +1960,13 @@ function f_GrabarRecepcion_Confirmar() {
   var arr_imagenes = [];
   var arr_imagenes_datos = [];
 
-  $('#tbl_imagenes tr').each(function () {
+  $("#tbl_imagenes tr").each(function () {
     if (a <= _rows_imagenes) {
       // Verifica que se hayan registrado todas las imágenes
-      if ($(this).find('.imagen').attr('src').length == 0) {
-        alert("Hay imágenes que no han sido cargadas.\n\nPor favor, verificar.");
+      if ($(this).find(".imagen").attr("src").length == 0) {
+        alert(
+          "Hay imágenes que no han sido cargadas.\n\nPor favor, verificar.",
+        );
 
         f_LoadingGrabarIngreso(0);
 
@@ -1711,12 +1975,12 @@ function f_GrabarRecepcion_Confirmar() {
 
       var _imagen = {
         cod_auto: a,
-        imagen: $(this).find('.imagen').attr('src')
+        imagen: $(this).find(".imagen").attr("src"),
       };
 
       var _imagen_datos = {
         cod_auto: a,
-        descripcion: $(this).find("td").eq(2).html().trim()
+        descripcion: $(this).find("td").eq(2).html().trim(),
       };
 
       arr_imagenes.push(_imagen);
@@ -1732,19 +1996,38 @@ function f_GrabarRecepcion_Confirmar() {
       accion: "update_conductor_and_observacion_distribucion",
       id_distribucion: id_placadespacho,
       id_conductor: registro_conductor,
-      observacion: registro_observacion
+      observacion: registro_observacion,
     });
   }
 
   // Grabando Datos
-  $.post("apis/backend.php", { accion: "grabar_recepcionunidades", registro_condicion: registro_condicion, registro_placa: registro_placa, registro_transportista: registro_transportista, registro_tipovehiculo: registro_tipovehiculo, tiene_carreta: tiene_carreta, registro_placa2: registro_placa2, registro_conductor: registro_conductor, registro_tipocarga: registro_tipocarga, registro_zonaorigen: registro_zonaorigen, registro_observacion: registro_observacion, tiene_vehiculoparticular: vehiculo_particular, id_placadespacho: id_placadespacho, arr_acompanantes_datos: JSON.stringify(arr_acompanantes_datos), arr_imagenes_datos: JSON.stringify(arr_imagenes_datos), arr_acompanantes: JSON.stringify(arr_acompanantes), arr_imagenes: JSON.stringify(arr_imagenes) },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "grabar_recepcionunidades",
+      registro_condicion: registro_condicion,
+      registro_placa: registro_placa,
+      registro_transportista: registro_transportista,
+      registro_tipovehiculo: registro_tipovehiculo,
+      tiene_carreta: tiene_carreta,
+      registro_placa2: registro_placa2,
+      registro_conductor: registro_conductor,
+      registro_tipocarga: registro_tipocarga,
+      registro_zonaorigen: registro_zonaorigen,
+      registro_observacion: registro_observacion,
+      tiene_vehiculoparticular: vehiculo_particular,
+      id_placadespacho: id_placadespacho,
+      arr_acompanantes_datos: JSON.stringify(arr_acompanantes_datos),
+      arr_imagenes_datos: JSON.stringify(arr_imagenes_datos),
+      arr_acompanantes: JSON.stringify(arr_acompanantes),
+      arr_imagenes: JSON.stringify(arr_imagenes),
+    },
     function (data) {
       if (data.estado == 1) {
         f_LoadResultados();
 
         var id_registro = data.id_registro;
-      }
-      else {
+      } else {
         alert("Ocurrió un error al momento de grabar los datos de ingreso.");
 
         f_LoadingGrabarIngreso(0);
@@ -1754,9 +2037,10 @@ function f_GrabarRecepcion_Confirmar() {
 
       f_LoadingGrabarIngreso(0);
 
-      f_cerrarModal('modal_addrecepcion');
-
-    }, "json");
+      f_cerrarModal("modal_addrecepcion");
+    },
+    "json",
+  );
 }
 
 function f_GrabarCliente() {
@@ -1820,7 +2104,7 @@ function f_GrabarCliente() {
   }
 
   if (correo.trim().length > 0) {
-    if (!f_CheckEMail('cliente_correo')) {
+    if (!f_CheckEMail("cliente_correo")) {
       alert("El correo ingresado no tiene el formato correcto.");
 
       return;
@@ -1839,30 +2123,48 @@ function f_GrabarCliente() {
   }
 
   // Grabando Datos
-  $.post("apis/backend.php", { accion: "grabar_cliente", modo_grabar: modo_grabar, id_cliente: id_cliente, cod_condicion: cod_condicion, cod_tipocliente: cod_tipocliente, cod_tipodocumento: cod_tipodocumento, documento: documento, razon_social: razon_social, telefono1: telefono1, telefono2: telefono2, correo: correo, direccion: direccion },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "grabar_cliente",
+      modo_grabar: modo_grabar,
+      id_cliente: id_cliente,
+      cod_condicion: cod_condicion,
+      cod_tipocliente: cod_tipocliente,
+      cod_tipodocumento: cod_tipodocumento,
+      documento: documento,
+      razon_social: razon_social,
+      telefono1: telefono1,
+      telefono2: telefono2,
+      correo: correo,
+      direccion: direccion,
+    },
     function (data) {
       if (data.estado == 2) {
-        alert("El documento ingresado ya fue registrado anteriormente.\n\nPor favor verificar");
+        alert(
+          "El documento ingresado ya fue registrado anteriormente.\n\nPor favor verificar",
+        );
 
         return;
-      }
-      else {
+      } else {
         if (data.estado == 1) {
           f_LoadListaTransportistas(data.id_cliente);
 
-          f_cerrarModal('modal_addcliente');
-        }
-        else {
+          f_cerrarModal("modal_addcliente");
+        } else {
           alert("Ocurrió un error al momento de grabar el Cliente.");
         }
       }
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_GrabarConductor() {
   // Recupera variables
-  var id_tipodocumento = f_CleanInjection($("#conductor_tipodocumento").val().trim());
+  var id_tipodocumento = f_CleanInjection(
+    $("#conductor_tipodocumento").val().trim(),
+  );
   var dni_licencia = f_CleanInjection($("#conductor_dni").val().trim());
   var licencia = f_CleanInjection($("#conductor_licencia").val().trim());
   var conductor_nombres = f_CleanInjection($("#conductor_nombres").val());
@@ -1913,25 +2215,36 @@ function f_GrabarConductor() {
   }
 
   // Grabando Datos
-  $.post("apis/backend.php", { accion: "grabar_conductor", modo_grabar: 'N', id_tipodocumento: id_tipodocumento, id_conductor: 0, dni_licencia: dni_licencia, licencia_conducir: licencia, conductor_nombres: conductor_nombres },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "grabar_conductor",
+      modo_grabar: "N",
+      id_tipodocumento: id_tipodocumento,
+      id_conductor: 0,
+      dni_licencia: dni_licencia,
+      licencia_conducir: licencia,
+      conductor_nombres: conductor_nombres,
+    },
     function (data) {
       if (data.estado == 2) {
-        alert("El DNI o N° de Licencia ya fue registrado anteriormente.\n\nPor favor verificar");
+        alert(
+          "El DNI o N° de Licencia ya fue registrado anteriormente.\n\nPor favor verificar",
+        );
 
         return;
-      }
-      else {
+      } else {
         if (data.estado == 1) {
           f_LoadListaConductores(data.id_conductor);
 
-          f_cerrarModal('modal_addconductor');
-        }
-        else {
+          f_cerrarModal("modal_addconductor");
+        } else {
           alert("Ocurrió un error al momento de grabar el Conductor.");
         }
       }
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_GrabarZonaOrigen() {
@@ -1951,25 +2264,33 @@ function f_GrabarZonaOrigen() {
   }
 
   // Grabando Datos
-  $.post("apis/backend.php", { accion: "grabar_zonaorigen", modo_grabar: 'N', id_zonaorigen: 0, zona_origen: zona_origen },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "grabar_zonaorigen",
+      modo_grabar: "N",
+      id_zonaorigen: 0,
+      zona_origen: zona_origen,
+    },
     function (data) {
       if (data.estado == 2) {
-        alert("La Zona de Origen ingresada ya fue registrada anteriormente.\n\nPor favor verificar.");
+        alert(
+          "La Zona de Origen ingresada ya fue registrada anteriormente.\n\nPor favor verificar.",
+        );
 
         return;
-      }
-      else {
+      } else {
         if (data.estado == 1) {
           f_LoadListaZonaOrigen(data.id_zonaorigen);
 
-          f_cerrarModal('modal_addzonaorigen');
-        }
-        else {
+          f_cerrarModal("modal_addzonaorigen");
+        } else {
           alert("Ocurrió un error al momento de grabar la Zona de Origen.");
         }
       }
-
-    }, "json");
+    },
+    "json",
+  );
 }
 
 function f_RegistroSalida_Confirmar() {
@@ -1978,7 +2299,9 @@ function f_RegistroSalida_Confirmar() {
   var id_distribucion = $("#hd_iddistribucion_salida").val();
   var salida_estado = $("#salida_estado").val();
   var des_salidaestado = $("#salida_estado option:selected").text();
-  var salida_observacion = f_CleanInjection($("#salida_observacion").val().trim());
+  var salida_observacion = f_CleanInjection(
+    $("#salida_observacion").val().trim(),
+  );
 
   // Validando datos
   if (salida_estado == null) {
@@ -1994,18 +2317,21 @@ function f_RegistroSalida_Confirmar() {
 
   // Obtiene la lista de Acompañantes seleccionados
   var a = 1;
-  var arr_acompanantes = '';
+  var arr_acompanantes = "";
 
   $("#tbl_acompanantes_salida tr").each(function () {
-    if ($("#chk_acompanante_" + a).prop('checked')) {
-      arr_acompanantes += $("#id_acompanante_" + a).val() + '|';
+    if ($("#chk_acompanante_" + a).prop("checked")) {
+      arr_acompanantes += $("#id_acompanante_" + a).val() + "|";
     }
 
     a++;
   });
 
   if (arr_acompanantes.length > 0) {
-    arr_acompanantes = arr_acompanantes.substring(0, arr_acompanantes.length - 1);
+    arr_acompanantes = arr_acompanantes.substring(
+      0,
+      arr_acompanantes.length - 1,
+    );
   }
 
   // Grabando Datos
@@ -2016,14 +2342,24 @@ function f_RegistroSalida_Confirmar() {
       accion: "update_fecha_salida_observacion_distribucion",
       id_distribucion: id_distribucion,
       fecha_hora_salida: "CURRENT_TIMESTAMP",
-      observacion_salida: salida_observacion
+      observacion_salida: salida_observacion,
     });
   }
 
-  $.post("apis/backend.php", { accion: "grabar_salidaunidades", id_registro: id_registro, salida_estado: salida_estado, salida_observacion: salida_observacion, arr_acompanantes: arr_acompanantes },
+  $.post(
+    "apis/backend.php",
+    {
+      accion: "grabar_salidaunidades",
+      id_registro: id_registro,
+      salida_estado: salida_estado,
+      salida_observacion: salida_observacion,
+      arr_acompanantes: arr_acompanantes,
+    },
     function (data) {
       if (data.estado == 1) {
-        $("#td_salida_1_" + id_registro).html(data.fechahora_registro + '</br><i>' + data.usuario_registro + '</i>');
+        $("#td_salida_1_" + id_registro).html(
+          data.fechahora_registro + "</br><i>" + data.usuario_registro + "</i>",
+        );
         $("#td_salida_2_" + id_registro).html(des_salidaestado);
         $("#td_salida_3_" + id_registro).html(salida_observacion.toUpperCase());
 
@@ -2032,9 +2368,10 @@ function f_RegistroSalida_Confirmar() {
 
       f_LoadingRegistroSalida(0);
 
-      f_cerrarModal('modal_registrosalida');
-
-    }, "json");
+      f_cerrarModal("modal_registrosalida");
+    },
+    "json",
+  );
 }
 
 function f_RegistroSalida_Acompanantes(_id_acompanante, _nombres) {
@@ -2043,23 +2380,27 @@ function f_RegistroSalida_Acompanantes(_id_acompanante, _nombres) {
   }
 
   // Grabando salida
-  $.post("apis/backend.php", { accion: "grabar_salidaacompanante", id_acompanante: _id_acompanante },
+  $.post(
+    "apis/backend.php",
+    { accion: "grabar_salidaacompanante", id_acompanante: _id_acompanante },
     function (data) {
       if (data.estado == 1) {
-        $("#td_salidaacompanante_" + _id_acompanante).html(data.fechahora_salida + '<br><i>' + data.usuario_registro + '</i>');
+        $("#td_salidaacompanante_" + _id_acompanante).html(
+          data.fechahora_salida + "<br><i>" + data.usuario_registro + "</i>",
+        );
       }
-
-    }, "json");
+    },
+    "json",
+  );
 }
-
-
-
 
 function f_SetDimension() {
   if (screen.width < 500) {
-    $("#offcanvasExample").css('width', '60%');
+    $("#offcanvasExample").css("width", "60%");
 
-    $("#modal_addcliente_content, #modal_addconductor_content, #modal_addzonaorigen_content, #modal_addacompanante_content").css('margin-top', '10px');
+    $(
+      "#modal_addcliente_content, #modal_addconductor_content, #modal_addzonaorigen_content, #modal_addacompanante_content",
+    ).css("margin-top", "10px");
   }
 }
 
@@ -2067,7 +2408,11 @@ function f_ToggleCamposDespachoMineral() {
   var condicion = $("#registro_condicion").val();
   var placa_despacho = $("#registro_placasdespacho").val();
 
-  var isModoDespachoMineral = (condicion == 2 && placa_despacho != null && placa_despacho != '' && placa_despacho != 9.9);
+  var isModoDespachoMineral =
+    condicion == 2 &&
+    placa_despacho != null &&
+    placa_despacho != "" &&
+    placa_despacho != 9.9;
 
   $("#registro_fechadespacho").prop("disabled", isModoDespachoMineral);
   $("#registro_placa1").prop("disabled", isModoDespachoMineral);
@@ -2080,4 +2425,3 @@ function f_ToggleCamposDespachoMineral() {
   $("#registro_zonaorigen").prop("disabled", isModoDespachoMineral);
   $("#div_zonaorigen button").prop("disabled", isModoDespachoMineral);
 }
-
