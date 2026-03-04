@@ -1616,6 +1616,14 @@ if (!isset($_SESSION["Id"])) {
 
         $("#pago_fecha").val('<?php echo $g_date ?>');
         $("#pago_medio_pago").val('');
+
+        // Autocompletar con Transferencia si existe
+        setTimeout(() => {
+          $("#pago_medio_pago").find("option").filter(function() {
+            return $(this).text().toUpperCase().includes("TRANSFERENCIA");
+          }).prop("selected", true);
+        }, 100);
+
         $("#pago_entidadbancaria_1").val('');
         $("#pago_entidadbancaria_cuentas_1")
           .empty()
@@ -1626,8 +1634,11 @@ if (!isset($_SESSION["Id"])) {
           .empty()
           .append('<option value="">Seleccione cuenta</option>')
           .val('');
-        $("#pago_saldo").val('');
-        $("#pago_monto").val('');
+
+        var saldo_defecto = $("#ins_por_pagar_sin_detraccion").val() || "";
+        $("#pago_saldo").val(saldo_defecto);
+        $("#pago_monto").val(saldo_defecto.replace(/,/g, ''));
+
         $("#pago_numoperacion").val('');
         // $("#pago_tipocambio").val('');
         $("#pago_observacion").val('');
@@ -2086,8 +2097,14 @@ if (!isset($_SESSION["Id"])) {
       }, function(data) {
         if (data.estado != 1) {
           alert("Ocurrió un error al momento de actualizar el comprobante de pago.");
+          if (is_checkbox) {
+            $(el).prop('checked', !el.checked); // revert state on error
+          }
         } else {
-          $('#td_' + campo + '_' + data.id_comprobante).html(data.fechahora_registro + '<br>' + data.usuario_registro);
+          $('#td_' + campo + '_' + id_comprobante).html(data.fechahora_registro + '<br>' + data.usuario_registro);
+          if (is_checkbox && el.checked) {
+            $(el).prop('disabled', true);
+          }
         }
       });
 

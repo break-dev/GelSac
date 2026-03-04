@@ -192,12 +192,12 @@ if (!isset($_SESSION["Id"])) {
                         if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
                           if (mysqli_num_rows($res_lotes) > 0) {
                             while ($row_lotes = mysqli_fetch_array($res_lotes)) {
-                              ?>
+                        ?>
 
                               <option value="<?php echo $row_lotes["ccod_Lote"]; ?>"><?php echo $row_lotes["ccod_Lote"]; ?>
                               </option>
 
-                              <?php
+                        <?php
                             }
                           }
                         }
@@ -1004,11 +1004,11 @@ if (!isset($_SESSION["Id"])) {
                     if ($res_banco = mysqli_query($enlace, $q_banco)) {
                       if (mysqli_num_rows($res_banco) > 0) {
                         while ($row_banco = mysqli_fetch_array($res_banco)) {
-                          ?>
+                    ?>
 
                           <option value="<?php echo $row_banco["Id"]; ?>"><?php echo $row_banco["descripcion"]; ?></option>
 
-                          <?php
+                    <?php
                         }
                       }
                     }
@@ -1038,11 +1038,11 @@ if (!isset($_SESSION["Id"])) {
                     if ($res_moneda = mysqli_query($enlace, $q_moneda)) {
                       if (mysqli_num_rows($res_moneda) > 0) {
                         while ($row_moneda = mysqli_fetch_array($res_moneda)) {
-                          ?>
+                    ?>
 
                           <option value="<?php echo $row_moneda["Id"]; ?>"><?php echo $row_moneda["descripcion"]; ?></option>
 
-                          <?php
+                    <?php
                         }
                       }
                     }
@@ -1410,7 +1410,7 @@ if (!isset($_SESSION["Id"])) {
         id_proveedor: idProveedor,
         monto_valorizacion: montoValorizacion,
         es_para_seleccion: true
-      }, function (data) {
+      }, function(data) {
         console.log('Datos de anticipos recibidos:', data); // Para debug
 
         if (data.estado == 1) {
@@ -1428,7 +1428,7 @@ if (!isset($_SESSION["Id"])) {
         } else {
           $('#tbl_anticipos_disponibles').html(`<tr><td colspan="7" class="text-center text-danger">${data.msg || 'Error al cargar anticipos'}</td></tr>`);
         }
-      }, 'json').fail(function (jqXHR, textStatus, errorThrown) {
+      }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
         console.error('Error en la solicitud AJAX:', textStatus, errorThrown);
         $('#tbl_anticipos_disponibles').html('<tr><td colspan="7" class="text-center text-danger">Error de conexión al cargar anticipos</td></tr>');
       });
@@ -1568,7 +1568,7 @@ if (!isset($_SESSION["Id"])) {
 
     function getMontoTotalValorizacionNumerico() {
       let total = 0;
-      $('#tbody_lotes_valorizacion tr').each(function (i) {
+      $('#tbody_lotes_valorizacion tr').each(function(i) {
         if ($(this).attr('id') === 'tr_TotalValorizacion') return;
         const text = $('#total_' + i).text();
         total += parseFloat(text.replace(/,/g, '')) || 0;
@@ -1800,7 +1800,7 @@ if (!isset($_SESSION["Id"])) {
 
       $.post(url_api, {
         accion: 'get_ValorizacionCompra_ListaValorizaciones'
-      }, function (data) {
+      }, function(data) {
         $('#wt_valorizaciones').hide();
 
         if (data.estado == 1) {
@@ -1823,35 +1823,35 @@ if (!isset($_SESSION["Id"])) {
 
           // 3) Paleta por grupo
           const PALETTE = [{
-            border: '#2563eb',
-            bg: '#e8f0ff',
-            ink: '#1e3a8a'
-          }, // azul
-          {
-            border: '#059669',
-            bg: '#e6faf3',
-            ink: '#065f46'
-          }, // verde
-          {
-            border: '#d97706',
-            bg: '#fff4e5',
-            ink: '#92400e'
-          }, // ámbar
-          {
-            border: '#6d28d9',
-            bg: '#f2e8ff',
-            ink: '#4c1d95'
-          }, // violeta
-          {
-            border: '#db2777',
-            bg: '#ffe8f2',
-            ink: '#9d174d'
-          }, // rosa
-          {
-            border: '#0ea5e9',
-            bg: '#e6f7fd',
-            ink: '#075985'
-          }, // celeste
+              border: '#2563eb',
+              bg: '#e8f0ff',
+              ink: '#1e3a8a'
+            }, // azul
+            {
+              border: '#059669',
+              bg: '#e6faf3',
+              ink: '#065f46'
+            }, // verde
+            {
+              border: '#d97706',
+              bg: '#fff4e5',
+              ink: '#92400e'
+            }, // ámbar
+            {
+              border: '#6d28d9',
+              bg: '#f2e8ff',
+              ink: '#4c1d95'
+            }, // violeta
+            {
+              border: '#db2777',
+              bg: '#ffe8f2',
+              ink: '#9d174d'
+            }, // rosa
+            {
+              border: '#0ea5e9',
+              bg: '#e6f7fd',
+              ink: '#075985'
+            }, // celeste
           ];
 
           let _html = '';
@@ -1860,7 +1860,7 @@ if (!isset($_SESSION["Id"])) {
             groupIndex = -1;
 
           console.log(data.registros);
-          $.each(data.registros, function (x, row) {
+          $.each(data.registros, function(x, row) {
             // Estado (tu misma lógica)
             let estado_txt = '',
               estado_color = '';
@@ -2071,7 +2071,7 @@ if (!isset($_SESSION["Id"])) {
       $.post(url_api, {
         accion: 'reabrir_Valorizacion',
         id_valorizacion: id_valorizacion
-      }, function (data) {
+      }, function(data) {
         if (data.estado == 1) {
           alert('Valorización reabierta correctamente.');
           f_LoadValorizaciones();
@@ -2105,14 +2105,14 @@ if (!isset($_SESSION["Id"])) {
       $.post(url_api, {
         accion: 'get_ValorizacionCompra_Detalle',
         id_valorizacion: id_valorizacion
-      }, function (data) {
+      }, function(data) {
         $('#wt_detallevalorizacion').hide();
 
         if (data.estado == 1) {
           let _html = '';
           let d = 0;
 
-          $.each(data.registros, function (i, v) {
+          $.each(data.registros, function(i, v) {
             _html += `
                 <tr style="font-size: 13px;">
                   <td style="text-align: center; vertical-align: middle; font-weight: bold;">${v.elemento}</td>
@@ -2211,7 +2211,7 @@ if (!isset($_SESSION["Id"])) {
         $.post(url_api, {
           accion: 'getAnticiposByValorizacion',
           id_valorizacion: _id_valorizacion
-        }, function (data) {
+        }, function(data) {
           let verificar_estado = false;
           if (data.estado == 1 && data.data.length > 0) {
             // Marcar que usa anticipos
@@ -2241,7 +2241,7 @@ if (!isset($_SESSION["Id"])) {
           $.post(url_api, {
             accion: 'getTipoPagoValorizacion',
             id_valorizacion: _id_valorizacion
-          }, async function (data) {
+          }, async function(data) {
             if (data.estado == 1) {
               // Si la valorizacion solo ha usado anticipos, vaciar y deshabilitar 
               // las cuentas de banco
@@ -2255,14 +2255,19 @@ if (!isset($_SESSION["Id"])) {
               }
 
               if (!verificar_estado && (data.tipo_pago == 'anticipo' || data.tipo_pago == 'mixto')) {
-                alert("La valorización no cuenta con anticipos válidos.");
-                window.location.reload();
+                // The comprobante was likely annulled, releasing the anticipos.
+                // Reset the UI to treat it as a normal valorization without anticipos.
+                data.tipo_pago = 'banco';
+                es_mixto = false;
+                $('#chk_usar_anticipo').prop('checked', false);
+                $("#valorizacion_cuentaproveedor").prop('disabled', false);
+                $("#valorizacion_cuentadetraccionproveedor").prop('disabled', false);
               }
 
               $.post(url_api, {
                 accion: 'get_montos_valorizacion',
                 id_valorizacion: _id_valorizacion
-              }, async function (data) {
+              }, async function(data) {
                 if (data.estado == 1) {
                   if (es_mixto) {
                     console.log("data: ", data);
@@ -2322,9 +2327,9 @@ if (!isset($_SESSION["Id"])) {
 
       $.post(url_api, {
         accion: "get_ValorizacionCompra_ListaProveedores"
-      }, function (data) {
+      }, function(data) {
         if (data.estado == 1) {
-          $.each(data.registros, function (i, v) {
+          $.each(data.registros, function(i, v) {
             _html += `<option value="${v.Id}">${v.documento} - ${v.razon_social}</option>`;
           });
           $("#cmb_proveedor").html(_html);
@@ -2344,10 +2349,10 @@ if (!isset($_SESSION["Id"])) {
         $.post(url_api, {
           accion: "get_ValorizacionCompra_ListaConcesiones",
           id_proveedor: id_proveedor
-        }, function (data) {
+        }, function(data) {
           if (data.estado == 1) {
             let _html = '<option value="">[Seleccione concesión]</option>';
-            $.each(data.registros, function (i, v) {
+            $.each(data.registros, function(i, v) {
               _html += '<option ' + ((_id_concesion == v.Id) ? 'selected' : '') + ' value="' + v.Id + '" data-codigo="' + v.codigo_unico + '" data-procedencia="' + v.procedencia + '">' + v.descripcion + '</option>';
             });
             $("#cmb_concesion").html(_html);
@@ -2517,10 +2522,10 @@ if (!isset($_SESSION["Id"])) {
         accion: "get_ValorizacionCompra_Elementos",
         id_valorizacion,
         cod_lote
-      }, function (data) {
+      }, function(data) {
         if (data.estado == 1) {
           let html = '<option value="">[Seleccione]</option>';
-          $.each(data.registros, function (i, e) {
+          $.each(data.registros, function(i, e) {
             html += `<option value="${e.Id}">${e.abv}</option>`;
           });
           $('#cmb_elemento').html(html);
@@ -2542,14 +2547,14 @@ if (!isset($_SESSION["Id"])) {
         accion: "get_ValorizacionCompra_LotesDisponibles",
         id_proveedor: id_proveedor,
         id_concesion: id_concesion
-      }, function (data) {
+      }, function(data) {
         if (data.estado == 1) {
           let _html = '<option value="">[Seleccione]</option>';
 
-          $.each(data.registros, function (i, v) {
+          $.each(data.registros, function(i, v) {
             // Verificar si este lote ya fue valorizado con Au y Ag
             let elementosUsados = [];
-            $('#tbody_lotes_valorizacion tr').each(function () {
+            $('#tbody_lotes_valorizacion tr').each(function() {
               let loteEnTabla = $(this).data('lote');
               let elementoEnTabla = $(this).data('elemento');
 
@@ -2586,7 +2591,7 @@ if (!isset($_SESSION["Id"])) {
       }, "json");
     }
 
-    $('#cmb_lotes').on('change', function () {
+    $('#cmb_lotes').on('change', function() {
       const sel = $('#cmb_lotes option:selected');
 
       let id_codlote = parseFloat(sel.data('idcodlote')) || 0;
@@ -2623,7 +2628,7 @@ if (!isset($_SESSION["Id"])) {
       }
     });
 
-    $("#cmb_elemento").on('change', function () {
+    $("#cmb_elemento").on('change', function() {
       f_ObtenerCondicionesComerciales();
     });
 
@@ -2665,11 +2670,11 @@ if (!isset($_SESSION["Id"])) {
       if ($("#cmb_elemento").val() == 33) {
         if ($("#hd_modograbar_lote").val() == 'N') {
           $.post(url_api, {
-            accion: "get_ValorizacionCompra_CondicionesComerciales",
-            documento: documento,
-            ley: ley_oz
-          },
-            function (data) {
+              accion: "get_ValorizacionCompra_CondicionesComerciales",
+              documento: documento,
+              ley: ley_oz
+            },
+            function(data) {
               if (data.estado == 1) {
                 if ($("#hd_modograbar_lote").val() == 'N') {
                   $("#txt_recuperacion").val(data.recuperacion);
@@ -2751,7 +2756,7 @@ if (!isset($_SESSION["Id"])) {
       }
 
       let usados = [];
-      $('#tbody_lotes_valorizacion tr').each(function () {
+      $('#tbody_lotes_valorizacion tr').each(function() {
         let elemento = $(this).data('elemento');
         let lote = $(this).data('lote');
 
@@ -2773,10 +2778,10 @@ if (!isset($_SESSION["Id"])) {
         accion: "get_ValorizacionCompra_Elementos",
         id_valorizacion,
         cod_lote
-      }, function (data) {
+      }, function(data) {
         if (data.estado == 1) {
           let _html = '<option value="">[Seleccione]</option>';
-          data.registros.forEach(function (el) {
+          data.registros.forEach(function(el) {
             if (!usados.includes(el.Id.toString())) {
               _html += `<option value="${el.Id}">${el.abv}</option>`;
             }
@@ -2975,7 +2980,7 @@ if (!isset($_SESSION["Id"])) {
       }
     }
 
-    $('#valorizacion_cuentaproveedor').on('change', function () {
+    $('#valorizacion_cuentaproveedor').on('change', function() {
       var id_cuenta = $(this).val();
 
       if (id_cuenta == 'x') {
@@ -3053,7 +3058,7 @@ if (!isset($_SESSION["Id"])) {
       }
     }
 
-    $('#valorizacion_cuentadetraccionproveedor').on('change', function () {
+    $('#valorizacion_cuentadetraccionproveedor').on('change', function() {
       var id_cuenta = $(this).val();
 
       if (id_cuenta == 'x') {
@@ -3074,7 +3079,7 @@ if (!isset($_SESSION["Id"])) {
       }
     });
 
-    $('#modal_AddCuentaBancaria').on('hidden.bs.modal', function (e) {
+    $('#modal_AddCuentaBancaria').on('hidden.bs.modal', function(e) {
       if ($("#hd_iscuentadetraccion").val() == 0) {
         if ($("#valorizacion_cuentaproveedor").val() != 'x') {
           return;
@@ -3233,7 +3238,7 @@ if (!isset($_SESSION["Id"])) {
         $("#btn_toggle_panel i").removeClass("bi-arrows-angle-contract").addClass("bi-arrows-angle-expand");
 
         // Espera 300ms para que la animación termine antes de mostrar el panel izquierdo
-        setTimeout(function () {
+        setTimeout(function() {
           $("#div_valorizacion_lista").show();
         }, 300);
 
@@ -3242,9 +3247,9 @@ if (!isset($_SESSION["Id"])) {
     }
 
     function f_RenumerarFilas() {
-      $('#tbody_lotes_valorizacion tr').each(function (i) {
+      $('#tbody_lotes_valorizacion tr').each(function(i) {
         // Actualiza el ID de cada TD
-        $(this).find('td').each(function (index, td) {
+        $(this).find('td').each(function(index, td) {
           let id_actual = $(td).attr('id');
           if (id_actual) {
             let base = id_actual.split('_')[0]; // ejemplo: "lote_3" → "lote"
@@ -3323,7 +3328,7 @@ if (!isset($_SESSION["Id"])) {
       // Solo validar duplicado si es nuevo
       if (modo !== 'E') {
         let duplicado = false;
-        $('#tbody_lotes_valorizacion tr').each(function () {
+        $('#tbody_lotes_valorizacion tr').each(function() {
           let val_elemento = $(this).attr('data-elemento');
           let val_lote = $(this).attr('data-lote');
           if (val_elemento == id_elemento && val_lote == id_lote) {
@@ -3484,7 +3489,7 @@ if (!isset($_SESSION["Id"])) {
     function getLotesSeleccionados() {
       let detalle = [];
 
-      $('#tbody_lotes_valorizacion tr').each(function (idx, tr) {
+      $('#tbody_lotes_valorizacion tr').each(function(idx, tr) {
         if ($(tr).attr("id") === "tr_TotalValorizacion") {
           return;
         }
@@ -3636,7 +3641,7 @@ if (!isset($_SESSION["Id"])) {
 
       let detalle = [];
 
-      $('#tbody_lotes_valorizacion tr').each(function (idx, tr) {
+      $('#tbody_lotes_valorizacion tr').each(function(idx, tr) {
         if ($(tr).attr("id") === "tr_TotalValorizacion") {
           return;
         }
@@ -3718,7 +3723,7 @@ if (!isset($_SESSION["Id"])) {
       // console.log('║ Datos completos enviados:', datosEnvio);
       // ===== FIN LOGGING =====
 
-      $.post(url_api, datosEnvio, function (data) {
+      $.post(url_api, datosEnvio, function(data) {
         if (data.estado == 1) {
           // Limpiar selección de anticipos
           anticiposSeleccionados = [];
@@ -3757,10 +3762,10 @@ if (!isset($_SESSION["Id"])) {
     function f_EliminarRegistro(_id_registro) {
       if (confirm("¿Está seguro de Eliminar el registro seleccionado?")) {
         $.post(url_api, {
-          accion: "eliminar_ValorizacionDetalle",
-          id_registro: _id_registro
-        },
-          function (data) {
+            accion: "eliminar_ValorizacionDetalle",
+            id_registro: _id_registro
+          },
+          function(data) {
             if (data.estado == 1) {
               f_LoadDetalleValorizacion(id_valorizacion_Selected);
             } else {
@@ -3779,7 +3784,7 @@ if (!isset($_SESSION["Id"])) {
           accion: "eliminar_Valorizacion",
           modo: _modo,
           id_registro: _id
-        }, function (data) {
+        }, function(data) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
@@ -3795,7 +3800,7 @@ if (!isset($_SESSION["Id"])) {
           accion: "eliminar_Valorizacion",
           modo: "X",
           id_registro: _id
-        }, function (data) {
+        }, function(data) {
           console.log("Data: ", data);
           if (data.estado == 1) {
             f_LoadValorizaciones();
@@ -3836,16 +3841,16 @@ if (!isset($_SESSION["Id"])) {
 
       // Envío al backend
       $.post(url_api, {
-        accion: "grabar_ClienteBanco",
-        modo_grabar: 'N',
-        id_cliente: _id_cliente,
-        id_banco: _id_banco,
-        id_moneda: _id_moneda,
-        nro_cuenta: _nro_cuenta,
-        cci: _cci,
-        is_detraccion: _is_detraccion
-      },
-        function (data) {
+          accion: "grabar_ClienteBanco",
+          modo_grabar: 'N',
+          id_cliente: _id_cliente,
+          id_banco: _id_banco,
+          id_moneda: _id_moneda,
+          nro_cuenta: _nro_cuenta,
+          cci: _cci,
+          is_detraccion: _is_detraccion
+        },
+        function(data) {
           if (data.estado == 1) {
             if ($("#hd_iscuentadetraccion").val() == 0) {
               f_LoadListaCuentasBancarias(data.id_registro);
@@ -3874,11 +3879,11 @@ if (!isset($_SESSION["Id"])) {
 
       // Creando copia
       $.post(url_api, {
-        accion: "grabar_ValorizacionCompra_NuevaVersion",
-        id_registro: _id_registro,
-        num_valorizacion: _num_valorizacion
-      },
-        function (data) {
+          accion: "grabar_ValorizacionCompra_NuevaVersion",
+          id_registro: _id_registro,
+          num_valorizacion: _num_valorizacion
+        },
+        function(data) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {
@@ -3895,13 +3900,13 @@ if (!isset($_SESSION["Id"])) {
 
       // Aprobando Valorización
       $.post(url_api, {
-        accion: "grabar_ValorizacionCompra_Aprobacion",
-        id_registro: _id_registro,
-        num_valorizacion: _num_valorizacion,
-        version: _version,
-        is_aprobado: 1
-      },
-        function (data) {
+          accion: "grabar_ValorizacionCompra_Aprobacion",
+          id_registro: _id_registro,
+          num_valorizacion: _num_valorizacion,
+          version: _version,
+          is_aprobado: 1
+        },
+        function(data) {
           if (data.estado == 1) {
             f_LoadValorizaciones();
           } else {

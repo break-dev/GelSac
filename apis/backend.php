@@ -101,7 +101,7 @@ function f_getTipoPagoValorizacion($enlace, $id_valorizacion)
 
 function f_UpdateAllComprobantesStatus($enlace)
 {
-	$q = "SELECT Id FROM comprobante_pago";
+	$q = "SELECT Id FROM comprobante_pago cp where cp.estado != 'X'";
 	$res = mysqli_query($enlace, $q);
 
 	if (!$res) {
@@ -132,6 +132,7 @@ function f_UpdateComprobanteStatus($enlace, $id_comprobante)
           WHERE aprobo_contabilidad = 1 
             AND aprobo_comercial = 1 
             AND aprobo_documentaria = 1 
+			AND estado != 'X'
             AND Id = $id_comprobante";
 
 	$res = mysqli_query($enlace, $q);
@@ -71183,6 +71184,7 @@ switch ($_POST["accion"]) {
 										comprobante_pago cp
 								WHERE
 										cp.id_valorizacion = V.Id
+										AND cp.estado <> 'X'
 						) AS tiene_comprobante
 						FROM
 								valorizacion_compramineral V
@@ -72755,7 +72757,8 @@ switch ($_POST["accion"]) {
 								FROM
 										comprobante_pago cp
 								WHERE
-										cp.id_valorizacion = vc.Id
+										cp.id_valorizacion = vc.Id AND
+										cp.estado != 'X'
 						)
 						ORDER BY
 								vc.fechahora_registro
@@ -73047,8 +73050,7 @@ switch ($_POST["accion"]) {
 																 INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
 																 LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
 																 LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
-														WHERE VD.estado <> 'X'
-															AND CP.estado <> 'X'";
+														WHERE VD.estado <> 'X'";
 
 		if (strlen($arr_lotes) > 0) {
 			$q_validacion .= " AND VD.cod_lote IN (" . $arr_lotes . ")";
@@ -73204,167 +73206,177 @@ switch ($_POST["accion"]) {
 					$html .= '				<i class="bi bi-trash"></i>';
 					$html .= "			</button>";
 
-					if (
-						intval($row_validacion["aprobo_contabilidad"]) === 1 &&
-						intval($row_validacion["aprobo_comercial"]) === 1 &&
-						intval($row_validacion["aprobo_documentaria"]) === 1 &&
-						$row_validacion["estado"] != 'A' &&
-						$row_validacion["estado"] != 'B' &&
-						$row_validacion["estado"] != 'C'
-					) {
-						$html .=
-							'    <button id="btn_pagar_' .
-							$row_validacion["id_comprobante_pago"] .
-							'" class="btn btn-sm btn-success" style="width: 35px; margin-bottom: 3px;" title="Registrar Pago" onclick="f_ConfirmarPago_ComprobantePago(' .
-							$row_validacion["id_comprobante_pago"] .
-							', \'' .
-							$row_validacion["cod_lote"] .
-							'\', \'' .
-							$row_validacion["cod_gel"] .
-							'\',\'' .
-							$row_validacion["PROVEEDOR_RUC"] .
-							" - " .
-							$row_validacion["PROVEEDOR_RAZON_SOCIAL"] .
-							'\',' .
-							$row_validacion["PROVEEDOR_ID"] .
-							', \'' .
-							$row_validacion["serie_comprobante"] .
-							'\', \'' .
-							$row_validacion["numero_comprobante"] .
-							'\', ' .
-							number_format(
-								$row_validacion["total_comprobante"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["total_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["total_detraccion_soles"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["total_sin_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["pago_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["pago_sin_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							$row_validacion["tipo_cambio"] .
-							", " .
-							$row_validacion["id_moneda"] .
-							", " .
-							$row_validacion["porc_detraccion"] .
-							');" ' .
-							($_SESSION[
-								"is_compramineral_aprobacionescomercial"
-							] == 1
-								? ""
-								: "") .
-							">";
-						$html .= '      <i class="bi bi-credit-card"></i>';
-						$html .= "    </button>";
-					} else {
-						$html .=
-							'    <button id="btn_pagar_' .
-							$row_validacion["id_comprobante_pago"] .
-							'" style="display: none; width: 35px; margin-bottom: 3px;" class="btn btn-sm btn-success" title="Pagar" onclick="f_ConfirmarPago_ComprobantePago(' .
-							$row_validacion["id_comprobante_pago"] .
-							', \'' .
-							$row_validacion["cod_lote"] .
-							'\', \'' .
-							$row_validacion["cod_gel"] .
-							'\',\'' .
-							$row_validacion["PROVEEDOR_RUC"] .
-							" - " .
-							$row_validacion["PROVEEDOR_RAZON_SOCIAL"] .
-							'\',' .
-							$row_validacion["PROVEEDOR_ID"] .
-							', \'' .
-							$row_validacion["serie_comprobante"] .
-							'\', \'' .
-							$row_validacion["numero_comprobante"] .
-							'\', ' .
-							number_format(
-								$row_validacion["total_comprobante"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["total_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["total_detraccion_soles"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["total_sin_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["pago_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							number_format(
-								$row_validacion["pago_sin_detraccion"],
-								2,
-								".",
-								""
-							) .
-							", " .
-							$row_validacion["tipo_cambio"] .
-							", " .
-							$row_validacion["id_moneda"] .
-							", " .
-							$row_validacion["porc_detraccion"] .
-							');" ' .
-							($_SESSION[
-								"is_compramineral_aprobacionescomercial"
-							] == 1
-								? "hidden"
-								: "") .
-							">";
-						$html .= '      <i class="bi bi-credit-card"></i>';
-						$html .= "    </button>";
+					$html .=
+						'			<button class="btn btn-sm btn-warning me-1" style="width: 35px; margin-bottom: 3px; color: white;" title="Anular Comprobante" onclick="f_Anular_ComprobantePago(' .
+						$row_validacion["id_comprobante_pago"] .
+						');" ' .
+						($row_validacion["estado"] == 'C' || $row_validacion["estado"] == 'X' ? "hidden" : "") .
+						">";
+					$html .= '				<i class="bi bi-x-circle"></i>';
+					$html .= "			</button>";
+
+					if ($row_validacion["estado"] != 'C' && $row_validacion["estado"] != 'X') {
+						if (
+							intval($row_validacion["aprobo_contabilidad"]) === 1 &&
+							intval($row_validacion["aprobo_comercial"]) === 1 &&
+							intval($row_validacion["aprobo_documentaria"]) === 1 &&
+							$row_validacion["estado"] != 'A' &&
+							$row_validacion["estado"] != 'B'
+						) {
+							$html .=
+								'    <button id="btn_pagar_' .
+								$row_validacion["id_comprobante_pago"] .
+								'" class="btn btn-sm btn-success" style="width: 35px; margin-bottom: 3px;" title="Registrar Pago" onclick="f_ConfirmarPago_ComprobantePago(' .
+								$row_validacion["id_comprobante_pago"] .
+								', \'' .
+								$row_validacion["cod_lote"] .
+								'\', \'' .
+								$row_validacion["cod_gel"] .
+								'\',\'' .
+								$row_validacion["PROVEEDOR_RUC"] .
+								" - " .
+								$row_validacion["PROVEEDOR_RAZON_SOCIAL"] .
+								'\',' .
+								$row_validacion["PROVEEDOR_ID"] .
+								', \'' .
+								$row_validacion["serie_comprobante"] .
+								'\', \'' .
+								$row_validacion["numero_comprobante"] .
+								'\', ' .
+								number_format(
+									$row_validacion["total_comprobante"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["total_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["total_detraccion_soles"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["total_sin_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["pago_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["pago_sin_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								$row_validacion["tipo_cambio"] .
+								", " .
+								$row_validacion["id_moneda"] .
+								", " .
+								$row_validacion["porc_detraccion"] .
+								');" ' .
+								($_SESSION[
+									"is_compramineral_aprobacionescomercial"
+								] == 1
+									? ""
+									: "") .
+								">";
+							$html .= '      <i class="bi bi-credit-card"></i>';
+							$html .= "    </button>";
+						} else {
+							$html .=
+								'    <button id="btn_pagar_' .
+								$row_validacion["id_comprobante_pago"] .
+								'" style="display: none; width: 35px; margin-bottom: 3px;" class="btn btn-sm btn-success" title="Pagar" onclick="f_ConfirmarPago_ComprobantePago(' .
+								$row_validacion["id_comprobante_pago"] .
+								', \'' .
+								$row_validacion["cod_lote"] .
+								'\', \'' .
+								$row_validacion["cod_gel"] .
+								'\',\'' .
+								$row_validacion["PROVEEDOR_RUC"] .
+								" - " .
+								$row_validacion["PROVEEDOR_RAZON_SOCIAL"] .
+								'\',' .
+								$row_validacion["PROVEEDOR_ID"] .
+								', \'' .
+								$row_validacion["serie_comprobante"] .
+								'\', \'' .
+								$row_validacion["numero_comprobante"] .
+								'\', ' .
+								number_format(
+									$row_validacion["total_comprobante"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["total_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["total_detraccion_soles"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["total_sin_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["pago_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								number_format(
+									$row_validacion["pago_sin_detraccion"],
+									2,
+									".",
+									""
+								) .
+								", " .
+								$row_validacion["tipo_cambio"] .
+								", " .
+								$row_validacion["id_moneda"] .
+								", " .
+								$row_validacion["porc_detraccion"] .
+								');" ' .
+								($_SESSION[
+									"is_compramineral_aprobacionescomercial"
+								] == 1
+									? "hidden"
+									: "") .
+								">";
+							$html .= '      <i class="bi bi-credit-card"></i>';
+							$html .= "    </button>";
+						}
 					}
 
 					$html .= "		</div>";
@@ -73389,6 +73401,10 @@ switch ($_POST["accion"]) {
 						// 	')">';
 						// $html .= "		</div>";
 						$html .= "    " . $row_validacion["serie_comprobante"];
+					}
+
+					if ($row_validacion["estado"] == 'X') {
+						$html .= '<br><span class="badge bg-danger mt-1"><i class="bi bi-x-circle"></i> ANULADO</span>';
 					}
 
 					$html .= "	</td>";
@@ -73597,7 +73613,10 @@ switch ($_POST["accion"]) {
 					$neto_bg = "";
 					$neto_saldo = $row_validacion["total_sin_detraccion"] - $row_validacion["pago_sin_detraccion"];
 
-					if (abs($neto_saldo) < 0.02 && $aprobado_total) {
+					if ($row_validacion["estado"] == 'X') {
+						$neto_estado = "ANULADO";
+						$neto_bg = "bg-danger";
+					} else if (abs($neto_saldo) < 0.02 && $aprobado_total) {
 						try {
 							$tipo_pago_val = f_getTipoPagoValorizacion($enlace, $row_validacion["id_valorizacion"]);
 							$neto_estado = "PAGADO - " . ucfirst($tipo_pago_val);
@@ -73690,7 +73709,10 @@ switch ($_POST["accion"]) {
 						$row_validacion["total_detraccion_soles"] -
 						$row_validacion["DETRACCION_PAGOTOTAL"];
 
-					if (abs($detraccion_saldo) < 0.02 && $aprobado_total) {
+					if ($row_validacion["estado"] == 'X') {
+						$detraccion_estado = "ANULADO";
+						$detraccion_bg = "bg-danger";
+					} else if (abs($detraccion_saldo) < 0.02 && $aprobado_total) {
 						$detraccion_estado = "PAGADO";
 						// // pago mixto
 						// if($row_validacion["estado"] == 'A'){
@@ -73728,7 +73750,7 @@ switch ($_POST["accion"]) {
 					$html .=
 						'    <input type="checkbox" ' .
 						($row_validacion["aprobo_contabilidad"] == 1
-							? "checked"
+							? "checked disabled"
 							: "") .
 						"";
 					$html .=
@@ -73794,7 +73816,7 @@ switch ($_POST["accion"]) {
 					$html .=
 						'    <input type="checkbox" ' .
 						($row_validacion["aprobo_comercial"] == 1
-							? "checked"
+							? "checked disabled"
 							: "") .
 						"";
 					$html .=
@@ -73828,7 +73850,7 @@ switch ($_POST["accion"]) {
 					$html .=
 						'    <input type="checkbox" ' .
 						($row_validacion["aprobo_documentaria"] == 1
-							? "checked"
+							? "checked disabled"
 							: "") .
 						"";
 					$html .=
@@ -73947,7 +73969,6 @@ switch ($_POST["accion"]) {
 		echo json_encode(["estado" => $estado, "html" => $html]);
 
 		break;
-
 	case "eliminar_ComprobantePago":
 		$estado = 0;
 
@@ -73961,6 +73982,83 @@ switch ($_POST["accion"]) {
 		}
 
 		echo json_encode(["estado" => $estado]);
+		break;
+
+	case "anular_ComprobantePago":
+		$estado = 0;
+		$msg = "";
+		$id_comprobante = intval($_POST["id_comprobante"]);
+		$fechahora_actual = date("Y-m-d H:i:s");
+		$usuario_registro = $_SESSION["usu_usuario"];
+
+		mysqli_begin_transaction($enlace);
+		try {
+			// Obtener info del comprobante
+			$q_comp = "SELECT id_valorizacion FROM comprobante_pago WHERE Id = $id_comprobante";
+			$res_comp = mysqli_query($enlace, $q_comp);
+			$row_comp = mysqli_fetch_assoc($res_comp);
+			$id_valorizacion = $row_comp['id_valorizacion'];
+
+			// Actualizar estado de comprobante
+			$q_upd_comp = "UPDATE comprobante_pago SET estado = 'X' WHERE Id = $id_comprobante";
+			if (!mysqli_query($enlace, $q_upd_comp)) {
+				throw new Exception("Error al anular el comprobante.");
+			}
+
+			// Actualizar valorización (is_aprobado = 0, y si estaba inactivo 'I' u otra cosa, quizas 'A')
+			// liberandola
+			$q_upd_val = "UPDATE valorizacion_compramineral SET is_aprobado = 0, is_aprobado_fechahoraregistro = NULL, is_aprobado_usuarioregistro = NULL WHERE Id = $id_valorizacion";
+			mysqli_query($enlace, $q_upd_val);
+
+			$q_update2 = "UPDATE import_resultadosleyes_detalle SET 
+									is_valorizado = 0,
+									is_valorizado_fechahoraregistro = NULL,
+									is_valorizado_usuarioregistro = NULL
+									WHERE cod_interno IN (SELECT cod_lote FROM valorizacion_compramineral_detalle WHERE id_valorizacion = $id_valorizacion)";
+			mysqli_query($enlace, $q_update2);
+
+			$q_update3 = "UPDATE despachos_primertramo_validaciondatos SET 
+									codigogel_valorizado = 0,
+									codigogel_valorizado_fechahoraregistro = NULL,
+									codigogel_valorizado_usuarioregistro = NULL
+									WHERE lote_cod_lote IN (SELECT cod_lote FROM valorizacion_compramineral_detalle WHERE id_valorizacion = $id_valorizacion)";
+			mysqli_query($enlace, $q_update3);
+
+			// Verificar si la valorización usa anticipos
+			$q_val_info = "SELECT usa_anticipo FROM valorizacion_compramineral WHERE Id = $id_valorizacion";
+			$res_val_info = mysqli_query($enlace, $q_val_info);
+			$row_val_info = mysqli_fetch_assoc($res_val_info);
+
+			if ($row_val_info['usa_anticipo'] == 1) {
+				// Buscar transacciones asociadas que esten Aplicadas ('A') o Por confirmar ('B')
+				$q_trans = "SELECT id, id_proveedor_anticipo, monto_retirado, estado FROM proveedor_anticipo_transaccion WHERE id_valorizacion_compramineral = $id_valorizacion AND estado IN ('A', 'B')";
+				$res_trans = mysqli_query($enlace, $q_trans);
+				while ($row_trans = mysqli_fetch_assoc($res_trans)) {
+					$id_trans = $row_trans['id'];
+					$id_anticipo = $row_trans['id_proveedor_anticipo'];
+					$monto_retirado = $row_trans['monto_retirado'];
+					$estado_trans = $row_trans['estado'];
+
+					if ($estado_trans == 'A') {
+						// Si estaba confirmada, devolver saldo al anticipo
+						$q_upd_ant = "UPDATE proveedor_anticipo SET saldo_actual = saldo_actual + $monto_retirado, cantidad_transacciones = cantidad_transacciones - 1, estado = 'A', updated_at = '$fechahora_actual' WHERE id = $id_anticipo";
+						mysqli_query($enlace, $q_upd_ant);
+					}
+					
+					// Revertir la transacción al estado Por confirmar ('B') 
+					$q_upd_trans = "UPDATE proveedor_anticipo_transaccion SET estado = 'B', updated_at = '$fechahora_actual' WHERE id = $id_trans";
+					mysqli_query($enlace, $q_upd_trans);
+				}
+			}
+
+			mysqli_commit($enlace);
+			$estado = 1;
+		} catch (Exception $e) {
+			mysqli_rollback($enlace);
+			$msg = $e->getMessage();
+		}
+
+		echo json_encode(["estado" => $estado, "msg" => $msg]);
 		break;
 
 	case "update_ContabilidadPagos_Datos":
@@ -74034,6 +74132,18 @@ switch ($_POST["accion"]) {
 		}
 
 		if ($valor == 0) {
+			if ($campo == "aprobo_contabilidad") {
+				// Validacion: si Comercial o Documentaria ya aprobaron, contabilidad no puede quitar su check
+				$q_check = "SELECT aprobo_comercial, aprobo_documentaria FROM comprobante_pago WHERE Id = $id";
+				$res_check = mysqli_query($enlace, $q_check);
+				if ($row_check = mysqli_fetch_assoc($res_check)) {
+					if ($row_check['aprobo_comercial'] == 1 || $row_check['aprobo_documentaria'] == 1) {
+						echo json_encode(["estado" => 0, "msg" => "No se puede quitar la aprobación de Contabilidad porque ya fue aprobado por Comercial o Documentaria."]);
+						exit;
+					}
+				}
+			}
+
 			$fechahora_actual = "NULL";
 			$usuario_registro = "NULL";
 		} else {
@@ -76043,7 +76153,7 @@ switch ($_POST["accion"]) {
 						FROM
 								comprobante_pago cp
 						WHERE
-								cp.id_valorizacion = $id_valorizacion
+								cp.id_valorizacion = $id_valorizacion and cp.estado != 'X'
 						LIMIT 1";
 
 			$res_check_comprobante = mysqli_query($enlace, $q_check_comprobante);
@@ -79188,9 +79298,9 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
 						LEFT JOIN valorizacion_compramineral val ON
 								tr.id_valorizacion_compramineral = val.Id
 						LEFT JOIN comprobante_pago cp ON
-								cp.id_valorizacion = val.Id
+								cp.id_valorizacion = val.Id and cp.estado != 'X'
 						WHERE
-								tr.id_proveedor_anticipo = $anticipo_id and val.is_aprobado = 1
+								tr.id_proveedor_anticipo = $anticipo_id and val.is_aprobado = 1 
 						ORDER BY
 								tr.created_at ASC;
 				";
