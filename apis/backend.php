@@ -4152,6 +4152,7 @@ switch ($_POST["accion"]) {
 														U.cod_rol,
 														R.nom_rol,
 														U.cod_sucursal,
+														S.Id as id_sucursal,
 														S.des_sucursal,
 														S.cod_sucursal AS PREFIJO_SUCURSAL,
 														U.usu_usuario,
@@ -4190,6 +4191,7 @@ switch ($_POST["accion"]) {
 					$_SESSION["Id"] = $row_login["Id"];
 					$_SESSION["cod_rol"] = $row_login["cod_rol"];
 					$_SESSION["nom_rol"] = $row_login["nom_rol"];
+					$_SESSION["id_sucursal"] = $id_sucursal;
 					$_SESSION["cod_sucursal"] = $id_sucursal;
 					$_SESSION["des_sucursal"] = $des_sucursal;
 					$_SESSION["prefijo_sucursal"] = $cod_sucursal;
@@ -26129,6 +26131,7 @@ switch ($_POST["accion"]) {
 			"
 			INSERT INTO controlingresovehiculo (
 			id_distribucion,
+			id_sucursal,
 			id_tipoingresounidad, 
 			id_placadespacho, 
 			placa, 
@@ -26145,6 +26148,7 @@ switch ($_POST["accion"]) {
 			usuario_registro
 			) VALUES (";
 		$q_save .= $id_distribucion . ", ";
+		$q_save .= $_SESSION["id_sucursal"] . ", ";
 		$q_save .= $registro_condicion . ", ";
 		$q_save .= $id_placadespacho . ", ";
 		$q_save .= "'" . $registro_placa . "', ";
@@ -26178,7 +26182,16 @@ switch ($_POST["accion"]) {
 			$id_registro = mysqli_insert_id($enlace);
 
 			if ($registro_condicion == 2 && $id_placadespacho != "NULL") {
-				$q_upd_dist = "UPDATE distribucion SET id_conductor = $registro_conductor, fecha_hora_llegada = NOW(), estado = 'B' WHERE id = $id_placadespacho";
+				$id_sucursal = $_SESSION["id_sucursal"];
+				$q_upd_dist = "
+				UPDATE distribucion 
+				SET 
+					id_conductor = $registro_conductor, 
+					fecha_hora_llegada = NOW(), 
+					estado = 'B',
+					id_sucursal = $id_sucursal
+				WHERE 
+					id = $id_placadespacho";
 				mysqli_query($enlace, $q_upd_dist);
 			}
 
@@ -28784,6 +28797,7 @@ switch ($_POST["accion"]) {
 	case "get_ListaIngresoUnidades_Cards":
 		$res = [];
 		$estado = 0;
+		$id_sucursal = $_SESSION["id_sucursal"];
 
 		// Recupera parámetros
 
@@ -28791,18 +28805,27 @@ switch ($_POST["accion"]) {
 		$d = 1;
 		$html = "";
 
-		$q_ingreso = "SELECT I.id_controlIngresoVehiculo,
-														 I.placa,
-														 IFNULL(I.placa2, '') AS PLACA2,
-														 I.dFechaIngreso,
-														 I.dhoraingresoPlanta
-												FROM controlingresovehiculo I
-														 INNER JOIN tbconfig_tipoingresounidades IU ON I.id_tipoingresounidad = IU.Id
-											 WHERE IU.balanza_primertramo = 1
-												 AND I.is_iniciovalidacion = 0
-												 AND I.is_loteaum = 0
-												 AND CONCAT(I.dFechaIngreso, ' ', dhoraingresoPlanta) >= '2025-05-25 16:00:00'
-											ORDER BY I.dFechaIngreso, I.dhoraingresoPlanta";
+		$q_ingreso = "
+		SELECT
+			I.id_controlIngresoVehiculo,
+			I.placa,
+			IFNULL(I.placa2, '') AS PLACA2,
+			I.dFechaIngreso,
+			I.dhoraingresoPlanta
+		FROM
+			controlingresovehiculo I
+		INNER JOIN tbconfig_tipoingresounidades IU ON
+			I.id_tipoingresounidad = IU.Id
+		WHERE
+			IU.balanza_primertramo = 1 AND 
+			I.is_iniciovalidacion = 0 AND 
+			I.is_loteaum = 0 AND 
+			CONCAT(I.dFechaIngreso,' ',dhoraingresoPlanta) >= '2025-05-25 16:00:00' AND
+			I.id_sucursal = $id_sucursal
+		ORDER BY
+			I.dFechaIngreso,
+			I.dhoraingresoPlanta
+		";
 
 		if ($res_ingreso = mysqli_query($enlace, $q_ingreso)) {
 			if (mysqli_num_rows($res_ingreso) > 0) {
@@ -28928,73 +28951,95 @@ switch ($_POST["accion"]) {
 		$d = 1;
 		$html = "";
 		$num_lotes = 0;
+		$id_sucursal = $_SESSION["id_sucursal"];
 
-		$q_ingreso = "SELECT I.id_controlIngresoVehiculo,
-														 CONCAT(I.dFechaIngreso, ' ', I.dhoraingresoPlanta) AS FECHAHORA_REGISTRO,
-														 I.id_tipoingresounidad,
-														 I.id_tipoingresounidad_checked,
-														 IU.descripcion AS TIPO_INGRESOUNIDAD,
-														 I.placa,
-														 I.placa_checked,
-														 I.placa2,
-														 I.placa2_checked,
-														 I.id_transportista,
-														 I.id_transportista_checked,
-														 T.razon_social AS TRANSPORTISTA,
-														 T.documento,
-														 I.id_tipovehiculo,
-														 I.id_tipovehiculo_checked,
-														 TV.descripcion AS TIPO_VEHICULO,
-														 TV.tiene_carreta,
-														 I.id_choferes,
-														 I.id_choferes_checked,
-														 CD.dni_licencia,
-														 CD.nombres AS CONDUCTOR,
-														 I.id_tipocarga,
-														 I.id_tipocarga_checked,
-														 TC.descripcion AS TIPO_CARGA,
-														 I.id_zonaorigen,
-														 I.id_zonaorigen_checked,
-														 ZO.descripcion AS ZONA_ORIGEN,
-														 I.id_proveedorminero,
-														 I.id_proveedorminero_checked,
-														 PM.razon_social AS PROVEEDOR_MINERO,
-														 I.id_encargadomuestra,
-														 I.id_encargadomuestra_checked,
-														 EM.documento AS ENCARGADO_DOCUMENTO,
-														 EM.nombres AS ENCARGADO_MUESTRA,
-														 I.id_producto,
-														 I.id_producto_checked,
-														 P.descripcion AS PRODUCTO,
-														 I.id_tipomineral,
-														 I.id_tipomineral_checked,
-														 TM.descripcion AS TIPO_MINERAL,
-														 I.cNotas,
-														 I.cNotas_checked,
-														 I.dFechaIngreso,
-														 I.dhoraingresoPlanta,
-														 I.is_finvalidacion,
-
-														 (SELECT COUNT(L.id_CatalogoLotes)
-																FROM catalogolotes L
-															 WHERE L.id_controlIngresoVehiculo = I.id_controlIngresoVehiculo) AS NUM_LOTES
-												FROM controlingresovehiculo I
-														 INNER JOIN tbconfig_tipoingresounidades IU ON I.id_tipoingresounidad = IU.Id
-														 LEFT JOIN tb_clientes T ON I.id_transportista = T.Id
-														 LEFT JOIN tbconfig_tipovehiculo TV ON I.id_tipovehiculo = TV.Id
-														 LEFT JOIN tbconfig_conductores CD ON I.id_choferes = CD.Id
-														 LEFT JOIN tbconfig_tipocarga TC ON I.id_tipocarga = TC.Id
-														 LEFT JOIN tbconfig_zonaorigen ZO ON I.id_zonaorigen = ZO.Id
-														 LEFT JOIN tb_clientes PM ON I.id_proveedorminero = PM.Id
-														 LEFT JOIN tbconfig_encargadosmuestra EM ON I.id_encargadomuestra = EM.Id
-														 LEFT JOIN tbconfig_producto P ON I.id_producto = P.Id
-														 LEFT JOIN tbconfig_tipomineral TM ON I.id_tipomineral = TM.Id
-											 WHERE IU.balanza_primertramo = 1
-												 AND I.is_iniciovalidacion = 1
-												 AND I.is_cierrevalidacion = 0
-												 AND I.is_loteaum = 0
-												 AND DATE(I.iniciovalidacion_fechahoraregistro) > '2023-07-04'
-											ORDER BY I.iniciovalidacion_fechahoraregistro";
+		$q_ingreso = "
+		SELECT
+			I.id_controlIngresoVehiculo,
+			CONCAT(I.dFechaIngreso,' ',I.dhoraingresoPlanta) AS FECHAHORA_REGISTRO,
+			I.id_tipoingresounidad,
+			I.id_tipoingresounidad_checked,
+			IU.descripcion AS TIPO_INGRESOUNIDAD,
+			I.placa,
+			I.placa_checked,
+			I.placa2,
+			I.placa2_checked,
+			I.id_transportista,
+			I.id_transportista_checked,
+			T.razon_social AS TRANSPORTISTA,
+			T.documento,
+			I.id_tipovehiculo,
+			I.id_tipovehiculo_checked,
+			TV.descripcion AS TIPO_VEHICULO,
+			TV.tiene_carreta,
+			I.id_choferes,
+			I.id_choferes_checked,
+			CD.dni_licencia,
+			CD.nombres AS CONDUCTOR,
+			I.id_tipocarga,
+			I.id_tipocarga_checked,
+			TC.descripcion AS TIPO_CARGA,
+			I.id_zonaorigen,
+			I.id_zonaorigen_checked,
+			ZO.descripcion AS ZONA_ORIGEN,
+			I.id_proveedorminero,
+			I.id_proveedorminero_checked,
+			PM.razon_social AS PROVEEDOR_MINERO,
+			I.id_encargadomuestra,
+			I.id_encargadomuestra_checked,
+			EM.documento AS ENCARGADO_DOCUMENTO,
+			EM.nombres AS ENCARGADO_MUESTRA,
+			I.id_producto,
+			I.id_producto_checked,
+			P.descripcion AS PRODUCTO,
+			I.id_tipomineral,
+			I.id_tipomineral_checked,
+			TM.descripcion AS TIPO_MINERAL,
+			I.cNotas,
+			I.cNotas_checked,
+			I.dFechaIngreso,
+			I.dhoraingresoPlanta,
+			I.is_finvalidacion,
+			(
+				SELECT
+					COUNT(L.id_CatalogoLotes)
+				FROM
+					catalogolotes L
+				WHERE
+					L.id_controlIngresoVehiculo = I.id_controlIngresoVehiculo
+			) AS NUM_LOTES
+		FROM
+			controlingresovehiculo I
+		INNER JOIN tbconfig_tipoingresounidades IU ON
+			I.id_tipoingresounidad = IU.Id
+		LEFT JOIN tb_clientes T ON
+			I.id_transportista = T.Id
+		LEFT JOIN tbconfig_tipovehiculo TV ON
+			I.id_tipovehiculo = TV.Id
+		LEFT JOIN tbconfig_conductores CD ON
+			I.id_choferes = CD.Id
+		LEFT JOIN tbconfig_tipocarga TC ON
+			I.id_tipocarga = TC.Id
+		LEFT JOIN tbconfig_zonaorigen ZO ON
+			I.id_zonaorigen = ZO.Id
+		LEFT JOIN tb_clientes PM ON
+			I.id_proveedorminero = PM.Id
+		LEFT JOIN tbconfig_encargadosmuestra EM ON
+			I.id_encargadomuestra = EM.Id
+		LEFT JOIN tbconfig_producto P ON
+			I.id_producto = P.Id
+		LEFT JOIN tbconfig_tipomineral TM ON
+			I.id_tipomineral = TM.Id
+		WHERE
+			IU.balanza_primertramo = 1 AND 
+			I.is_iniciovalidacion = 1 AND 
+			I.is_cierrevalidacion = 0 AND 
+			I.is_loteaum = 0 AND 
+			DATE(I.iniciovalidacion_fechahoraregistro) > '2023-07-04' AND
+			I.id_sucursal = $id_sucursal
+		ORDER BY
+			I.iniciovalidacion_fechahoraregistro
+		";
 
 		if ($res_ingreso = mysqli_query($enlace, $q_ingreso)) {
 			if (mysqli_num_rows($res_ingreso) > 0) {
@@ -78271,6 +78316,7 @@ switch ($_POST["accion"]) {
 		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
 		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
 		$filtro_placa = mysqli_real_escape_string($enlace, $_POST["filtro_placa"] ?? '');
+		$id_sucursal = $_SESSION["id_sucursal"];
 
 		$filtro_por_fechas = "";
 		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
@@ -78336,7 +78382,8 @@ switch ($_POST["accion"]) {
                 WHERE 
                 	dsd.id_distribucion = d.id AND
                 	dsd.peso_neto IS NULL
-            )
+            ) AND
+			 d.id_sucursal = $id_sucursal
 			$filtro_por_fechas
 			$filtro_por_placa
 		ORDER BY
