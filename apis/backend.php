@@ -77443,6 +77443,12 @@ switch ($_POST["accion"]) {
 				FROM despacho_detalle dsd 
 				WHERE dsp.id = dsd.id_despacho AND dsd.is_blending = 0
 			) as lotes_usados,
+			(
+				SELECT 
+					COUNT(dist.id) 
+				FROM distribucion dist 
+				WHERE dist.id_despacho = dsp.id AND dist.estado_cierre = '1'
+			) as distribuciones_cerradas,
 			dsp.estado
 		FROM despacho dsp
 		INNER JOIN tb_clientes prov on dsp.id_proveedor = prov.Id
@@ -77896,10 +77902,12 @@ switch ($_POST["accion"]) {
 		$id_unidad = intval($_POST["id_unidad"] ?? 0);
 		$id_empresa_transporte = intval($_POST["id_empresa_transporte"] ?? 0);
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
-		$segunda_placa = mysqli_real_escape_string($enlace, $_POST["segunda_placa"] ?? '');
+		$serie_segunda_placa = mysqli_real_escape_string($enlace, $_POST["serie_segunda_placa"] ?? '');
+		$numero_segunda_placa = mysqli_real_escape_string($enlace, $_POST["numero_segunda_placa"] ?? '');
 		$fecha_estimada = mysqli_real_escape_string($enlace, $_POST["fecha_estimada"] ?? '');
 		$estado_inicial = $_POST["estado"] ?? 'A';
-		$detalle = $_POST["detalle"]; // id_despacho_detalle - peso_tomado - tipo_carga: 1:Sacos|2:BigBags - cantidad_bigbags
+		$id_usuario_registro = intval($_SESSION["Id"] ?? 0);
+		$detalle = $_POST["detalle"]; // id_despacho_detalle - peso_tomado - tipo_carga - cantidad_bigbags
 
 		if ($id_unidad <= 0 || $id_empresa_transporte <= 0 || $id_despacho <= 0 || empty($detalle)) {
 			echo json_encode(["estado" => 0, "mensaje" => "Datos incompletos"]);
@@ -77932,16 +77940,20 @@ switch ($_POST["accion"]) {
 			id_unidad, 
 			id_despacho, 
 			id_empresa_transporte,
-			segunda_placa, 
+			serie_segunda_placa,
+			numero_segunda_placa,
 			fecha_estimada, 
-			estado
+			estado,
+			id_usuario_registro
 		) VALUES(
 		 	$id_unidad, 
 			$id_despacho, 
 			$id_empresa_transporte,
-			'$segunda_placa', 
+			'$serie_segunda_placa',
+			'$numero_segunda_placa',
 			'$fecha_estimada', 
-			'$estado_inicial')
+			'$estado_inicial',
+			$id_usuario_registro)
 		";
 
 		if (mysqli_query($enlace, $q_cabecera)) {
@@ -77996,6 +78008,56 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
+	case "cerrar_distribucion":
+		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+		$id_usuario_cierre = intval($_SESSION["Id"] ?? 0);
+		
+		if ($id_distribucion <= 0) {
+			echo json_encode(["estado" => 0, "mensaje" => "ID no válido"]);
+			exit;
+		}
+
+		$q_upd = "
+		UPDATE distribucion 
+		SET 
+			estado_cierre = '1', 
+			fecha_hora_cierre = NOW(), 
+			id_usuario_cierre = $id_usuario_cierre 
+		WHERE id = $id_distribucion
+		";
+
+		if (mysqli_query($enlace, $q_upd)) {
+			echo json_encode(["estado" => 1, "mensaje" => "Distribución cerrada con éxito"]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al cerrar"]);
+		}
+		break;
+
+	case "abrir_distribucion":
+		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+		$id_usuario_apertura = intval($_SESSION["Id"] ?? 0);
+		
+		if ($id_distribucion <= 0) {
+			echo json_encode(["estado" => 0, "mensaje" => "ID no válido"]);
+			exit;
+		}
+
+		$q_upd = "
+		UPDATE distribucion 
+		SET 
+			estado_cierre = '0', 
+			fecha_hora_cierre = NULL, 
+			id_usuario_cierre = NULL 
+		WHERE id = $id_distribucion
+		";
+
+		if (mysqli_query($enlace, $q_upd)) {
+			echo json_encode(["estado" => 1, "mensaje" => "Distribución reabierta con éxito"]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al reabrir"]);
+		}
+		break;
+
 	case "get_distribuciones_by_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
 		$q = "
@@ -78007,7 +78069,8 @@ switch ($_POST["accion"]) {
 			trn.razon_social as nombre_transportista,
 			tpv.descripcion as tipo_vehiculo,
 			uni.cplaca as placa,
-			dist.segunda_placa,
+			dist.serie_segunda_placa,
+			dist.numero_segunda_placa,
 			uni.nCapacidad as capacidad,
 			(
 				SELECT 
@@ -78017,15 +78080,23 @@ switch ($_POST["accion"]) {
 			) as peso_acumulado,
 			dist.fecha_estimada,
 			dist.created_at as fecha_registro,
+			CONCAT(IFNULL(E.nombres, ''), ' ', IFNULL(E.apellido_paterno, '')) as usuario_registro,
 			dist.fecha_hora_llegada,
 			dist.fecha_hora_salida,
 			dist.estado,
-			dist.estado_peso
+			dist.estado_peso,
+			dist.estado_cierre,
+			dist.fecha_hora_cierre,
+			CONCAT(IFNULL(E2.nombres, ''), ' ', IFNULL(E2.apellido_paterno, '')) as usuario_cierre
 		FROM
 			distribucion dist
 		INNER JOIN transporte uni on uni.id_transporte = dist.id_unidad
 		INNER JOIN tb_clientes trn on trn.Id = dist.id_empresa_transporte
 		INNER JOIN tbconfig_tipovehiculo tpv on tpv.Id = uni.id_tipovehiculo
+		LEFT JOIN tb_usuario U ON dist.id_usuario_registro = U.Id
+		LEFT JOIN tb_empleados E ON U.id_empleado = E.Id
+		LEFT JOIN tb_usuario U2 ON dist.id_usuario_cierre = U2.Id
+		LEFT JOIN tb_empleados E2 ON U2.id_empleado = E2.Id
 		WHERE dist.id_despacho = $id_despacho
 		ORDER BY dist.fecha_estimada ASC, dist.id ASC;
 		";
@@ -78332,7 +78403,7 @@ switch ($_POST["accion"]) {
 		SELECT
 			d.id AS id_distribucion,
 			t.cplaca AS placa1,
-			d.segunda_placa AS placa2,
+			CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa) AS placa2,
 			d.fecha_estimada,
 			desp.correlativo,
 			d.id_empresa_transporte,

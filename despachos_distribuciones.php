@@ -246,7 +246,7 @@ $backendUrl = 'apis/backend.php';
               </div>
 
               <!-- Panel Inferior: Distribuciones -->
-              <div class="bg-white shadow-sm p-3 rounded flex-grow-1 footer-panel d-flex flex-column">
+              <div class="bg-white shadow-sm p-3 rounded grow footer-panel d-flex flex-column">
                 <h5 class="d-flex justify-content-between align-items-center">
                   <span><i class="bi bi-diagram-3"></i> Distribuciones</span>
                   <button class="btn btn-sm btn-primary" id="btn_open_new_distribucion" disabled>
@@ -254,20 +254,22 @@ $backendUrl = 'apis/backend.php';
                   </button>
                 </h5>
                 <hr class="my-2" />
-                <div class="table-responsive flex-grow-1" style="overflow-y: auto;">
+                <div class="table-responsive grow" style="overflow-y: auto;">
                   <table class="table table-bordered table-sm table-hover align-middle">
                     <thead class="bg-light sticky-top">
                       <tr style="font-size: 13px;">
                         <th class="text-center">Nro. Unidad</th>
                         <th class="text-center">Info. Transporte</th>
-                        <th class="text-center">Fecha Llegada Est.</th>
+                        <th class="text-center">Fechas / Registro</th>
                         <th class="text-end">Peso Total</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Aprobación</th>
                         <th class="text-center" width="70">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="tbl_distribuciones" style="font-size: 13px;">
                       <tr>
-                        <td colspan="5" class="text-center text-muted p-3">Seleccione un despacho para ver sus
+                        <td colspan="6" class="text-center text-muted p-3">Seleccione un despacho para ver sus
                           distribuciones.</td>
                       </tr>
                     </tbody>
@@ -375,8 +377,11 @@ $backendUrl = 'apis/backend.php';
               <select id="dist_unidad" class="form-select" data-bs-theme="bootstrap-5" capacidad="0" disabled></select>
             </div>
             <div class="col-md-4">
-              <label class="form-label small fw-bold text-muted">Datos Adicionales</label>
-              <input type="text" class="form-control" id="dist_segunda_placa" placeholder="Segunda Placa / Carreta">
+              <label class="form-label small fw-bold text-muted">Segunda placa (opc.)</label>
+              <div class="input-group">
+                <input type="text" class="form-control text-uppercase" id="dist_serie_segunda_placa" placeholder="Serie">
+                <input type="text" class="form-control text-uppercase" id="dist_numero_segunda_placa" placeholder="Numero">
+              </div>
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-bold text-muted">Fecha Estimada Llegada</label>
@@ -393,8 +398,8 @@ $backendUrl = 'apis/backend.php';
                   <th>Código Mineral</th>
                   <th class="text-center">Tipo</th>
                   <th class="text-end">Peso Restante</th>
-                  <th class="">Tipo de Carga</th>
-                  <th class="" width="120">Cant. BigBags</th>
+                  <th class="text-center">Tipo de Carga</th>
+                  <th class="text-center" width="120">Cant. Bigbags</th>
                   <th class="text-end" width="180">Peso a Distribuir</th>
                 </tr>
               </thead>
@@ -510,6 +515,38 @@ $backendUrl = 'apis/backend.php';
           </p>
           <div id="body_blending_issues" style="max-height: 400px; overflow-y: auto;">
             <!-- Content -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal Ver Detalle Blending -->
+  <div class="modal fade" id="modal_detalle_blending_sugerido" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title"><i class="bi bi-eye"></i> Detalle de Blending: <span id="lbl_blending_codigo_sugerido"></span></h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped table-sm">
+              <thead class="table-light">
+                <tr>
+                  <th>Código Gel</th>
+                  <th class="text-end">TMH</th>
+                  <th class="text-end">H2O (%)</th>
+                  <th class="text-end">TMS</th>
+                  <th class="text-end">Ley Au</th>
+                  <th class="text-end">Ley Ag</th>
+                </tr>
+              </thead>
+              <tbody id="tbl_blending_detalle_sugerido">
+              </tbody>
+            </table>
           </div>
         </div>
         <div class="modal-footer">

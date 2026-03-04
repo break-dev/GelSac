@@ -120,7 +120,7 @@ if ($res_despachos) {
             trn.razon_social AS nombre_transportista,
             tpv.descripcion AS tipo_vehiculo,
             uni.cplaca AS placa,
-            dist.segunda_placa,
+            CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa) as segunda_placa,
             uni.nCapacidad AS capacidad,
             (
                 SELECT SUM(dstd.peso_tomado)

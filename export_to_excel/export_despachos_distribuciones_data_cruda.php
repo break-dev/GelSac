@@ -88,7 +88,7 @@ SELECT
     trn.razon_social AS transportista_nombre, 
     tpv.descripcion AS vehiculo_tipo, 
     uni.cplaca AS vehiculo_placa, 
-    dist.segunda_placa AS vehiculo_placa_carreta, 
+    CONCAT(dist.serie_segunda_placa, '-', dist.numero_segunda_placa) AS vehiculo_placa_carreta, 
     uni.nCapacidad AS vehiculo_capacidad,
     
     -- 4. DATOS DEL DETALLE DE DISTRIBUCIÓN (LA CARGA ESPECÍFICA)

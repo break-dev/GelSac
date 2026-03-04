@@ -344,9 +344,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (l.tipo_carga == 2) {
         presentacion = "Big Bag (" + (l.cantidad_bigbags || 0) + ")";
       } else if (l.tipo_carga == 1) {
-        presentacion = "Sacos";
-      } else {
         presentacion = "Granel";
+      } else {
+        presentacion = "?";
       }
 
       var neto = parseFloat(l.peso_neto) || 0;
