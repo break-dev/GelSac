@@ -78601,7 +78601,7 @@ switch ($_POST["accion"]) {
 			DATE_FORMAT(d.fecha_hora_llegada, '%d/%m/%Y %H:%i:%s') as fecha_hora_llegada,
 			DATE_FORMAT(d.fecha_estimada, '%d/%m/%Y') as fecha_estimada,
 			t.cplaca AS placa1,
-			d.segunda_placa AS placa2,
+			CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa) AS placa2,
 			desp.correlativo,
 			cli.documento as transportista_ruc,
 			cli.razon_social as transportista_rs,
@@ -78656,6 +78656,8 @@ switch ($_POST["accion"]) {
 		ORDER BY
 			d.fecha_estimada DESC, d.fecha_hora_llegada DESC
 		";
+
+		saveLog(["sql" => $q_unidades]);
 
 		$result = mysqli_query($enlace, $q_unidades);
 		$data = [];
