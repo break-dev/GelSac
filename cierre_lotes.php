@@ -321,7 +321,7 @@ if (!isset($_SESSION["Id"])) {
 														Información Lote
 													</th>
 
-													<th colspan="4"
+													<th colspan="3"
 														style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 130px;">
 														Información Código GEL
 													</th>
@@ -424,7 +424,7 @@ if (!isset($_SESSION["Id"])) {
 													</th>
 
 													<th
-														style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 40px;">
+														style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 40px;" hidden>
 														Sel.<br>
 														<input id="th_Chk" class="form-check-input" type="checkbox"
 															style="margin-top: 5px; transform: scale(1.5);"
@@ -668,7 +668,7 @@ if (!isset($_SESSION["Id"])) {
 					if (data.estado == 1) {
 						$("#tbl_detalle").html(data.html);
 
-						f_SetInputDisabled();
+						// f_SetInputDisabled();
 					}
 
 					f_LoadingResumen(0);
@@ -691,24 +691,24 @@ if (!isset($_SESSION["Id"])) {
 			f_OpenModal('modal_SetColor');
 		}
 
-		function f_SetInputDisabled() {
-			var cierre = '';
+		// function f_SetInputDisabled() {
+		// 	var cierre = '';
 
-			// Recorre las todas filas
-			$("#tbl_detalle tr").filter(function () {
-				tr_id = $(this).attr('id').substring(11);
+		// 	// Recorre las todas filas
+		// 	$("#tbl_detalle tr").filter(function () {
+		// 		tr_id = $(this).attr('id').substring(11);
 
-				// Identifica el valor del cierre
-				cierre = $("#td_cierre_1_" + tr_id).html();
+		// 		// Identifica el valor del cierre
+		// 		cierre = $("#td_cierre_1_" + tr_id).html();
 
-				if (cierre.toLowerCase().includes('reabrir')) {
-					$(".input_datos_" + tr_id).prop('disabled', true);
-				}
-				else {
-					$(".input_datos_" + tr_id).prop('disabled', false);
-				}
-			});
-		}
+		// 		if (cierre.toLowerCase().includes('reabrir')) {
+		// 			$(".input_datos_" + tr_id).prop('disabled', true);
+		// 		}
+		// 		else {
+		// 			$(".input_datos_" + tr_id).prop('disabled', false);
+		// 		}
+		// 	});
+		// }
 
 		function f_PrintTicketBakanza(_id_md5) {
 			url = 'print_ticketbalanza.php?x=' + _id_md5;
@@ -1106,7 +1106,7 @@ if (!isset($_SESSION["Id"])) {
 							alert("Se encontraron registros con las siguientes inconsistencias:\n\n" + invalidfechas_msg);
 						}
 
-						f_SetInputDisabled();
+						// f_SetInputDisabled();
 
 					}, "json");
 			}
@@ -1129,7 +1129,7 @@ if (!isset($_SESSION["Id"])) {
 						// Setea columna de Revertir Código GEL
 						$("#td_codigogel_1_" + _item).html('<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel(' + _item + ', ' + _id_validacion + ')"><u> Revertir </u></label>');
 
-						f_SetInputDisabled();
+						// f_SetInputDisabled();
 
 						// Limpia Número de Ticket
 						$("#td_numticket_" + _id_validacion).html('');
@@ -1219,7 +1219,7 @@ if (!isset($_SESSION["Id"])) {
 
 						$("#td_fechallegada_" + _item).html(_html);
 
-						f_SetInputDisabled();
+						// f_SetInputDisabled();
 
 						// Limpia Número de Ticket
 						$("#td_numticket_" + _id_validacion).html('');

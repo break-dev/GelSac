@@ -10,7 +10,7 @@ ini_set("memory_limit", "1024M");
 
 // ini_set('display_errors', 1);
 // error_reporting(E_ALL);
-//
+
 error_reporting(0);
 ini_set('display_errors', 0);
 ini_set('display_startuo_errors', 0);
@@ -37514,27 +37514,27 @@ switch ($_POST["accion"]) {
 
 					// $html .= '  </td>';
 
-					/* COLUMNA SEL. - Checkbox de selección para Código GEL */
-					$html .=
-						'  <td id="td_codigogel_1_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					if (strlen($row_validacion["codigo_gel"]) == 0) {
-						$html .=
-							'		<input id="chk_codigogel_3_' .
-							$d .
-							'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
-					} else {
-						if ($row_validacion["is_cerradolote"] == 0) {
-							$html .=
-								'		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel(' .
-								$d .
-								", " .
-								$row_validacion["Id"] .
-								')"><u> Revertir </u></label>';
-						}
-					}
-					$html .= "  </td>";
+					// /* COLUMNA SEL. - Checkbox de selección para Código GEL */
+					// $html .=
+					// 	'  <td id="td_codigogel_1_' .
+					// 	$d .
+					// 	'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+					// if (strlen($row_validacion["codigo_gel"]) == 0) {
+					// 	$html .=
+					// 		'		<input id="chk_codigogel_3_' .
+					// 		$d .
+					// 		'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
+					// } else {
+					// 	if ($row_validacion["is_cerradolote"] == 0) {
+					// 		$html .=
+					// 			'		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel(' .
+					// 			$d .
+					// 			", " .
+					// 			$row_validacion["Id"] .
+					// 			')"><u> Revertir </u></label>';
+					// 	}
+					// }
+					// $html .= "  </td>";
 
 					/* COLUMNA CÓDIGO GEL */
 					$html .=
@@ -37894,9 +37894,9 @@ switch ($_POST["accion"]) {
 		// 	$campo = 'lote_peso_bruto';
 		// }
 
-		// if ($orden_campo == 9){
-		// 	$campo = 'despacho_observacion';
-		// }
+		if ($orden_campo == 9){
+			$campo = 'despacho_observacion';
+		}
 
 		if ($orden_campo == 7) {
 			$campo = "codigogel_valorizado";
@@ -37917,9 +37917,9 @@ switch ($_POST["accion"]) {
 														'" .
 			$campo .
 			"',
-														 " .
-			$campo .
-			",
+														 '" .
+			$valor .
+			"',
 														'" .
 			$g_fecha .
 			"',
@@ -70616,7 +70616,7 @@ switch ($_POST["accion"]) {
 		$id_concesion = $_POST["id_concesion"];
 
 		$q = "
-		SELECT
+		SELECT DISTINCT
 			dspv.Id,
 			dspv.lote_cod_lote,
 			dspv.lote_id_lote AS ID_CODLOTE,
@@ -70709,6 +70709,7 @@ switch ($_POST["accion"]) {
             )
 		ORDER BY dspv.lote_cod_lote DESC;
 		";
+
 		$r = mysqli_query($enlace, $q);
 		while ($f = mysqli_fetch_assoc($r)) {
 			$res["registros"][] = $f;
