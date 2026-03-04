@@ -459,23 +459,30 @@ $backendUrl = 'apis/backend.php';
           </div>
 
           <h6 class="border-bottom pb-2">Mineral Distribuido:</h6>
-          <table class="table table-sm table-bordered table-striped">
-            <thead class="table-light">
-              <tr>
-                <th>Código</th>
-                <th class="text-center">Tipo</th>
-                <th class="text-center">Tipo de Carga</th>
-                <th class="text-end">P. Tara</th>
-                <th class="text-end">P. Bruto</th>
-                <th class="text-end">P. Neto</th>
-                <th class="text-end">P. Tomado</th>
-                <th class="text-end">Nro. Partición</th>
-              </tr>
-            </thead>
-            <tbody id="tbl_view_dist_items"></tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-striped align-middle">
+              <thead class="table-light" id="thead_view_dist_items">
+                <tr>
+                  <th>Código</th>
+                  <th class="text-center">Tipo</th>
+                  <th class="text-center">Tipo de Carga</th>
+                  <th class="text-end">P. Tara</th>
+                  <th class="text-end">P. Bruto</th>
+                  <th class="text-end">P. Neto</th>
+                  <th class="text-end">P. Tomado</th>
+                  <th class="text-end">Nro. Partición</th>
+                </tr>
+              </thead>
+              <tbody id="tbl_view_dist_items"></tbody>
+            </table>
+          </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer d-flex justify-content-between">
+          <div>
+            <button type="button" class="btn btn-success d-none" id="btn_guardar_detalles_destino">
+              <i class="bi bi-save"></i> Guardar Trazabilidad Destino
+            </button>
+          </div>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
@@ -555,6 +562,33 @@ $backendUrl = 'apis/backend.php';
       </div>
     </div>
   </div>
+
+  <!-- Modal Llegada Destino -->
+  <div class="modal fade" id="modal_llegada_destino" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="bi bi-geo-alt-fill"></i> Registrar Llegada a Destino</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Por favor, ingrese la fecha y hora en la que la distribución llegó a la planta de destino.</p>
+          <input type="hidden" id="hdn_id_distribucion_llegada">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Fecha y Hora de Llegada</label>
+            <input type="datetime-local" class="form-control" id="dt_llegada_destino">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success" id="btn_confirmar_llegada_destino">
+            <i class="bi bi-check-lg"></i> Confirmar Llegada
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 
 </html>

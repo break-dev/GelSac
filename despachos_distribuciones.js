@@ -323,6 +323,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (d.estado === "C") {
               badgeEstado =
                 '<span class="badge bg-success" style="font-size: 11px;">Salió de planta</span>';
+            } else if (d.estado === "D") {
+              badgeEstado =
+                '<span class="badge bg-info text-dark" style="font-size: 11px;">Llegó a destino</span>';
             }
 
             if (d.estado_peso === "A") {
@@ -365,6 +368,11 @@ document.addEventListener("DOMContentLoaded", function () {
               deleteButton = `<button class="btn btn-sm btn-link text-danger" onclick="anularDistribucion(${d.id_distribucion}, event)" title="Anular Distribución"><i class="bi bi-trash-fill"></i></button>`;
             }
 
+            let btnLlegada = "";
+            if (d.estado === "C") {
+              btnLlegada = `<button class="btn btn-sm btn-link text-success" onclick="abrirModalLlegadaDestino(${d.id_distribucion}, event)" title="Registrar Llegada a Destino"><i class="bi bi-geo-alt-fill"></i></button>`;
+            }
+
             html += `
                     <tr>
                       <td class="text-center fw-bold">${contador}</td>
@@ -391,6 +399,7 @@ document.addEventListener("DOMContentLoaded", function () {
                           <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')" title="Ver Detalles">
                             <i class="bi bi-eye-fill"></i>
                           </button>
+                          ${btnLlegada}
                           ${btnActionCierre}
                           ${deleteButton}
                       </td>
@@ -425,6 +434,9 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (meta.estado === "C") {
       badgeEstado =
         '<span class="badge bg-success" style="font-size: 11px;">Salió de planta</span>';
+    } else if (meta.estado === "D") {
+      badgeEstado =
+        '<span class="badge bg-info text-dark" style="font-size: 11px;">Llegó a destino</span>';
     }
 
     if (meta.estado_peso === "A") {
@@ -459,8 +471,40 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     $("#view_dist_total").text(formatNumber(meta.peso_acumulado));
 
+    if (meta.estado === "D") {
+      $("#thead_view_dist_items").html(`
+        <tr>
+          <th>Cód. Destino</th>
+          <th class="text-end">Peso Dest.</th>
+          <th class="text-end">L. Au Dest.</th>
+          <th class="text-end">L. Ag Dest.</th>
+          <th>Cód. Origen</th>
+          <th class="text-center">T. Carga</th>
+          <th class="text-end">P. Neto O.</th>
+          <th class="text-end" title="Número de partición/Lote origen">Nro.</th>
+        </tr>
+      `);
+      $("#btn_guardar_detalles_destino")
+        .removeClass("d-none")
+        .data("id_dist", id);
+    } else {
+      $("#thead_view_dist_items").html(`
+        <tr>
+          <th>Código Origen</th>
+          <th class="text-center">Tipo Min.</th>
+          <th class="text-center">Tipo Carga</th>
+          <th class="text-end">P. Tara</th>
+          <th class="text-end">P. Bruto</th>
+          <th class="text-end">P. Neto</th>
+          <th class="text-end">P. Tomado</th>
+          <th class="text-end">Nro. Part.</th>
+        </tr>
+      `);
+      $("#btn_guardar_detalles_destino").addClass("d-none");
+    }
+
     $("#tbl_view_dist_items").html(
-      '<tr><td colspan="3" class="text-center">Cargando detalles...</td></tr>',
+      `<tr><td colspan="${meta.estado === "D" ? 8 : 8}" class="text-center">Cargando detalles...</td></tr>`,
     );
 
     modalView.show();
@@ -473,7 +517,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let html = "";
         let items = r.data.detalles || [];
         if (items.length === 0) {
-          html = '<tr><td colspan="3" class="text-center">Sin items.</td></tr>';
+          html = `<tr><td colspan="${meta.estado === "D" ? 8 : 8}" class="text-center">Sin items.</td></tr>`;
         } else {
           items.forEach((i) => {
             let isBlending = i.is_blending == 1;
@@ -485,24 +529,40 @@ document.addEventListener("DOMContentLoaded", function () {
               i.tipo_carga == 2
                 ? `Big Bags (${i.cantidad_bigbags || 0})`
                 : `Granel`;
-            html += `
-                            <tr>
-                                <td>${i.codigo}</td>
-                                <td class="text-center">${badge}</td>
-                                <td class="text-center">${txtCarga}</td>
-                                <td class="text-end font-monospace">${formatNumber(i.peso_tara || 0)}</td>
-                                <td class="text-end font-monospace">${formatNumber(i.peso_bruto || 0)}</td>
-                                <td class="text-end font-monospace fw-bold text-success">${formatNumber(i.peso_neto || 0)}</td>
-                                <td class="text-end font-monospace">${formatNumber(i.peso_tomado || 0)}</td>
-                                <td class="text-end font-monospace">${i.numero_parte != null ? i.numero_parte : "Dis. Total"}</td>
-                            </tr>
-                          `;
+
+            if (meta.estado === "D") {
+              html += `
+                <tr data-id-detalle="${i.id}">
+                    <td><input type="text" class="form-control form-control-sm i-codigo" value="${i.codigo_en_planta_destino || ""}" placeholder="Cód. Destino"></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-peso" value="${i.peso_en_planta_destino || ""}" placeholder="0.00"></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-au" value="${i.ley_oro_en_planta_destino || ""}" placeholder="0.00"></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-ag" value="${i.ley_plata_en_planta_destino || ""}" placeholder="0.00"></td>
+                    <td class="align-middle text-muted" style="font-size: 0.9em;">${i.codigo}</td>
+                    <td class="text-center align-middle text-muted" style="font-size: 0.9em;">${txtCarga}</td>
+                    <td class="text-end font-monospace align-middle text-success fw-bold">${formatNumber(i.peso_neto || 0)}</td>
+                    <td class="text-end font-monospace align-middle text-muted" style="font-size: 0.9em;">${i.numero_parte != null ? i.numero_parte : "Total"}</td>
+                </tr>
+              `;
+            } else {
+              html += `
+                  <tr>
+                      <td>${i.codigo}</td>
+                      <td class="text-center">${badge}</td>
+                      <td class="text-center">${txtCarga}</td>
+                      <td class="text-end font-monospace">${formatNumber(i.peso_tara || 0)}</td>
+                      <td class="text-end font-monospace">${formatNumber(i.peso_bruto || 0)}</td>
+                      <td class="text-end font-monospace fw-bold text-success">${formatNumber(i.peso_neto || 0)}</td>
+                      <td class="text-end font-monospace">${formatNumber(i.peso_tomado || 0)}</td>
+                      <td class="text-end font-monospace">${i.numero_parte != null ? i.numero_parte : "Dis. Total"}</td>
+                  </tr>
+                `;
+            }
           });
         }
         $("#tbl_view_dist_items").html(html);
       } else {
         $("#tbl_view_dist_items").html(
-          '<tr><td colspan="3" class="text-center text-danger">Error al cargar.</td></tr>',
+          `<tr><td colspan="${meta.estado === "D" ? 8 : 8}" class="text-center text-danger">Error al cargar.</td></tr>`,
         );
       }
     });
@@ -1491,4 +1551,124 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
   };
+
+  window.abrirModalLlegadaDestino = function (id_distribucion, e) {
+    if (e) e.stopPropagation();
+    $("#hdn_id_distribucion_llegada").val(id_distribucion);
+
+    // Set to current local datetime by default for convenience
+    let now = new Date();
+    let pad = (n) => (n < 10 ? "0" + n : n);
+    let defaultDateTime =
+      now.getFullYear() +
+      "-" +
+      pad(now.getMonth() + 1) +
+      "-" +
+      pad(now.getDate()) +
+      "T" +
+      pad(now.getHours()) +
+      ":" +
+      pad(now.getMinutes());
+
+    $("#dt_llegada_destino").val(defaultDateTime);
+
+    let modal = new window.bootstrap.Modal(
+      document.getElementById("modal_llegada_destino"),
+    );
+    modal.show();
+  };
+
+  $("#btn_confirmar_llegada_destino").click(function () {
+    let id_distribucion = $("#hdn_id_distribucion_llegada").val();
+    let fecha_hora = $("#dt_llegada_destino").val();
+
+    if (!fecha_hora) {
+      alert("Por favor ingrese la fecha y hora de llegada.");
+      return;
+    }
+
+    $(this)
+      .prop("disabled", true)
+      .html(
+        '<span class="spinner-border spinner-border-sm"></span> Guardando...',
+      );
+
+    f_callBackend("marcar_llegada_planta_destino", {
+      id_distribucion: id_distribucion,
+      fecha_hora_llegada: fecha_hora,
+    })
+      .done(function (r) {
+        $("#btn_confirmar_llegada_destino")
+          .prop("disabled", false)
+          .html('<i class="bi bi-check-lg"></i> Confirmar Llegada');
+        if (r.estado === 1) {
+          alert(r.mensaje);
+          bootstrap.Modal.getInstance(
+            document.getElementById("modal_llegada_destino"),
+          ).hide();
+          if (typeof selectedDespachoId !== "undefined" && selectedDespachoId) {
+            loadDistribuciones(selectedDespachoId);
+          }
+        } else {
+          alert(r.mensaje);
+        }
+      })
+      .fail(function () {
+        $("#btn_confirmar_llegada_destino")
+          .prop("disabled", false)
+          .html('<i class="bi bi-check-lg"></i> Confirmar Llegada');
+        alert("Error de conexión");
+      });
+  });
+
+  $("#btn_guardar_detalles_destino").click(function () {
+    let btn = $(this);
+    let idDist = btn.data("id_dist");
+    let detalles = [];
+
+    $("#tbl_view_dist_items tr[data-id-detalle]").each(function () {
+      let tr = $(this);
+      let idDetalle = tr.data("id-detalle");
+      let cod = tr.find(".i-codigo").val() || "";
+      let peso = parseFloat(tr.find(".i-peso").val()) || 0;
+      let au = parseFloat(tr.find(".i-au").val()) || 0;
+      let ag = parseFloat(tr.find(".i-ag").val()) || 0;
+
+      detalles.push({
+        id: idDetalle,
+        codigo: cod,
+        peso: peso,
+        ley_oro: au,
+        ley_plata: ag,
+      });
+    });
+
+    if (detalles.length === 0) return;
+
+    btn
+      .prop("disabled", true)
+      .html(
+        '<span class="spinner-border spinner-border-sm"></span> Guardando...',
+      );
+
+    f_callBackend("guardar_detalles_destino", {
+      detalles: JSON.stringify(detalles),
+    })
+      .done(function (r) {
+        btn
+          .prop("disabled", false)
+          .html('<i class="bi bi-save"></i> Guardar Trazabilidad Destino');
+        if (r.estado === 1) {
+          alert(r.mensaje);
+        } else {
+          alert(r.mensaje || "Error al guardar");
+        }
+      })
+      .fail(function () {
+        btn
+          .prop("disabled", false)
+          .html('<i class="bi bi-save"></i> Guardar Trazabilidad Destino');
+        alert("Error de conexión");
+      });
+  });
 });

@@ -78058,6 +78058,34 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
+	case "marcar_llegada_planta_destino":
+		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+		$fecha_hora_llegada = mysqli_real_escape_string($enlace, $_POST["fecha_hora_llegada"] ?? '');
+
+		if ($id_distribucion <= 0 || empty($fecha_hora_llegada)) {
+			echo json_encode(["estado" => 0, "mensaje" => "Datos inválidos"]);
+			exit;
+		}
+
+		$q_upd = "
+		UPDATE distribucion 
+		SET 
+			estado = 'D', 
+			fecha_hora_llegada_planta_destino = '$fecha_hora_llegada'
+		WHERE id = $id_distribucion AND estado = 'C'
+		";
+
+		if (mysqli_query($enlace, $q_upd)) {
+			if (mysqli_affected_rows($enlace) > 0) {
+				echo json_encode(["estado" => 1, "mensaje" => "Llegada a destino registrada con éxito"]);
+			} else {
+				echo json_encode(["estado" => 0, "mensaje" => "No se pudo actualizar. Verifique que la distribución esté en estado 'Salió de planta'."]);
+			}
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al registrar llegada"]);
+		}
+		break;
+
 	case "get_distribuciones_by_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
 		$q = "
@@ -78087,6 +78115,7 @@ switch ($_POST["accion"]) {
 			dist.estado_peso,
 			dist.estado_cierre,
 			dist.fecha_hora_cierre,
+			dist.fecha_hora_llegada_planta_destino,
 			CONCAT(IFNULL(E2.nombres, ''), ' ', IFNULL(E2.apellido_paterno, '')) as usuario_cierre
 		FROM
 			distribucion dist
@@ -78114,8 +78143,13 @@ switch ($_POST["accion"]) {
 		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
 		$q = "
 		SELECT
+			dst.id,
 			dst.id_distribucion,
 			dst.id_despacho_detalle,
+			dst.codigo_en_planta_destino,
+			dst.peso_en_planta_destino,
+			dst.ley_oro_en_planta_destino,
+			dst.ley_plata_en_planta_destino,
 			CASE
 				WHEN dsd.is_blending = 1 THEN (
 					SELECT
@@ -78160,6 +78194,46 @@ switch ($_POST["accion"]) {
 		}
 		echo json_encode(["estado" => 1, "data" => ["detalles" => $detalles]]);
 		break;
+
+	case "guardar_detalles_destino":
+		$detalles = json_decode($_POST["detalles"] ?? '[]', true);
+		
+		if (empty($detalles) || !is_array($detalles)) {
+			echo json_encode(["estado" => 0, "mensaje" => "Datos inválidos"]);
+			exit;
+		}
+
+		$successCount = 0;
+		foreach ($detalles as $det) {
+			$id = intval($det["id"] ?? 0);
+			$codigo = mysqli_real_escape_string($enlace, $det["codigo"] ?? '');
+			$peso = floatval($det["peso"] ?? 0);
+			$ley_oro = floatval($det["ley_oro"] ?? 0);
+			$ley_plata = floatval($det["ley_plata"] ?? 0);
+
+			if ($id > 0) {
+				$q_upd = "
+				UPDATE distribucion_detalle 
+				SET 
+					codigo_en_planta_destino = '$codigo',
+					peso_en_planta_destino = $peso,
+					ley_oro_en_planta_destino = $ley_oro,
+					ley_plata_en_planta_destino = $ley_plata
+				WHERE id = $id
+				";
+				
+				if (mysqli_query($enlace, $q_upd)) {
+					$successCount++;
+				}
+			}
+		}
+
+		echo json_encode([
+			"estado" => 1, 
+			"mensaje" => "Se actualizaron $successCount detalles correctamente"
+		]);
+		break;
+
 
 	case "anular_blending":
 		$id_blending = intval($_POST["id_blending"] ?? 0);
