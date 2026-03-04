@@ -77080,42 +77080,52 @@ switch ($_POST["accion"]) {
 			-- Ley de Oro Ponderada (newau)
 			ROUND(calc.suma_ponderada_oro / NULLIF(calc.total_peso_seco, 0), 2) AS ley_oro,
 			-- Ley de Plata Ponderada (newag)
-			ROUND(calc.suma_ponderada_plata / NULLIF(calc.total_peso_seco, 0), 2) AS ley_plata
+			ROUND(calc.suma_ponderada_plata / NULLIF(calc.total_peso_seco, 0), 2) AS ley_plata,
+			-- Humedad Promedio
+			ROUND(calc.avg_h2o, 3) AS humedad_promedio
 		FROM
 			blending bl
 		LEFT JOIN (
-			-- Subconsulta centralizada para evitar repetición de JOINs
+			-- Subconsulta centralizada para evitar repetición de JOINs y asegurar resultados exactos al detalle
 			SELECT
-				bld.id_blending,
-				COUNT(bld.id) AS total_lotes,
-				SUM(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) AS total_peso_seco,
-				-- Cálculo intermedio para Oro
-				SUM(
-					(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) * COALESCE((
-						SELECT AVG(anl.valor)
+				id_blending,
+				COUNT(id_blending_detalle) AS total_lotes,
+				SUM(peso_seco) AS total_peso_seco,
+				SUM(peso_seco * ley_oro) AS suma_ponderada_oro,
+				SUM(peso_seco * ley_plata) AS suma_ponderada_plata,
+				AVG(porc_h20) AS avg_h2o
+			FROM (
+				SELECT DISTINCT
+					bld.id_blending,
+					bld.id as id_blending_detalle,
+					ROUND(bld.peso_tomado / (1 + (vcd.porc_h20 / 100)), 2) AS peso_seco,
+					vcd.porc_h20,
+					(
+						SELECT ROUND(COALESCE(AVG(anl.valor),0),2)
 						FROM tb_leyes_analisis_valor anl
 						WHERE anl.cod_lote = lot.ccod_Lote 
 						AND anl.id_grupo = 3 
 						AND anl.abv_elemento = 'newau' 
 						AND anl.is_select = 1
-					), 0)
-				) AS suma_ponderada_oro,
-				-- Cálculo intermedio para Plata
-				SUM(
-					(bld.peso_tomado / (1 + (vcd.porc_h20 / 100))) * COALESCE((
-						SELECT AVG(anl.valor)
+					) AS ley_oro,
+					(
+						SELECT ROUND(COALESCE(AVG(anl.valor),0),2)
 						FROM tb_leyes_analisis_valor anl
 						WHERE anl.cod_lote = lot.ccod_Lote 
 						AND anl.id_grupo = 3 
 						AND anl.abv_elemento = 'newag' 
 						AND anl.is_select = 1
-					), 0)
-				) AS suma_ponderada_plata
-			FROM
-				blending_detalle bld
-			INNER JOIN catalogolotes lot ON bld.id_lote = lot.id_CatalogoLotes
-			INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
-			GROUP BY bld.id_blending
+					) AS ley_plata
+				FROM
+					catalogolotes lot
+				INNER JOIN blending_detalle bld ON
+					bld.id_lote = lot.id_CatalogoLotes
+				INNER JOIN valorizacion_compramineral_detalle vcd ON
+					vcd.cod_lote = lot.ccod_Lote
+				INNER JOIN valorizacion_compramineral vc ON
+					vc.Id = vcd.id_valorizacion
+			) as sub_detalles
+			GROUP BY id_blending
 		) calc ON calc.id_blending = bl.id
 		ORDER BY 
 			bl.correlativo DESC;

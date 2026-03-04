@@ -167,6 +167,7 @@ $backendUrl = 'apis/backend.php';
                   <th class="header-bg-blending text-center">Código</th>
                   <th class="header-bg-blending text-center">Peso Inicial</th>
                   <th class="header-bg-blending text-center">Peso Actual</th>
+                  <th class="header-bg-blending text-center">H2O</th>
                   <th class="header-bg-blending text-center">Ley Au</th>
                   <th class="header-bg-blending text-center">Ley Ag</th>
                   <th class="header-bg-blending text-center">Estado</th>
@@ -177,7 +178,7 @@ $backendUrl = 'apis/backend.php';
               </thead>
               <tbody id="tbl_blendings" style="font-size: 13px;">
                 <tr>
-                  <td colspan="7" class="text-center">Cargando...</td>
+                  <td colspan="8" class="text-center">Cargando...</td>
                 </tr>
               </tbody>
             </table>
@@ -377,7 +378,7 @@ $backendUrl = 'apis/backend.php';
 
 
   <script type="text/javascript">
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function() {
 
       // -------------------------
       // Variables Globales
@@ -439,7 +440,7 @@ $backendUrl = 'apis/backend.php';
       function renderBlendings(dataList = allBlendings) {
         let html = '';
         if (dataList.length === 0) {
-          html = '<tr><td colspan="7" class="text-center">No se encontraron blendings registrados.</td></tr>';
+          html = '<tr><td colspan="8" class="text-center">No se encontraron blendings registrados.</td></tr>';
         } else {
           // Sorting by Date/ID Descending
           dataList.sort((a, b) => {
@@ -464,15 +465,13 @@ $backendUrl = 'apis/backend.php';
                     <td class="fw-bold text-center ps-4"><i class="bi bi-caret-right-fill text-muted" style="font-size: 0.8em;"></i> ${b.correlativo}</td>
                     <td class="text-end">${formatNumber(b.peso_inicial)}</td>
                     <td class="text-end">${formatNumber(b.peso_actual)}</td>
+                    <td class="text-end text-muted">${formatNumber(b.humedad_promedio, 3)}</td>
                     <td class="text-end fw-bold">${formatNumber(b.ley_oro)}</td>
                     <td class="text-end fw-bold">${formatNumber(b.ley_plata)}</td>
                     <td class="text-center ${estadoClass}">${b.estado}</td>
                     <td class="text-center">${f_FormatFecha(b.fecha_registro, 1)}</td>
                     <td class="text-center">${b.cantidad_lotes}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-primary" onclick="selectBlending(${b.id_blending}, event)">
-                            <i class="bi bi-eye"></i>
-                        </button>
                         <button class="btn btn-sm btn-danger" onclick="anularBlending(${b.id_blending}, event)" title="Anular Blending">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -562,7 +561,7 @@ $backendUrl = 'apis/backend.php';
       }
 
       // Expuesta globalmente para usar en el HTML onclick
-      window.selectBlending = function (id, event) {
+      window.selectBlending = function(id, event) {
         if (event) event.stopPropagation();
 
         // UI update
@@ -574,8 +573,10 @@ $backendUrl = 'apis/backend.php';
           $("#blending_seleccionado_codigo").text(blending.correlativo);
           $("#msg_detalle_blending").parent().html('<tr><td colspan="5" class="text-center">Cargando detalle...</td></tr>');
 
-          f_callBackend('get_blending_detalle_by_blending', { id_blending: id })
-            .done(function (r) {
+          f_callBackend('get_blending_detalle_by_blending', {
+              id_blending: id
+            })
+            .done(function(r) {
               if (r.estado === 1) {
                 renderDetalle(r.data.detalle_blending);
               } else {
@@ -585,12 +586,14 @@ $backendUrl = 'apis/backend.php';
         }
       };
 
-      window.anularBlending = function (id, event) {
+      window.anularBlending = function(id, event) {
         if (event) event.stopPropagation();
         if (!confirm("¿Está seguro de ANULAR este blending? Esta acción revertirá el stock a los lotes originales.")) return;
 
-        f_callBackend('anular_blending', { id_blending: id })
-          .done(function (r) {
+        f_callBackend('anular_blending', {
+            id_blending: id
+          })
+          .done(function(r) {
             if (r.estado === 1) {
               alert(r.mensaje);
               loadAllData();
@@ -694,7 +697,7 @@ $backendUrl = 'apis/backend.php';
 
       // --- ADD AND REMOVE LOT BUTTONS ---
 
-      $(document).on("click", ".btn-add-lote", function () {
+      $(document).on("click", ".btn-add-lote", function() {
         let id = $(this).data('id');
         let proveedor = $(this).data('proveedor');
         let codigoGel = $(this).data('codigo-gel');
@@ -729,7 +732,7 @@ $backendUrl = 'apis/backend.php';
         renderLotesSeleccionados();
       });
 
-      $(document).on("click", ".btn-remove-lote", function () {
+      $(document).on("click", ".btn-remove-lote", function() {
         let id = $(this).data('id');
 
         // Remove from selected array - use String comparison
@@ -740,7 +743,7 @@ $backendUrl = 'apis/backend.php';
         renderLotesSeleccionados();
       });
 
-      $(document).on("input change", ".input-peso-seleccionado", function () {
+      $(document).on("input change", ".input-peso-seleccionado", function() {
         let val = parseFloat($(this).val());
         let max = parseFloat($(this).attr('max'));
         let id = $(this).data('id');
@@ -836,8 +839,14 @@ $backendUrl = 'apis/backend.php';
         let arrCorrels = uniqueCorrelativos.sort((a, b) => b.text.localeCompare(a.text)); // Descending
 
         // Add 'Todos' option
-        arrProvs.unshift({ id: '', text: 'Todos' });
-        arrCorrels.unshift({ id: '', text: 'Todos' });
+        arrProvs.unshift({
+          id: '',
+          text: 'Todos'
+        });
+        arrCorrels.unshift({
+          id: '',
+          text: 'Todos'
+        });
 
         // Init Select2
         $("#filter_correlativo").empty().select2({
@@ -875,12 +884,12 @@ $backendUrl = 'apis/backend.php';
       }
 
       // Botón Aplicar Filtros
-      $("#btn_aplicar_filtros").on("click", function () {
+      $("#btn_aplicar_filtros").on("click", function() {
         applyFilters();
       });
 
       // Botón Limpiar Filtros
-      $("#btn_limpiar_filtros").on("click", function () {
+      $("#btn_limpiar_filtros").on("click", function() {
         $("#filter_correlativo").val(null).trigger('change');
         $("#filter_estado").val('');
         $("#filter_fecha_desde").val('');
@@ -891,7 +900,7 @@ $backendUrl = 'apis/backend.php';
       // 1. Cargar datos iniciales
       function loadAllData() {
         f_callBackend('get_lista_blending_cabecera', {})
-          .done(function (r) {
+          .done(function(r) {
             if (r.estado === 1) {
               allBlendings = r.data.blendings;
               populateFilters();
@@ -903,7 +912,7 @@ $backendUrl = 'apis/backend.php';
       }
 
       // 2. Abrir Modal Nuevo
-      $("#btn_open_new_blending_modal").on("click", function () {
+      $("#btn_open_new_blending_modal").on("click", function() {
         // Reset Modal
         lotesSeleccionados = []; // Clear selected lots
         lotesDisponibles = []; // Clear available lots
@@ -916,7 +925,7 @@ $backendUrl = 'apis/backend.php';
 
         // Cargar proveedores
         f_callBackend("get_proveedores_to_blending", {})
-          .done(function (r) {
+          .done(function(r) {
             if (r.estado === 1) {
               let data = r.data.proveedores.map(p => ({
                 id: p.id_proveedor,
@@ -939,13 +948,15 @@ $backendUrl = 'apis/backend.php';
       });
 
       // 3. Buscar Lotes
-      $("#btn_cargar_lotes").on("click", function () {
+      $("#btn_cargar_lotes").on("click", function() {
         let id_prov = $("#reg_proveedor").val() || 0; // Send 0 if empty
 
         $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
 
-        f_callBackend("get_lotes_to_blending_by_proveedor", { id_proveedor: id_prov })
-          .done(function (r) {
+        f_callBackend("get_lotes_to_blending_by_proveedor", {
+            id_proveedor: id_prov
+          })
+          .done(function(r) {
             $("#btn_cargar_lotes").prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Lotes');
             if (r.estado === 1) {
               lotesDisponibles = r.data.lotes;
@@ -956,7 +967,7 @@ $backendUrl = 'apis/backend.php';
       });
 
       // 5. Crear Blending Enviar
-      $("#btn_crear_blending").on("click", function () {
+      $("#btn_crear_blending").on("click", function() {
         let lotesParaEnviar = [];
 
         lotesSeleccionados.forEach(l => {
@@ -981,9 +992,9 @@ $backendUrl = 'apis/backend.php';
         $btn.prop('disabled', true);
 
         f_callBackend("crear_blending", {
-          lotes: lotesParaEnviar,
-        })
-          .done(function (r) {
+            lotes: lotesParaEnviar,
+          })
+          .done(function(r) {
             if (r.estado === 1) {
               alert(r.mensaje);
               $("#modal_nuevo_blending").modal("hide");
@@ -992,16 +1003,16 @@ $backendUrl = 'apis/backend.php';
               alert("Error: " + r.mensaje);
             }
           })
-          .fail(function () {
+          .fail(function() {
             alert("Error de conexión");
           })
-          .always(function () {
+          .always(function() {
             $("#btn_crear_blending").prop("disabled", false);
           });
       });
 
       // 6. Reset Modal on Close (Fix persistence)
-      document.getElementById('modal_nuevo_blending').addEventListener('hidden.bs.modal', function () {
+      document.getElementById('modal_nuevo_blending').addEventListener('hidden.bs.modal', function() {
         // Reset Filters
         $("#reg_proveedor").val(null).trigger('change');
         // Reset Data
