@@ -464,6 +464,7 @@ $backendUrl = 'apis/backend.php';
               <thead class="table-light" id="thead_view_dist_items">
                 <tr>
                   <th>Código</th>
+                  <th class="text-center">Ticket</th>
                   <th class="text-center">Tipo</th>
                   <th class="text-center">Tipo de Carga</th>
                   <th class="text-end">P. Tara</th>

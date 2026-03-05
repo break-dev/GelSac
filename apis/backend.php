@@ -78150,6 +78150,8 @@ switch ($_POST["accion"]) {
 			dst.peso_en_planta_destino,
 			dst.ley_oro_en_planta_destino,
 			dst.ley_plata_en_planta_destino,
+			dst.ticket_balanza,
+			dst.numero_ticket_balanza,
 			CASE
 				WHEN dsd.is_blending = 1 THEN (
 					SELECT
@@ -78654,7 +78656,7 @@ switch ($_POST["accion"]) {
 			$filtro_por_fechas
 			$filtro_por_placa
 		ORDER BY
-			d.fecha_estimada DESC, d.fecha_hora_llegada DESC
+			d.fecha_hora_llegada DESC, d.fecha_estimada DESC
 		";
 
 		saveLog(["sql" => $q_unidades]);
@@ -78685,6 +78687,8 @@ switch ($_POST["accion"]) {
 			dis.tipo_carga,
 			dis.cantidad_bigbags,
 			dis.numero_parte,
+			dis.ticket_balanza,
+			dis.numero_ticket_balanza,
 			dis.peso_tomado,
 			CASE
 				WHEN dsd.is_blending = 1 THEN(
@@ -78757,6 +78761,22 @@ switch ($_POST["accion"]) {
 		$peso_neto = floatval($_POST["peso_neto"] ?? 0);
 		$cantidad_bigbags = isset($_POST["cantidad_bigbags"]) && is_numeric($_POST["cantidad_bigbags"]) ? intval($_POST["cantidad_bigbags"]) : 'NULL';
 
+		// Primero revisamos si ya tiene ticket
+		$q_check = "SELECT ticket_balanza FROM distribucion_detalle WHERE id = $id_distribucion_detalle";
+		$res_check = mysqli_query($enlace, $q_check);
+		$row_check = mysqli_fetch_assoc($res_check);
+		
+		$ticket_balanza = $row_check['ticket_balanza'];
+		$ticket_fields = "";
+		
+		if (empty($ticket_balanza)) {
+			$nuevo_ticket = getNuevoNumeroCorrelativoDetalleDistribucion($enlace);
+			$t_num = $nuevo_ticket['numero_ticket_balanza'];
+			$t_txt = $nuevo_ticket['ticket_balanza'];
+			$ticket_fields = ", numero_ticket_balanza = $t_num, ticket_balanza = '$t_txt'";
+			$ticket_balanza = $t_txt;
+		}
+
 		$q_update = "
 			UPDATE distribucion_detalle 
 			SET 
@@ -78764,6 +78784,7 @@ switch ($_POST["accion"]) {
 				peso_bruto = $peso_bruto,
 				peso_neto = $peso_neto,
 				cantidad_bigbags = $cantidad_bigbags
+				$ticket_fields
 			WHERE id = $id_distribucion_detalle
 		";
 
@@ -78784,7 +78805,7 @@ switch ($_POST["accion"]) {
 					}
 				}
 			}
-			echo json_encode(["estado" => 1, "mensaje" => "Pesos actualizados correctamente."]);
+			echo json_encode(["estado" => 1, "mensaje" => "Pesos actualizados correctamente.", "ticket_balanza" => $ticket_balanza]);
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al actualizar los pesos."]);
 		}
@@ -79603,5 +79624,31 @@ function getNuevoNumeroCorrelativoDespacho($enlace)
 	$row = mysqli_fetch_assoc($res);
 
 	return $row['nuevo_numero'] ?? 1;
+}
+
+function getNuevoNumeroCorrelativoDetalleDistribucion($enlace)
+{
+	$id_sucursal = $_SESSION["id_sucursal"];
+	$q = "
+	SELECT
+		COALESCE(MAX(dsd.numero_ticket_balanza),0) + 1 AS nuevo_numero
+	FROM
+		distribucion_detalle dsd
+    INNER JOIN distribucion ds on ds.id = dsd.id_distribucion
+	WHERE
+		YEAR(ds.fecha_hora_llegada) = YEAR(CURRENT_DATE) AND
+        ds.id_sucursal = $id_sucursal
+    ";
+
+	$res = mysqli_query($enlace, $q);
+	$row = mysqli_fetch_assoc($res);
+
+	$nuevo_numero = $row['nuevo_numero'] ?? 1;
+	$nuevo_ticket_balanza = $_SESSION["prefijo_sucursal"] . '-' . date('y') . '-' . str_pad($nuevo_numero, 4, '0', STR_PAD_LEFT);
+
+	return [
+		"numero_ticket_balanza" => $nuevo_numero,
+		"ticket_balanza" => $nuevo_ticket_balanza
+	];
 }
 ?>

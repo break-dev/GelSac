@@ -479,6 +479,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <th class="text-end">L. Au Dest.</th>
           <th class="text-end">L. Ag Dest.</th>
           <th>Cód. Origen</th>
+          <th class="text-center">Ticket</th>
           <th class="text-center">T. Carga</th>
           <th class="text-end">P. Neto O.</th>
           <th class="text-end" title="Número de partición/Lote origen">Nro.</th>
@@ -491,6 +492,7 @@ document.addEventListener("DOMContentLoaded", function () {
       $("#thead_view_dist_items").html(`
         <tr>
           <th>Código Origen</th>
+          <th class="text-center">Ticket</th>
           <th class="text-center">Tipo Min.</th>
           <th class="text-center">Tipo Carga</th>
           <th class="text-end">P. Tara</th>
@@ -504,7 +506,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     $("#tbl_view_dist_items").html(
-      `<tr><td colspan="${meta.estado === "D" ? 8 : 8}" class="text-center">Cargando detalles...</td></tr>`,
+      `<tr><td colspan="${meta.estado === "D" ? 9 : 9}" class="text-center">Cargando detalles...</td></tr>`,
     );
 
     modalView.show();
@@ -517,7 +519,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let html = "";
         let items = r.data.detalles || [];
         if (items.length === 0) {
-          html = `<tr><td colspan="${meta.estado === "D" ? 8 : 8}" class="text-center">Sin items.</td></tr>`;
+          html = `<tr><td colspan="${meta.estado === "D" ? 9 : 9}" class="text-center">Sin items.</td></tr>`;
         } else {
           items.forEach((i) => {
             let isBlending = i.is_blending == 1;
@@ -530,6 +532,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? `Big Bags (${i.cantidad_bigbags || 0})`
                 : `Granel`;
 
+            let strTicket =
+              i.ticket_balanza ||
+              '<span class="text-muted fst-italic">Pdte.</span>';
+
             if (meta.estado === "D") {
               html += `
                 <tr data-id-detalle="${i.id}">
@@ -538,6 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-au" value="${i.ley_oro_en_planta_destino || ""}" placeholder="0.00"></td>
                     <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-ag" value="${i.ley_plata_en_planta_destino || ""}" placeholder="0.00"></td>
                     <td class="align-middle text-muted" style="font-size: 0.9em;">${i.codigo}</td>
+                    <td class="text-center align-middle" style="font-size: 0.85em;">${strTicket}</td>
                     <td class="text-center align-middle text-muted" style="font-size: 0.9em;">${txtCarga}</td>
                     <td class="text-end font-monospace align-middle text-success fw-bold">${formatNumber(i.peso_neto || 0)}</td>
                     <td class="text-end font-monospace align-middle text-muted" style="font-size: 0.9em;">${i.numero_parte != null ? i.numero_parte : "Total"}</td>
@@ -547,6 +554,7 @@ document.addEventListener("DOMContentLoaded", function () {
               html += `
                   <tr>
                       <td>${i.codigo}</td>
+                      <td class="text-center" style="font-size: 0.85em;">${strTicket}</td>
                       <td class="text-center">${badge}</td>
                       <td class="text-center">${txtCarga}</td>
                       <td class="text-end font-monospace">${formatNumber(i.peso_tara || 0)}</td>
@@ -562,7 +570,7 @@ document.addEventListener("DOMContentLoaded", function () {
         $("#tbl_view_dist_items").html(html);
       } else {
         $("#tbl_view_dist_items").html(
-          `<tr><td colspan="${meta.estado === "D" ? 8 : 8}" class="text-center text-danger">Error al cargar.</td></tr>`,
+          `<tr><td colspan="${meta.estado === "D" ? 9 : 9}" class="text-center text-danger">Error al cargar.</td></tr>`,
         );
       }
     });
