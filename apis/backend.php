@@ -33359,7 +33359,7 @@ switch ($_POST["accion"]) {
 																	 AND HC.is_reanalisis = 0
 																 LEFT JOIN despachos_primertramo_validaciondatos VD ON L.ccod_Lote = VD.lote_cod_lote
 																 LEFT JOIN tbconfig_plantas PL ON L.balanza_id_planta = PL.Id
-													 WHERE I.id_tipoingresounidad = 1";
+													 ";
 
 			if (strlen($arr_lotes) > 0) {
 				$q_balanza .= "   AND L.ccod_Lote IN (" . $arr_lotes . ")";

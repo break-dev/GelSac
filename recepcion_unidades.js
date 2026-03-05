@@ -2017,6 +2017,7 @@ function f_GrabarRecepcion_Confirmar() {
       registro_observacion: registro_observacion,
       tiene_vehiculoparticular: vehiculo_particular,
       id_placadespacho: id_placadespacho,
+      id_distribucion: id_placadespacho,
       arr_acompanantes_datos: JSON.stringify(arr_acompanantes_datos),
       arr_imagenes_datos: JSON.stringify(arr_imagenes_datos),
       arr_acompanantes: JSON.stringify(arr_acompanantes),
