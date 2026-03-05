@@ -208,7 +208,7 @@ $backendUrl = 'apis/backend.php';
             <div class="d-flex flex-column h-100">
 
               <!-- Panel Superior: Detalle de Minerales -->
-              <div class="bg-white shadow-sm p-3 rounded mb-3 flex-grow-1">
+              <div class="bg-white shadow-sm p-3 rounded mb-3 grow">
                 <h5 class="d-flex justify-content-between align-items-center">
                   <span><i class="bi bi-box-seam"></i> Detalle del Despacho: <span id="lbl_despacho_seleccionado"
                       class="text-primary fw-bold">---</span></span>
@@ -377,10 +377,20 @@ $backendUrl = 'apis/backend.php';
               <select id="dist_unidad" class="form-select" data-bs-theme="bootstrap-5" capacidad="0" disabled></select>
             </div>
             <div class="col-md-4">
-              <label class="form-label small fw-bold text-muted">Segunda placa (opc.)</label>
-              <div class="input-group">
-                <input type="text" class="form-control text-uppercase" id="dist_serie_segunda_placa" placeholder="Serie">
-                <input type="text" class="form-control text-uppercase" id="dist_numero_segunda_placa" placeholder="Numero">
+              <label class="form-label small fw-bold text-muted">4. Empresa Tolva</label>
+              <select id="dist_empresa_tolva" class="form-select" data-bs-theme="bootstrap-5"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-muted">5. Placa 2 (Tolva)</label>
+              <div class="d-flex gap-1">
+                <div class="grow" style="min-width: 200px;">
+                  <select id="dist_tolva" class="form-select" data-bs-theme="bootstrap-5" disabled>
+                    <option selected>Seleccione Tolva</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="button" id="btn_add_carreta_rapida" title="Registrar Carreta Rápida">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
               </div>
             </div>
             <div class="col-md-4">
@@ -584,6 +594,39 @@ $backendUrl = 'apis/backend.php';
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-success" id="btn_confirmar_llegada_destino">
             <i class="bi bi-check-lg"></i> Confirmar Llegada
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registrar Carreta Rapida -->
+  <div class="modal fade" id="modal_registrar_carreta_rapida" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-truck"></i> Registrar Nueva Carreta</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Transportista</label>
+            <input type="text" class="form-control bg-light" id="reg_carreta_transportista_nombre" readonly>
+            <input type="hidden" id="reg_carreta_id_transportista">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Placa (Serie y Número)</label>
+            <div class="d-flex gap-2">
+              <input type="text" class="form-control text-uppercase w-25" id="reg_carreta_serie" placeholder="ABC" maxlength="4">
+              <input type="text" class="form-control text-uppercase grow" id="reg_carreta_numero" placeholder="123" maxlength="6">
+            </div>
+            <small class="text-muted">Ejemplo: F1A-987</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn_confirmar_registro_carreta">
+            <i class="bi bi-save"></i> Registrar Carreta
           </button>
         </div>
       </div>

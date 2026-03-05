@@ -338,6 +338,7 @@ document.addEventListener("DOMContentLoaded", function () {
             let cellCierre = "";
             let btnActionCierre = "";
 
+            // si la distribucion fue aprobada
             if (d.estado_cierre === "1") {
               cellCierre = `
                 <div class="small fw-bold text-success"><i class="bi bi-lock-fill"></i> Cerrado</div>
@@ -351,16 +352,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Only allow re-open if status is 'A' Activo
                 btnActionCierre = `<button class="btn btn-sm btn-link text-secondary" onclick="abrirDistribucion(${d.id_distribucion}, event)" title="Reabrir Distribución"><i class="bi bi-unlock-fill"></i></button>`;
               }
-            } else {
+            }
+            // si no ha sido aprobada aun
+            else {
               cellCierre = `-`;
 
-              if (d.estado === "A") {
-                // Only allow close if status is 'A' Activo
-                btnActionCierre = `<button class="btn btn-sm btn-link text-warning" onclick="cerrarDistribucion(${d.id_distribucion}, event)" title="Cerrar Distribución"><i class="bi bi-lock-fill"></i></button>`;
-              }
+              btnActionCierre = `<button class="btn btn-sm btn-link text-warning" onclick="cerrarDistribucion(${d.id_distribucion}, event)" title="Cerrar Distribución"><i class="bi bi-lock-fill"></i></button>`;
             }
 
             let deleteButton = "";
+            // Si acaba de registrarse la distribucion pero no esta cerrada/aprobada
             if (
               (d.estado === "A" || d.estado === "0") &&
               d.estado_cierre !== "1"
@@ -370,6 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             let btnLlegada = "";
             if (d.estado === "C") {
+              // salio de planta, por lo que puede indicar cuando llego a la planta de destino
               btnLlegada = `<button class="btn btn-sm btn-link text-success" onclick="abrirModalLlegadaDestino(${d.id_distribucion}, event)" title="Registrar Llegada a Destino"><i class="bi bi-geo-alt-fill"></i></button>`;
             }
 
@@ -986,12 +988,12 @@ document.addEventListener("DOMContentLoaded", function () {
           id: t.id_transportista,
           text: t.razon_social + " (" + t.documento + ")",
         }));
-        $("#dist_transportista")
+        $("#dist_transportista, #dist_empresa_tolva")
           .empty()
           .select2({
             dropdownParent: $("#modal_nueva_distribucion"),
             theme: "bootstrap-5",
-            placeholder: "Seleccione Transportista",
+            placeholder: "Seleccione Empresa",
             data: opts,
             width: "100%",
           })
@@ -1030,32 +1032,64 @@ document.addEventListener("DOMContentLoaded", function () {
     let idTv = $("#dist_tipo_vehiculo").val();
 
     $("#dist_unidad").empty().prop("disabled", true);
+    $("#dist_tolva").empty().prop("disabled", true);
 
-    if (idTr && idTv) {
+    if (idTr) {
+      // Cargar Empresa Tolva por defecto igual al transportista
+      if (!$("#dist_empresa_tolva").val()) {
+        $("#dist_empresa_tolva").val(idTr).trigger("change");
+      }
+
+      // Cargar Unidades (Placa 1)
+      if (idTv) {
+        f_callBackend("get_unidades_transporte_to_distribucion", {
+          id_transportista: idTr,
+          id_tipo_vehiculo: idTv,
+        }).done(function (r) {
+          if (r.estado === 1) {
+            let units = r.data.unidades || [];
+            if (units.length > 0) {
+              let opts = units.map((u) => ({
+                id: u.id_unidad,
+                text: `${u.placa} (Cap: ${u.capacidad})`,
+                capacidad: parseFloat(u.capacidad) || 0,
+              }));
+              $("#dist_unidad")
+                .prop("disabled", false)
+                .select2({
+                  dropdownParent: $("#modal_nueva_distribucion"),
+                  theme: "bootstrap-5",
+                  placeholder: "Seleccione Unidad",
+                  data: opts,
+                  width: "100%",
+                });
+            }
+          }
+        });
+      }
+
+      // Cargar Carretas (Placa 2 - Tolva)
       f_callBackend("get_unidades_transporte_to_distribucion", {
         id_transportista: idTr,
-        id_tipo_vehiculo: idTv,
+        id_tipo_vehiculo: 7, // 7 = Carreta
       }).done(function (r) {
         if (r.estado === 1) {
           let units = r.data.unidades || [];
-          if (units.length > 0) {
-            let opts = units.map((u) => ({
-              id: u.id_unidad,
-              text: `${u.placa} (Cap: ${u.capacidad})`,
-              capacidad: parseFloat(u.capacidad) || 0,
-            }));
-            $("#dist_unidad")
-              .prop("disabled", false)
-              .select2({
-                dropdownParent: $("#modal_nueva_distribucion"),
-                theme: "bootstrap-5",
-                placeholder: "Seleccione Unidad",
-                data: opts,
-                width: "100%",
-              });
-          } else {
-            // No units
-          }
+          let opts = units.map((u) => ({
+            id: u.id_unidad,
+            text: u.placa,
+          }));
+          $("#dist_tolva")
+            .prop("disabled", false)
+            .select2({
+              dropdownParent: $("#modal_nueva_distribucion"),
+              theme: "bootstrap-5",
+              placeholder: "Seleccione Tolva",
+              data: opts,
+              width: "100%",
+            })
+            .val("")
+            .trigger("change");
         }
       });
     }
@@ -1119,12 +1153,12 @@ document.addEventListener("DOMContentLoaded", function () {
           id: t.id_transportista,
           text: t.razon_social + " (" + t.documento + ")",
         }));
-        $("#dist_transportista")
+        $("#dist_transportista, #dist_empresa_tolva")
           .empty()
           .select2({
             dropdownParent: $("#modal_nueva_distribucion"),
             theme: "bootstrap-5",
-            placeholder: "Seleccione Transportista",
+            placeholder: "Seleccione Empresa",
             data: opts,
           })
           .val("")
@@ -1304,12 +1338,28 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
 
+        let serie2 = "";
+        let numero2 = "";
+        let idTolva = $("#dist_tolva").val();
+        if (idTolva) {
+          let plateStr = $("#dist_tolva option:selected").text();
+          if (plateStr && plateStr.indexOf("-") !== -1) {
+            let parts = plateStr.split("-");
+            serie2 = parts[0].trim();
+            numero2 = parts[1].trim();
+          } else {
+            serie2 = plateStr.trim();
+          }
+        }
+
         let payload = {
           id_despacho: selectedDespachoId,
           id_unidad: idUnidad,
           id_empresa_transporte: id_empresa_transporte,
-          serie_segunda_placa: $("#dist_serie_segunda_placa").val(),
-          numero_segunda_placa: $("#dist_numero_segunda_placa").val(),
+          id_tolva: idTolva || null,
+          id_empresa_transporte_tolva: $("#dist_empresa_tolva").val() || null,
+          serie_segunda_placa: serie2,
+          numero_segunda_placa: numero2,
           fecha_estimada: fecha,
           detalle: [],
         };
@@ -1405,6 +1455,80 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   init();
+
+  // --- Lógica Carreta Rápida ---
+  $("#btn_add_carreta_rapida").click(function () {
+    let idTr = $("#dist_transportista").val();
+    let textTr = $("#dist_transportista option:selected").text();
+    if (!idTr) {
+      alert("Primero seleccione un transportista.");
+      return;
+    }
+    $("#reg_carreta_id_transportista").val(idTr);
+    $("#reg_carreta_transportista_nombre").val(textTr);
+    $("#reg_carreta_serie").val("");
+    $("#reg_carreta_numero").val("");
+
+    new bootstrap.Modal(
+      document.getElementById("modal_registrar_carreta_rapida"),
+    ).show();
+  });
+
+  $("#btn_confirmar_registro_carreta").click(function () {
+    let idTr = $("#reg_carreta_id_transportista").val();
+    let serie = $("#reg_carreta_serie").val().trim();
+    let numero = $("#reg_carreta_numero").val().trim();
+
+    if (!serie || !numero) {
+      alert("Ingrese serie y número de la placa.");
+      return;
+    }
+
+    let placa = (serie + "-" + numero).toUpperCase();
+
+    let $btn = $(this);
+    $btn.prop("disabled", true).text("Registrando...");
+
+    f_callBackend("registrar_carreta_rapida", {
+      id_transportista: idTr,
+      placa: placa,
+    })
+      .done(function (r) {
+        if (r.estado === 1) {
+          alert("Carreta registrada.");
+          bootstrap.Modal.getInstance(
+            document.getElementById("modal_registrar_carreta_rapida"),
+          ).hide();
+
+          // Al recargar unidades, queremos que ésta quede seleccionada
+          f_callBackend("get_unidades_transporte_to_distribucion", {
+            id_transportista: idTr,
+            id_tipo_vehiculo: 7,
+          }).done(function (r2) {
+            if (r2.estado === 1) {
+              let units = r2.data.unidades || [];
+              let opts = units.map((u) => ({ id: u.id_unidad, text: u.placa }));
+              $("#dist_tolva")
+                .empty()
+                .prop("disabled", false)
+                .select2({
+                  dropdownParent: $("#modal_nueva_distribucion"),
+                  theme: "bootstrap-5",
+                  data: opts,
+                  width: "100%",
+                })
+                .val(r.data.id_transporte)
+                .trigger("change");
+            }
+          });
+        } else {
+          alert(r.mensaje);
+        }
+      })
+      .always(() => {
+        $btn.prop("disabled", false).text("Registrar Carreta");
+      });
+  });
 
   // --------------------------------------------------------------------------------
   // MODAL BLENDING ISSUES
