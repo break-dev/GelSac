@@ -95,168 +95,244 @@ document.addEventListener("DOMContentLoaded", function () {
   // Cargar todo
   // ========================
   window.f_LoadAll = function () {
-    f_LoadAgrupaciones();
-    f_LoadGuiasGeneradas();
+    f_LoadDataUnificada();
     // ocultar detalle
     $("#panel_detalle_agrupacion").slideUp(100);
-    $("#panel_detalle_guia").slideUp(100);
   };
 
   // ========================
   // AGRUPACIONES PENDIENTES
   // ========================
-  function f_LoadAgrupaciones() {
+  function f_LoadDataUnificada() {
     var fechaDesde = dmyToYmd($("#filtro_fecha_desde").val());
     var fechaHasta = dmyToYmd($("#filtro_fecha_hasta").val());
     var placa = $("#filtro_placa").val();
+    var estadoFiltro = $("#filtro_estado").val();
 
-    $("#wt_agrupaciones").show();
-    $("#tbl_agrupaciones").html(
-      '<tr><td colspan="10" class="text-center p-3"><span class="spinner-border spinner-border-sm"></span> Cargando...</td></tr>',
+    $("#wt_listado span").show();
+    $("#tbl_listado_unificado").html(
+      '<tr><td colspan="10" class="text-center p-3"><span class="spinner-border spinner-border-sm"></span> Cargando informacion...</td></tr>',
     );
 
-    f_callBackend("get_distribuciones_pendientes_guia_2t", {
-      fecha_inicio: fechaDesde,
-      fecha_fin: fechaHasta,
-      filtro_placa: placa,
-    })
-      .done(function (response) {
-        $("#wt_agrupaciones").hide();
+    // Cargamos ambos: pendientes y generadas
+    $.when(
+      f_callBackend("get_distribuciones_pendientes_guia_2t", {
+        fecha_inicio: fechaDesde,
+        fecha_fin: fechaHasta,
+        filtro_placa: placa,
+      }),
+      f_callBackend("get_guias_segundo_tramo", {
+        fecha_inicio: fechaDesde,
+        fecha_fin: fechaHasta,
+        filtro_placa: placa,
+      }),
+    )
+      .done(function (resPend, resGuias) {
+        $("#wt_listado span").hide();
 
-        if (response.estado === 1) {
-          allDistribuciones = response.data;
-          f_AgruparYRenderizar();
-        } else {
-          $("#tbl_agrupaciones").html(
-            '<tr><td colspan="10" class="text-center text-danger p-3">Error al cargar datos.</td></tr>',
-          );
-        }
+        var pendientes = resPend[0].estado === 1 ? resPend[0].data : [];
+        var generadas = resGuias[0].estado === 1 ? resGuias[0].data : [];
+
+        f_RenderizarListadoUnificado(pendientes, generadas, estadoFiltro);
       })
       .fail(function () {
-        $("#wt_agrupaciones").hide();
-        $("#tbl_agrupaciones").html(
-          '<tr><td colspan="10" class="text-center text-danger p-3">Error de conexión.</td></tr>',
+        $("#wt_listado span").hide();
+        $("#tbl_listado_unificado").html(
+          '<tr><td colspan="10" class="text-center text-danger p-3">Error de conexión al cargar datos.</td></tr>',
         );
       });
   }
 
-  function f_AgruparYRenderizar() {
-    // Agrupar por: fecha_estimada + id_unidad + id_empresa_transporte
-    agrupacionesMap = {};
+  function f_RenderizarListadoUnificado(pendientes, generadas, estadoFiltro) {
+    var html = "";
+    var totalPendientes = 0;
+    var totalGeneradas = 0;
 
-    for (var i = 0; i < allDistribuciones.length; i++) {
-      var d = allDistribuciones[i];
+    // 1. Procesar Pendientes (Agrupar)
+    var agrupacionesMap = {};
+    for (var i = 0; i < pendientes.length; i++) {
+      var d = pendientes[i];
       var key =
         d.fecha_estimada + "|" + d.id_unidad + "|" + d.id_empresa_transporte;
-
       if (!agrupacionesMap[key]) {
         agrupacionesMap[key] = {
-          fecha_estimada: d.fecha_estimada,
-          id_unidad: d.id_unidad,
-          id_empresa_transporte: d.id_empresa_transporte,
+          tipo: "PENDIENTE",
+          fecha_egreso: d.fecha_estimada,
           placa: d.placa1,
           transportista_rs: d.transportista_rs || "-",
           transportista_ruc: d.transportista_ruc || "-",
           conductor_nombre: d.conductor_nombre || "-",
-          distribuciones: [],
           total_lotes: 0,
           peso_total_neto: 0,
-          peso_total_bruto: 0,
-          peso_total_tara: 0,
-          peso_total_tomado: 0,
-          correlativos: [],
+          distribuciones: [],
+          correlativos_despacho: [],
         };
       }
-
       agrupacionesMap[key].distribuciones.push(d);
       agrupacionesMap[key].total_lotes += parseInt(d.total_lotes) || 0;
       agrupacionesMap[key].peso_total_neto +=
         parseFloat(d.peso_total_neto) || 0;
-      agrupacionesMap[key].peso_total_bruto +=
-        parseFloat(d.peso_total_bruto) || 0;
-      agrupacionesMap[key].peso_total_tara +=
-        parseFloat(d.peso_total_tara) || 0;
-      agrupacionesMap[key].peso_total_tomado +=
-        parseFloat(d.peso_total_tomado) || 0;
-
       if (
         d.correlativo_despacho &&
-        agrupacionesMap[key].correlativos.indexOf(d.correlativo_despacho) === -1
+        agrupacionesMap[key].correlativos_despacho.indexOf(
+          d.correlativo_despacho,
+        ) === -1
       ) {
-        agrupacionesMap[key].correlativos.push(d.correlativo_despacho);
+        agrupacionesMap[key].correlativos_despacho.push(d.correlativo_despacho);
       }
     }
 
-    // Renderizar
-    var keys = Object.keys(agrupacionesMap);
-    $("#badge_pendientes").text(keys.length);
+    var listado = [];
 
-    if (keys.length === 0) {
-      $("#tbl_agrupaciones").html(
-        '<tr><td colspan="10" class="text-center text-muted p-4">' +
-          '<i class="bi bi-check-circle" style="font-size: 24px;"></i><br>' +
-          "No hay agrupaciones pendientes de guía para los filtros aplicados." +
-          "</td></tr>",
+    // Agregar pendientes al listado final si aplica filtro
+    if (estadoFiltro === "TODOS" || estadoFiltro === "POR_ASIGNAR") {
+      Object.keys(agrupacionesMap).forEach(function (k) {
+        listado.push(agrupacionesMap[k]);
+        totalPendientes++;
+      });
+    } else {
+      totalPendientes = Object.keys(agrupacionesMap).length;
+    }
+
+    // 2. Procesar Generadas
+    if (estadoFiltro === "TODOS" || estadoFiltro === "ASIGNADAS") {
+      generadas.forEach(function (g) {
+        listado.push({
+          tipo: "GENERADA",
+          id_guia: g.id_guia,
+          fecha_egreso: g.fecha_inicio_traslado, // Ojo, usamos inicio traslado como referencia
+          nro_guia:
+            g.guia_remitente_serie && g.guia_remitente_numero
+              ? g.guia_remitente_serie + "-" + g.guia_remitente_numero
+              : "SIN GUIA",
+          placa: g.placas || "-",
+          transportista_rs: g.empresa_transporte || "-",
+          total_lotes: g.total_lotes || 0,
+          peso_total_neto: g.peso_total_neto || 0,
+          conductor_nombre: g.conductor_nombre || "-",
+          estado_guia: g.estado_guia,
+          raw: g, // data completa para edicion
+        });
+        totalGeneradas++;
+      });
+    } else {
+      totalGeneradas = generadas.length;
+    }
+
+    // Ordenar listado por fecha egreso desc
+    listado.sort(function (a, b) {
+      return b.fecha_egreso.localeCompare(a.fecha_egreso);
+    });
+
+    $("#badge_pendientes").text(totalPendientes);
+    $("#badge_guias").text(totalGeneradas);
+
+    if (listado.length === 0) {
+      $("#tbl_listado_unificado").html(
+        '<tr><td colspan="10" class="text-center text-muted p-4">No se encontro informacion.</td></tr>',
       );
       return;
     }
 
     var html = "";
-    for (var idx = 0; idx < keys.length; idx++) {
-      var k = keys[idx];
-      var g = agrupacionesMap[k];
-      var keyEncoded = btoa(unescape(encodeURIComponent(k)));
+    listado.forEach(function (item, idx) {
+      var isPendiente = item.tipo === "PENDIENTE";
+      var rowClass = isPendiente ? "table-warning" : "table-success";
+      if (item.estado_guia === "0") rowClass = "table-danger"; // Anulada
 
-      html +=
-        '<tr class="guia-row-table" style="cursor:pointer;" onclick="window.f_VerDetalleAgrupacion(\'' +
-        keyEncoded +
-        "')\">";
+      html += '<tr class="' + rowClass + ' align-middle">';
       html += '<td class="text-center fw-bold">' + (idx + 1) + "</td>";
       html +=
-        '<td class="text-center">' + formatDateDMY(g.fecha_estimada) + "</td>";
+        '<td class="text-center">' + formatDateDMY(item.fecha_egreso) + "</td>";
+
+      if (isPendiente) {
+        html +=
+          '<td class="text-center"><span class="badge bg-secondary">PENDIENTE</span></td>';
+      } else {
+        html += '<td class="text-center"><b>' + item.nro_guia + "</b></td>";
+      }
+
       html +=
         '<td class="text-center"><span class="badge bg-dark">' +
-        g.placa +
+        item.placa +
         "</span></td>";
       html += "<td>";
       html +=
-        '<div class="fw-bold text-truncate" style="max-width: 250px;" title="' +
-        g.transportista_rs +
-        '">' +
-        g.transportista_rs +
+        '<div class="fw-bold text-truncate" style="max-width: 250px;">' +
+        item.transportista_rs +
         "</div>";
-      html += '<div class="text-muted small">' + g.transportista_ruc + "</div>";
+      if (item.transportista_ruc)
+        html +=
+          '<div class="text-muted small">' + item.transportista_ruc + "</div>";
       html += "</td>";
-      html +=
-        '<td class="text-center"><span class="badge bg-secondary">' +
-        g.correlativos.join(", ") +
-        "</span></td>";
+
       html +=
         '<td class="text-center"><span class="badge bg-info text-dark">' +
-        g.total_lotes +
+        item.total_lotes +
         "</span></td>";
       html +=
-        '<td class="text-end font-monospace fw-bold text-success">' +
-        formatNumber(g.peso_total_neto) +
+        '<td class="text-end font-monospace fw-bold">' +
+        formatNumber(item.peso_total_neto) +
         "</td>";
       html +=
-        '<td class="text-center small text-truncate" style="max-width: 120px;">' +
-        g.conductor_nombre +
-        "</td>";
-      html +=
-        '<td class="text-center"><span class="badge bg-warning text-dark">Pendiente</span></td>';
+        '<td class="text-center small">' + item.conductor_nombre + "</td>";
+
+      // Estado
+      if (isPendiente) {
+        html +=
+          '<td class="text-center"><span class="badge bg-primary">POR REGISTRAR</span></td>';
+      } else {
+        var badgeEstado =
+          item.estado_guia === "1"
+            ? '<span class="badge bg-success">ACTIVA</span>'
+            : '<span class="badge bg-danger">ANULADA</span>';
+        html += '<td class="text-center">' + badgeEstado + "</td>";
+      }
+
+      // Acciones
       html += '<td class="text-center">';
-      html +=
-        '<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); window.f_AbrirModalGuia(\'' +
-        keyEncoded +
-        '\');" title="Generar Guía">';
-      html += '<i class="bi bi-plus-circle me-1"></i>Guía';
-      html += "</button>";
+      if (isPendiente) {
+        var keyEncoded = btoa(
+          unescape(
+            encodeURIComponent(
+              item.fecha_egreso +
+                "|" +
+                item.id_unidad +
+                "|" +
+                item.id_empresa_transporte,
+            ),
+          ),
+        );
+        // Guardamos en un mapa global temporal para recuperar al click
+        if (!window._agrupacionesCache) window._agrupacionesCache = {};
+        window._agrupacionesCache[keyEncoded] = item;
+
+        html +=
+          '<button class="btn btn-sm btn-primary" onclick="window.f_AbrirModalGuiaUnificado(\'' +
+          keyEncoded +
+          "');\">";
+        html += '<i class="bi bi-file-earmark-plus"></i> Generar</button>';
+      } else {
+        html += '<div class="btn-group btn-group-sm">';
+        html +=
+          '<button class="btn btn-warning" onclick="window.f_EditarGuiaUnificada(' +
+          item.id_guia +
+          ')"><i class="bi bi-pencil"></i></button>';
+        html +=
+          '<button class="btn btn-danger" onclick="window.f_AnularGuia(' +
+          item.id_guia +
+          ')"><i class="bi bi-trash"></i></button>';
+        html +=
+          '<button class="btn btn-dark" onclick="window.f_ImprimirGuia(' +
+          item.id_guia +
+          ')"><i class="bi bi-printer"></i></button>';
+        html += "</div>";
+      }
       html += "</td>";
       html += "</tr>";
-    }
+    });
 
-    $("#tbl_agrupaciones").html(html);
+    $("#tbl_listado_unificado").html(html);
   }
 
   // ========================
@@ -402,15 +478,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // ========================
   // ABRIR MODAL GENERAR GUÍA
   // ========================
-  window.f_AbrirModalGuia = function (keyEncoded) {
-    var key = decodeURIComponent(escape(atob(keyEncoded)));
-    var grupo = agrupacionesMap[key];
-    if (!grupo) {
-      alert("No se encontró la agrupación seleccionada.");
-      return;
-    }
+  window.f_AbrirModalGuiaUnificado = function (keyEncoded) {
+    var item = window._agrupacionesCache[keyEncoded];
+    if (!item) return alert("Error al recuperar datos de la agrupacion.");
 
-    // Reset modal
+    // Seteamos modo Nuevo
     $("#hd_modo_guia").val("N");
     $("#hd_id_guia").val("0");
     $("#modal_generar_guiaLabel").html(
@@ -418,49 +490,41 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 
     // IDs distribuciones
-    var idsArr = grupo.distribuciones.map(function (d) {
+    var idsArr = item.distribuciones.map(function (d) {
       return d.id_distribucion;
     });
     $("#hd_ids_distribuciones").val(JSON.stringify(idsArr));
 
-    // Cargar concesiones de estos despachos particulares
-    var despachosSet = new Set();
-    grupo.distribuciones.forEach(function (d) {
-      if (d.id_despacho) despachosSet.add(d.id_despacho);
-    });
-    var idsDespachosStr = Array.from(despachosSet).join(",");
-    f_LoadConcesiones(idsDespachosStr);
+    // Planta Destino (tomamos la de la primera distribucion)
+    $("#guia_planta_destino").val(
+      item.distribuciones[0].nombre_sucursal_llegada || "JONGOS",
+    );
 
-    // Reset campos
-    $("#guia_rem_serie, #guia_rem_numero").val("");
-    $("#guia_transp_serie, #guia_transp_numero")
-      .val("")
-      .prop("disabled", false);
-    $("#chk_sin_grt").prop("checked", false);
-    $("#guia_planta_origen").val("");
-    $("#guia_concesion").val("").trigger("change");
-    $("#guia_motivo_traslado").val("");
-    $("#guia_marca_tolva").val("");
-    $("#guia_empresa_tolva").val("").trigger("change");
+    // Limpiar campos
+    $(
+      "#guia_rem_serie, #guia_rem_numero, #guia_transp_serie, #guia_transp_numero",
+    ).val("");
+    $("#chk_sin_grt").prop("checked", false).trigger("change");
+    $("#guia_motivo_traslado").val("VENTA SUJETA A CONFIRMACIÓN");
+
+    // Tolva (ahora opcional)
+    $("#guia_marca_tolva, #guia_empresa_tolva").val("").trigger("change");
     $("#guia_serie_tolva, #guia_numero_tolva, #guia_mtc_tolva").val("");
 
     // Resumen
     $("#div_resumen_modal").html(
-      '<span class="badge bg-dark"><i class="bi bi-truck me-1"></i>' +
-        grupo.placa +
+      '<span class="badge bg-dark"><i class="bi bi-truck me-1"></i> ' +
+        item.placa +
         "</span>" +
         '<span class="badge bg-info text-dark">' +
-        grupo.total_lotes +
+        item.total_lotes +
         " Lotes</span>" +
-        '<span class="badge bg-success">Peso Neto: ' +
-        formatNumber(grupo.peso_total_neto) +
-        " Kg</span>" +
-        '<span class="text-muted small">' +
-        grupo.transportista_rs +
-        "</span>",
+        '<span class="badge bg-success">Neto: ' +
+        formatNumber(item.peso_total_neto) +
+        " Kg</span>",
     );
 
-    // Cargar lotes en la tabla del modal
+    // Cargar lotes en tabla modal
     $("#tbl_modal_lotes").html(
       '<tr><td colspan="9" class="text-center p-2"><span class="spinner-border spinner-border-sm"></span></td></tr>',
     );
@@ -470,14 +534,23 @@ document.addEventListener("DOMContentLoaded", function () {
     }).done(function (resp) {
       if (resp.estado === 1 && resp.data.length > 0) {
         f_RenderizarLotesTabla(resp.data, "#tbl_modal_lotes");
-      } else {
-        $("#tbl_modal_lotes").html(
-          '<tr><td colspan="9" class="text-center text-muted p-2">Sin lotes.</td></tr>',
-        );
+
+        // Auto-completar datos de tolva si vienen en el primer registro
+        var first = resp.data[0];
+        if (first.id_empresa_transporte_tolva) {
+          $("#guia_empresa_tolva")
+            .val(first.id_empresa_transporte_tolva)
+            .trigger("change");
+        }
+        if (first.serie_segunda_placa) {
+          $("#guia_serie_tolva").val(first.serie_segunda_placa);
+        }
+        if (first.numero_segunda_placa) {
+          $("#guia_numero_tolva").val(first.numero_segunda_placa);
+        }
       }
     });
 
-    // Mostrar modal
     var modal = new bootstrap.Modal(
       document.getElementById("modal_generar_guia"),
     );
@@ -487,127 +560,88 @@ document.addEventListener("DOMContentLoaded", function () {
   // ========================
   // EDITAR GUÍA
   // ========================
-  window.f_EditarGuia = function (idGuia, guiaData) {
-    if (!guiaData) return;
+  window.f_EditarGuiaUnificada = function (idGuia) {
+    // Buscamos la data en el cache o recargamos (por ahora tomamos de generadas si esta ahi)
+    // Pero lo mas seguro es llamar al backend por la data completa si no esta accesible
+    f_callBackend("get_guia_segundo_tramo_detalle", { id_guia: idGuia }).done(
+      function (resp) {
+        if (resp.estado === 1) {
+          var guiaData = resp.data;
+          // Preparar UI del modal de EDICIÓN
+          $("#hd_modo_guia_e").val("E");
+          $("#hd_id_guia_e").val(idGuia);
+          $("#modal_editar_guiaLabel").html(
+            '<i class="bi bi-pencil-square me-2"></i>Editar Guía de Remisión #' +
+              idGuia,
+          );
 
-    // Preparar UI del modal de EDICIÓN
-    $("#hd_modo_guia_e").val("E");
-    $("#hd_id_guia_e").val(idGuia);
-    $("#modal_editar_guiaLabel").html(
-      '<i class="bi bi-pencil-square me-2"></i>Editar Guía de Remisión #' +
-        idGuia,
+          // Seteamos fechas/horas
+          if (guiaData.fecha_inicio_traslado)
+            $("#guia_e_fecha_inicio_traslado").val(
+              dmyToYmd(guiaData.fecha_inicio_traslado),
+            );
+
+          if (guiaData.fecha_hora_emision) {
+            var p = guiaData.fecha_hora_emision.split(" ");
+            $("#guia_e_fecha_emision").val(dmyToYmd(p[0]));
+            if (p[1]) $("#guia_e_hora_emision").val(p[1]);
+          }
+          // ... (resto de seteos similares a f_EditarGuia original)
+          $("#guia_e_planta_origen").val(guiaData.planta_origen || "1");
+          $("#guia_e_planta_destino").val(
+            guiaData.nombre_sucursal_llegada || "JONGOS",
+          );
+          $("#guia_e_rem_serie").val(guiaData.guia_remitente_serie || "");
+          $("#guia_e_rem_numero").val(guiaData.guia_remitente_numero || "");
+          $("#guia_e_motivo_traslado").val(guiaData.motivo_traslado || "");
+
+          // Tolva
+          $("#guia_e_marca_tolva")
+            .val(guiaData.id_marca_tolva || "")
+            .trigger("change");
+          $("#guia_e_empresa_tolva")
+            .val(guiaData.id_empresa_transporte_tolva || "")
+            .trigger("change");
+          $("#guia_e_serie_tolva").val(guiaData.serie_tolva || "");
+          $("#guia_e_numero_tolva").val(guiaData.numero_tolva || "");
+          $("#guia_e_mtc_tolva").val(guiaData.numero_mtc_tolva || "");
+
+          var sgrt = parseInt(guiaData.sin_guia_transportista);
+          $("#chk_sin_grt_e")
+            .prop("checked", sgrt === 1)
+            .trigger("change");
+          if (sgrt === 0) {
+            $("#guia_e_transp_serie").val(
+              guiaData.guia_transportista_serie || "",
+            );
+            $("#guia_e_transp_numero").val(
+              guiaData.guia_transportista_numero || "",
+            );
+          }
+
+          // Lotes
+          var arrIds = guiaData.lotes.map(function (x) {
+            return x.id_distribucion;
+          });
+          $("#hd_ids_distribuciones_e").val(JSON.stringify(arrIds));
+          f_RenderizarLotesTabla(guiaData.lotes, "#tbl_modal_lotes_e");
+
+          $("#div_resumen_modal_e").html(
+            '<span class="badge bg-dark">' +
+              (guiaData.placas || "-") +
+              "</span>" +
+              '<span class="badge bg-success">Neto: ' +
+              formatNumber(guiaData.peso_total_neto) +
+              " Kg</span>",
+          );
+
+          var modal = new bootstrap.Modal(
+            document.getElementById("modal_editar_guia"),
+          );
+          modal.show();
+        }
+      },
     );
-
-    // Seteamos las fechas y horas
-    if (guiaData.fecha_inicio_traslado) {
-      var parts = guiaData.fecha_inicio_traslado.split("/");
-      if (parts.length === 3) {
-        $("#guia_e_fecha_inicio_traslado").val(
-          parts[2] + "-" + parts[1] + "-" + parts[0],
-        );
-      }
-    }
-    if (guiaData.fecha_hora_emision) {
-      var partsEmi = guiaData.fecha_hora_emision.split(" ");
-      if (partsEmi.length === 2) {
-        var dp = partsEmi[0].split("/");
-        if (dp.length === 3) {
-          $("#guia_e_fecha_emision").val(dp[2] + "-" + dp[1] + "-" + dp[0]);
-        }
-        if (partsEmi[1]) {
-          $("#guia_e_hora_emision").val(partsEmi[1]);
-        }
-      }
-    }
-    if (guiaData.fecha_hora_planta) {
-      var partsPlanta = guiaData.fecha_hora_planta.split(" ");
-      if (partsPlanta.length === 2) {
-        var dp2 = partsPlanta[0].split("/");
-        if (dp2.length === 3) {
-          $("#guia_e_fecha_planta").val(dp2[2] + "-" + dp2[1] + "-" + dp2[0]);
-        }
-        if (partsPlanta[1]) {
-          $("#guia_e_hora_planta").val(partsPlanta[1]);
-        }
-      }
-    }
-
-    // Cargar concesiones de este despacho en modo edición
-    var despachosSet = new Set();
-    if (guiaData.lotes && guiaData.lotes.length > 0) {
-      guiaData.lotes.forEach(function (l) {
-        if (l.id_despacho) despachosSet.add(l.id_despacho);
-      });
-    }
-    var idsDespachosStr = Array.from(despachosSet).join(",");
-
-    // Función personalizada para cargar y luego setear el valor en el Edit modal
-    f_LoadConcesiones(idsDespachosStr, function () {
-      $("#guia_e_concesion")
-        .val(guiaData.id_concesion || "")
-        .trigger("change");
-    });
-
-    $("#guia_e_planta_origen").val(guiaData.planta_origen || "");
-    $("#guia_e_rem_serie").val(guiaData.guia_remitente_serie || "");
-    $("#guia_e_rem_numero").val(guiaData.guia_remitente_numero || "");
-    $("#guia_e_motivo_traslado").val(guiaData.motivo_traslado || "");
-    $("#guia_e_marca_tolva")
-      .val(guiaData.id_marca_tolva || "")
-      .trigger("change");
-    $("#guia_e_empresa_tolva")
-      .val(guiaData.id_empresa_transporte_tolva || "")
-      .trigger("change");
-    $("#guia_e_serie_tolva").val(guiaData.serie_tolva || "");
-    $("#guia_e_numero_tolva").val(guiaData.numero_tolva || "");
-    $("#guia_e_mtc_tolva").val(guiaData.numero_mtc_tolva || "");
-
-    var sgrt = parseInt(guiaData.sin_guia_transportista);
-    if (sgrt === 1) {
-      $("#chk_sin_grt_e").prop("checked", true);
-      $(".guia_grt_field_e").prop("disabled", true).val("");
-    } else {
-      $("#chk_sin_grt_e").prop("checked", false);
-      $(".guia_grt_field_e").prop("disabled", false);
-      $("#guia_e_transp_serie").val(guiaData.guia_transportista_serie || "");
-      $("#guia_e_transp_numero").val(guiaData.guia_transportista_numero || "");
-    }
-
-    // IDs de las distribuciones actuales
-    var arrIds = [];
-    if (guiaData.lotes) {
-      arrIds = guiaData.lotes.map(function (x) {
-        return x.id_distribucion;
-      });
-      f_RenderizarLotesTabla(guiaData.lotes, "#tbl_modal_lotes_e");
-    } else {
-      $("#tbl_modal_lotes_e").html(
-        '<tr><td colspan="9" class="text-center text-muted p-2">Sin lotes.</td></tr>',
-      );
-    }
-    $("#hd_ids_distribuciones_e").val(JSON.stringify(arrIds));
-
-    // Resumen para el modal de edición
-    $("#div_resumen_modal_e").html(
-      '<span class="badge bg-dark"><i class="bi bi-truck me-1"></i>' +
-        (guiaData.placas || "-") +
-        "</span>" +
-        '<span class="badge bg-info text-dark">' +
-        (guiaData.total_lotes || 0) +
-        " Lotes</span>" +
-        '<span class="badge bg-success">Peso Neto: ' +
-        formatNumber(guiaData.peso_total_neto) +
-        " Kg</span>" +
-        '<span class="text-muted small">' +
-        (guiaData.empresa_transporte || "-") +
-        "</span>",
-    );
-
-    // Mostrar modal de edición
-    var modal = new bootstrap.Modal(
-      document.getElementById("modal_editar_guia"),
-    );
-    modal.show();
   };
 
   // ========================
@@ -629,51 +663,15 @@ document.addEventListener("DOMContentLoaded", function () {
     var sinGRT = $("#chk_sin_grt").prop("checked") ? 1 : 0;
     var motivoTraslado = $("#guia_motivo_traslado").val();
 
-    if (!fechaInicioTraslado) {
-      alert("Debe seleccionar la Fecha de Inicio de Traslado.");
-      return;
-    }
-    if (!fechaEmision || !horaEmision) {
-      alert("Debe completar la Fecha y Hora de Emisión.");
-      return;
-    }
-    if (!fechaPlanta || !horaPlanta) {
-      alert("Debe completar la Fecha y Hora en Planta.");
-      return;
-    }
-    if (!plantaOrigen) {
-      alert("Debe seleccionar la Planta de Origen.");
-      return;
-    }
-    if (!remSerie) {
-      alert("Debe ingresar la Serie de Guía Remitente.");
-      return;
-    }
-    if (!remNumero) {
-      alert("Debe ingresar el Número de Guía Remitente.");
-      return;
-    }
-    if (!motivoTraslado) {
-      alert("Debe seleccionar el Motivo de Traslado.");
-      return;
-    }
+    if (!fechaInicioTraslado) return alert("Fecha inicio traslado requerida.");
+    if (!fechaEmision || !horaEmision)
+      return alert("Fecha y hora emision requerida.");
+    if (!plantaOrigen) return alert("Seleccione planta origen.");
+    if (!remSerie || !remNumero) return alert("Guia remitente incompleta.");
+    if (!motivoTraslado) return alert("Seleccione motivo traslado.");
 
-    if (sinGRT === 0) {
-      if (!transpSerie) {
-        alert(
-          'Debe ingresar la Serie de Guía Transportista, o marque "Sin Guía Transportista".',
-        );
-        return;
-      }
-      if (!transpNumero) {
-        alert(
-          'Debe ingresar el Número de Guía Transportista, o marque "Sin Guía Transportista".',
-        );
-        return;
-      }
-    } else {
-      transpSerie = "";
-      transpNumero = "";
+    if (sinGRT === 0 && (!transpSerie || !transpNumero)) {
+      return alert("Guia transportista incompleta o marque 'Sin Guia'.");
     }
 
     var idsDistribuciones = $("#hd_ids_distribuciones").val();

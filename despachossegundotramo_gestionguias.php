@@ -229,7 +229,7 @@ $backendUrl = 'apis/backend.php';
         <div class="panel-section mb-2">
           <div class="row g-2 align-items-end">
             <div class="col-auto">
-              <label class="form-label small fw-bold mb-0">Desde</label>
+              <label class="form-label small fw-bold mb-0">Egresos Desde</label>
               <input type="text" id="filtro_fecha_desde" class="form-control form-control-sm bg-white"
                 placeholder="dd/mm/yyyy" style="width: 130px;" readonly>
             </div>
@@ -237,6 +237,14 @@ $backendUrl = 'apis/backend.php';
               <label class="form-label small fw-bold mb-0">Hasta</label>
               <input type="text" id="filtro_fecha_hasta" class="form-control form-control-sm bg-white"
                 placeholder="dd/mm/yyyy" style="width: 130px;" readonly>
+            </div>
+            <div class="col-auto">
+              <label class="form-label small fw-bold mb-0">Estado</label>
+              <select id="filtro_estado" class="form-select form-select-sm" style="width: 150px;">
+                <option value="TODOS">Ver Todos</option>
+                <option value="POR_ASIGNAR" selected>Por Asignar (Pendiente)</option>
+                <option value="ASIGNADAS">Asignadas (Generadas)</option>
+              </select>
             </div>
             <div class="col-auto">
               <label class="form-label small fw-bold mb-0">Placa</label>
@@ -254,82 +262,43 @@ $backendUrl = 'apis/backend.php';
           </div>
         </div>
 
-        <!-- Panel Superior: Agrupaciones pendientes -->
-        <div class="panel-section" style="min-height: 200px;">
+        <!-- Panel Unificado: Agrupaciones y Guías -->
+        <div class="panel-section" style="min-height: 400px;">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="section-title mb-0">
-              <i class="bi bi-collection text-primary"></i>
-              Agrupaciones Pendientes de Guía
-              <span id="badge_pendientes" class="badge bg-primary rounded-pill ms-2" style="font-size: 11px;">0</span>
+              <i class="bi bi-table text-primary"></i>
+              Listado de Egresos y Guías Segundo Tramo
             </div>
-            <div id="wt_agrupaciones" style="display: none;">
-              <span class="spinner-border spinner-border-sm text-secondary"></span>
+            <div class="d-flex gap-3 align-items-center">
+              <span class="badge bg-primary rounded-pill" style="font-size: 11px;">Pendientes: <span id="badge_pendientes">0</span></span>
+              <span class="badge bg-success rounded-pill" style="font-size: 11px;">Generadas: <span id="badge_guias">0</span></span>
+              <div id="wt_listado">
+                <span class="spinner-border spinner-border-sm text-secondary" style="display:none;"></span>
+              </div>
             </div>
           </div>
 
-          <div class="table-responsive" style="max-height: 35vh; overflow-y: auto;">
+          <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
             <table class="table table-bordered table-hover table-sm mb-0">
               <thead class="sticky-top">
                 <tr>
                   <th class="header-primary text-center" style="min-width: 35px;">N°</th>
-                  <th class="header-primary text-center" style="min-width: 120px;">Fecha Estimada</th>
-                  <th class="header-primary text-center" style="min-width: 100px;">Placa</th>
+                  <th class="header-primary text-center" style="min-width: 110px;">Fecha Egreso</th>
+                  <th class="header-primary text-center" style="min-width: 110px;">Guía(s)</th>
+                  <th class="header-primary text-center" style="min-width: 100px;">Placa(s)</th>
                   <th class="header-primary" style="min-width: 200px;">Empresa Transporte</th>
-                  <th class="header-primary text-center" style="min-width: 100px;">Despacho(s)</th>
                   <th class="header-primary text-center" style="min-width: 60px;">Lotes</th>
                   <th class="header-primary text-center" style="min-width: 110px;">Peso Neto (Kg)</th>
                   <th class="header-primary text-center" style="min-width: 100px;">Conductor</th>
                   <th class="header-primary text-center" style="min-width: 100px;">Estado</th>
-                  <th class="header-primary text-center" style="min-width: 120px;">Acciones</th>
+                  <th class="header-primary text-center" style="min-width: 150px;">Acciones</th>
                 </tr>
               </thead>
-              <tbody id="tbl_agrupaciones">
+              <tbody id="tbl_listado_unificado">
                 <tr>
                   <td colspan="10" class="text-center text-muted p-4">
                     <i class="bi bi-search" style="font-size: 24px;"></i><br>
-                    Use los filtros para buscar agrupaciones pendientes.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Panel: Guías Generadas -->
-        <div class="panel-section" style="min-height: 150px;">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="section-title mb-0">
-              <i class="bi bi-journal-check text-success"></i>
-              Guías Generadas
-              <span id="badge_guias" class="badge bg-success rounded-pill ms-2" style="font-size: 11px;">0</span>
-            </div>
-            <div id="wt_guias" style="display:none;">
-              <span class="spinner-border spinner-border-sm text-secondary"></span>
-            </div>
-          </div>
-
-          <div class="table-responsive" style="max-height: 40vh; overflow-y: auto;">
-            <table class="table table-bordered table-hover table-sm mb-0">
-              <thead class="sticky-top">
-                <tr>
-                  <th class="header-gold text-center" style="min-width: 35px;">N°</th>
-                  <th class="header-gold text-center" style="min-width: 100px;">Guía Remitente</th>
-                  <th class="header-gold text-center" style="min-width: 100px;">Guía Transportista</th>
-                  <th class="header-gold text-center" style="min-width: 90px;">Planta Origen</th>
-                  <th class="header-gold text-center" style="min-width: 90px;">Placa(s)</th>
-                  <th class="header-gold" style="min-width: 180px;">Empresa Transporte</th>
-                  <th class="header-gold text-center" style="min-width: 110px;">Fecha Emisión</th>
-                  <th class="header-gold text-center" style="min-width: 60px;">Lotes</th>
-                  <th class="header-gold text-center" style="min-width: 110px;">Peso Neto (Kg)</th>
-                  <th class="header-gold text-center" style="min-width: 80px;">Estado</th>
-                  <th class="header-gold text-center" style="min-width: 80px;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbl_guias_generadas">
-                <tr>
-                  <td colspan="11" class="text-center text-muted p-4">
-                    <i class="bi bi-journal-x" style="font-size: 24px;"></i><br>
-                    No hay guías generadas para los filtros seleccionados.
+                    Use los filtros para buscar información.
                   </td>
                 </tr>
               </tbody>
@@ -438,15 +407,13 @@ $backendUrl = 'apis/backend.php';
               <label class="form-label small fw-bold">Planta Origen</label>
               <select id="guia_planta_origen" class="form-select form-select-sm">
                 <option value="">Seleccione...</option>
-                <option value="1">Huanchaco</option>
+                <option value="1" selected>Huanchaco</option>
                 <option value="2">Laredo</option>
               </select>
             </div>
             <div class="col-md-3">
-              <label class="form-label small fw-bold">Concesión</label>
-              <select id="guia_concesion" class="form-select form-select-sm" data-placeholder="Elija una opción...">
-                <option value="">Seleccione...</option>
-              </select>
+              <label class="form-label small fw-bold">Planta Destino</label>
+              <input type="text" id="guia_planta_destino" class="form-control form-control-sm bg-light" readonly>
             </div>
             <div class="col-md-3">
               <label class="form-label small fw-bold">Guía Remitente</label>
@@ -636,10 +603,8 @@ $backendUrl = 'apis/backend.php';
               </select>
             </div>
             <div class="col-md-3">
-              <label class="form-label small fw-bold">Concesión</label>
-              <select id="guia_e_concesion" class="form-select form-select-sm" data-placeholder="Elija una opción...">
-                <option value="">Seleccione...</option>
-              </select>
+              <label class="form-label small fw-bold">Planta Destino</label>
+              <input type="text" id="guia_e_planta_destino" class="form-control form-control-sm bg-light" readonly>
             </div>
             <div class="col-md-3">
               <label class="form-label small fw-bold">Guía Remitente</label>

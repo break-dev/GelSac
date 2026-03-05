@@ -79283,7 +79283,10 @@ switch ($_POST["accion"]) {
 					SELECT lot.ccod_Lote FROM catalogolotes lot WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
 				) END AS codigo_mineral,
 				desp.correlativo AS correlativo_despacho,
-				t.cplaca AS placa
+				t.cplaca AS placa,
+				dist.id_empresa_transporte_tolva,
+				dist.serie_segunda_placa,
+				dist.numero_segunda_placa
 			FROM distribucion_detalle dd
 			INNER JOIN distribucion dist ON dd.id_distribucion = dist.id
 			INNER JOIN despacho_detalle dsd ON dsd.id = dd.id_despacho_detalle
@@ -79672,7 +79675,10 @@ switch ($_POST["accion"]) {
 				) ELSE (
 					SELECT lot.ccod_Lote FROM catalogolotes lot WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
 				) END AS codigo_mineral,
-				desp.correlativo AS correlativo_despacho
+				desp.correlativo AS correlativo_despacho,
+				dist.id_empresa_transporte_tolva,
+				dist.serie_segunda_placa,
+				dist.numero_segunda_placa
 			FROM distribucion_detalle dd
 			INNER JOIN distribucion dist ON dd.id_distribucion = dist.id
 			INNER JOIN despacho_detalle dsd ON dsd.id = dd.id_despacho_detalle
