@@ -17,6 +17,9 @@ use Dompdf\Options;
 
 $id_guia = intval($_GET["id"] ?? 0);
 
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+
 // Ruta imagenes
 $ruta_images_x = 'https://' . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"];
 $ruta_images = substr($ruta_images_x, 0, strpos($ruta_images_x, 'print_segundotramo_guia_gestion.php')) . 'images/';
@@ -30,7 +33,6 @@ $q_datos = "
 SELECT
 	g.id,
 	g.id_distribucion,
-	g.id_concesion,
 	g.id_marca_tolva,
 	g.id_empresa_transporte_tolva,
 	DATE_FORMAT(g.fecha_inicio_traslado,'%d/%m/%Y') AS fecha_inicio_traslado,
@@ -51,7 +53,6 @@ SELECT
 	g.numero_tolva,
 	g.numero_mtc_tolva,
 	g.estado,
-	conc.descripcion AS concesion_nombre,
 	marca.descripcion AS marca_tolva_nombre,
 	emp_tolva.razon_social AS empresa_tolva_nombre,
 	(
@@ -77,6 +78,12 @@ SELECT
 		FROM distribucion d2
 		LEFT JOIN tbconfig_conductores c2 ON d2.id_conductor = c2.Id
 		WHERE d2.id_guia_segundo_tramo = g.id
+	) AS conductor_documento,
+	(
+		SELECT GROUP_CONCAT(DISTINCT c2.licencia_conducir SEPARATOR ' / ')
+		FROM distribucion d2
+		LEFT JOIN tbconfig_conductores c2 ON d2.id_conductor = c2.Id
+		WHERE d2.id_guia_segundo_tramo = g.id
 	) AS conductor_licencias,
 	(
 		SELECT GROUP_CONCAT(DISTINCT cli2.razon_social SEPARATOR ', ')
@@ -91,7 +98,6 @@ SELECT
 		WHERE d2.id_guia_segundo_tramo = g.id
 	) AS transporte_ruc
 FROM guia_segundo_tramo g
-LEFT JOIN tbconfig_proveedoresmineros_concesion conc ON g.id_concesion = conc.Id
 LEFT JOIN tbconfig_unidadesmarca marca ON g.id_marca_tolva = marca.Id
 LEFT JOIN tb_clientes emp_tolva ON g.id_empresa_transporte_tolva = emp_tolva.id
 WHERE g.id = $id_guia
@@ -114,6 +120,7 @@ $guias_puntopartida = 'PLANTA GEL (' . $row_datos["planta_origen_nombre"] . ')';
 $guias_puntodestino = 'ALMACÉN / PUERTO SALAVERRY';
 $placa_1 = $row_datos["placas"];
 $constancia_mtc_1 = $row_datos["mtc_tractos"];
+$conductor_documento = $row_datos["conductor_documento"];
 $conductor_licencia = $row_datos["conductor_licencias"];
 $conductor_nombres = $row_datos["conductor_nombres"];
 $transportista_ruc = $row_datos["transporte_ruc"];
@@ -568,7 +575,7 @@ $html .= '<div class="row">
 										</td>
 
 										<td style="vertical-align: top;">
-											<label style="font-family: AgencyFB;">' . $conductor_nombres . ' - DOCUMENTO NACIONAL DE IDENTIDAD N° ' . $conductor_licencia . '</label>
+											<label style="font-family: AgencyFB;">' . $conductor_nombres . ' - DOCUMENTO NACIONAL DE IDENTIDAD N° ' . $conductor_documento . '</label>
 										</td>
 									</tr>
 
