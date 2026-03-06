@@ -244,8 +244,9 @@ document.addEventListener("DOMContentLoaded", function () {
                          <button class="btn btn-sm btn-link text-primary"><i class="bi bi-eye-fill"></i></button>
 
                          ${
-                           parseInt(d.distribuciones_cerradas) > 0
-                             ? `<button class="btn btn-sm btn-link text-secondary" title="No se puede anular, tiene distribuciones cerradas/aprobadas" disabled><i class="bi bi-trash-fill"></i></button>`
+                           parseInt(d.distribuciones_cerradas) > 0 ||
+                           parseInt(d.distribuciones_aprobadas) > 0
+                             ? `<button class="btn btn-sm btn-link text-secondary" title="No se puede anular, tiene distribuciones cerradas o aprobadas" disabled><i class="bi bi-trash-fill"></i></button>`
                              : `<button class="btn btn-sm btn-link text-danger" onclick="anularDespacho(${d.id_despacho}, event)" title="Anular Despacho"><i class="bi bi-trash-fill"></i></button>`
                          }
                        </td>
@@ -477,9 +478,9 @@ document.addEventListener("DOMContentLoaded", function () {
       $("#thead_view_dist_items").html(`
         <tr>
           <th>Cód. Destino</th>
-          <th class="text-end">Peso Dest.</th>
-          <th class="text-end">L. Au Dest.</th>
-          <th class="text-end">L. Ag Dest.</th>
+          <th class="text-end">Peso Destino</th>
+          <th class="text-end">Ley Au</th>
+          <th class="text-end">Ley Ag</th>
           <th>Cód. Origen</th>
           <th class="text-center">Ticket</th>
           <th class="text-center">T. Carga</th>
@@ -500,7 +501,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <th class="text-end">P. Tara</th>
           <th class="text-end">P. Bruto</th>
           <th class="text-end">P. Neto</th>
-          <th class="text-end">P. Tomado</th>
+          <th class="text-end">P. Distribución</th>
           <th class="text-end">Nro. Part.</th>
         </tr>
       `);
@@ -940,8 +941,9 @@ document.addEventListener("DOMContentLoaded", function () {
           alert("Anulado.");
           if (selectedDespachoId) {
             selectDespacho(selectedDespachoId); // Reloads everything
-          } else {
-            loadAllDespachos(); // Fallback
+          }
+          if (typeof loadAllDespachos === "function") {
+            loadAllDespachos();
           }
         } else alert("Error: " + r.mensaje);
       },
@@ -1655,6 +1657,9 @@ document.addEventListener("DOMContentLoaded", function () {
           if (typeof selectedDespachoId !== "undefined" && selectedDespachoId) {
             loadDistribuciones(selectedDespachoId);
           }
+          if (typeof loadAllDespachos === "function") {
+            loadAllDespachos();
+          }
         } else {
           alert(r.mensaje);
         }
@@ -1676,6 +1681,9 @@ document.addEventListener("DOMContentLoaded", function () {
           alert(r.mensaje);
           if (typeof selectedDespachoId !== "undefined" && selectedDespachoId) {
             loadDistribuciones(selectedDespachoId);
+          }
+          if (typeof loadAllDespachos === "function") {
+            loadAllDespachos();
           }
         } else {
           alert(r.mensaje);

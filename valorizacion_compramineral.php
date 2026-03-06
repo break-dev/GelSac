@@ -2377,10 +2377,7 @@ if (!isset($_SESSION["Id"])) {
 
       if (_item != 'x') {
         tipo = 'E';
-        // titulo = 'Editar Lote: <b>' + _txt_elemento + ' - ' + _txt_lote + '</b>';
         titulo = 'Editar Lote:';
-
-        // Si hay anticipos seleccionados y se está editando, pedir confirmación
         if (anticiposSeleccionados.length > 0) {
           if (!confirm('Al editar este lote se reiniciará la selección de anticipos.\n\n¿Desea continuar?')) {
             return;
@@ -2390,6 +2387,12 @@ if (!isset($_SESSION["Id"])) {
       } else {
         tipo = 'N';
         titulo = 'Agregar Lote a Valorización';
+        if (anticiposSeleccionados.length > 0) {
+          if (!confirm('Al agregar un nuevo lote se reiniciará la selección de anticipos.\n\n¿Desea continuar?')) {
+            return;
+          }
+          f_LimpiarSeleccionAnticipos();
+        }
       }
 
       // Validar proveedor/concesión
@@ -3760,7 +3763,16 @@ if (!isset($_SESSION["Id"])) {
     }
 
     function f_EliminarRegistro(_id_registro) {
+      if (anticiposSeleccionados.length > 0) {
+        if (!confirm('Al eliminar este lote se reiniciará la selección de anticipos.\n\n¿Desea continuar?')) {
+          return;
+        }
+      }
+
       if (confirm("¿Está seguro de Eliminar el registro seleccionado?")) {
+        if (anticiposSeleccionados.length > 0) {
+          f_LimpiarSeleccionAnticipos();
+        }
         $.post(url_api, {
             accion: "eliminar_ValorizacionDetalle",
             id_registro: _id_registro

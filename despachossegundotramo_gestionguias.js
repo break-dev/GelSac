@@ -149,11 +149,17 @@ document.addEventListener("DOMContentLoaded", function () {
     var totalGeneradas = 0;
 
     // 1. Procesar Pendientes (Agrupar)
-    var agrupacionesMap = {};
+    agrupacionesMap = {}; // Reusar variable del scope externo
     for (var i = 0; i < pendientes.length; i++) {
       var d = pendientes[i];
       var key =
-        d.fecha_estimada + "|" + d.id_unidad + "|" + d.id_empresa_transporte;
+        d.fecha_estimada +
+        "|" +
+        d.id_unidad +
+        "|" +
+        d.id_empresa_transporte +
+        "|" +
+        (d.segunda_placa || "");
       if (!agrupacionesMap[key]) {
         agrupacionesMap[key] = {
           tipo: "PENDIENTE",
@@ -242,7 +248,31 @@ document.addEventListener("DOMContentLoaded", function () {
       var rowClass = isPendiente ? "table-warning" : "table-success";
       if (item.estado_guia === "0") rowClass = "table-danger"; // Anulada
 
-      html += '<tr class="' + rowClass + ' align-middle">';
+      var rowId = isPendiente
+        ? "tr_unif_pend_" + idx
+        : "tr_unif_guia_" + item.id_guia;
+      var detailRowId = isPendiente
+        ? "tr_unif_pend_detail_" + idx
+        : "tr_unif_guia_detail_" + item.id_guia;
+
+      // Guardar referencia para click handler
+      if (isPendiente) {
+        // La key es la misma usada para agrupacionesMap
+        item._rowIdx = idx;
+      }
+
+      var clickHandler = isPendiente
+        ? "window.f_VerDetalleUnificado('" + idx + "', 'pend');"
+        : "window.f_VerDetalleUnificado('" + item.id_guia + "', 'guia');";
+
+      html +=
+        '<tr id="' +
+        rowId +
+        '" class="' +
+        rowClass +
+        ' align-middle" style="cursor:pointer;" onclick="' +
+        clickHandler +
+        '">';
       html += '<td class="text-center fw-bold">' + (idx + 1) + "</td>";
       html +=
         '<td class="text-center">' + formatDateDMY(item.fecha_egreso) + "</td>";
@@ -294,51 +324,313 @@ document.addEventListener("DOMContentLoaded", function () {
       // Acciones
       html += '<td class="text-center">';
       if (isPendiente) {
-        var keyEncoded = btoa(
-          unescape(
-            encodeURIComponent(
-              item.fecha_egreso +
-                "|" +
-                item.distribuciones[0].id_unidad +
-                "|" +
-                item.distribuciones[0].id_empresa_transporte,
-            ),
-          ),
-        );
-        // Guardamos en un mapa global temporal para recuperar al click
+        // Guardamos en cache por índice
         if (!window._agrupacionesCache) window._agrupacionesCache = {};
-        window._agrupacionesCache[keyEncoded] = item;
+        window._agrupacionesCache[idx] = item;
 
         html +=
-          '<button class="btn btn-sm btn-primary" onclick="window.f_AbrirModalGuiaUnificado(\'' +
-          keyEncoded +
-          "');\">";
+          '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.f_AbrirModalGuiaUnificado(' +
+          idx +
+          ');">';
         html += '<i class="bi bi-file-earmark-plus"></i> Generar</button>';
       } else {
         html += '<div class="btn-group btn-group-sm">';
         html +=
-          '<button class="btn btn-warning" onclick="window.f_EditarGuiaUnificada(' +
+          '<button class="btn btn-warning" onclick="event.stopPropagation(); window.f_EditarGuiaUnificada(' +
           item.id_guia +
           ')"><i class="bi bi-pencil"></i></button>';
         html +=
-          '<button class="btn btn-danger" onclick="window.f_AnularGuia(' +
+          '<button class="btn btn-danger" onclick="event.stopPropagation(); window.f_AnularGuia(' +
           item.id_guia +
           ')"><i class="bi bi-trash"></i></button>';
         html +=
-          '<button class="btn btn-dark" onclick="window.f_ImprimirGuia(' +
+          '<button class="btn btn-dark" onclick="event.stopPropagation(); window.f_ImprimirGuia(' +
           item.id_guia +
           ')"><i class="bi bi-printer"></i></button>';
         html += "</div>";
       }
       html += "</td>";
       html += "</tr>";
+
+      // Fila de detalle inline (oculta por defecto)
+      html +=
+        '<tr id="' +
+        detailRowId +
+        '" style="display:none; background-color: #f0f4fa;">';
+      html += '<td colspan="10" class="p-3">';
+      if (isPendiente) {
+        html += '<div class="card shadow-sm border-primary">';
+        html +=
+          '<div class="card-header bg-primary bg-opacity-10 py-1"><i class="bi bi-box-seam text-primary me-2"></i><strong>Lotes del Despacho</strong></div>';
+        html += '<div class="card-body p-2">';
+        html +=
+          '<table class="table table-bordered table-sm tabla-lotes-guia mb-0 bg-white"><thead><tr>';
+        html += '<th class="text-center" style="width:30px;">N°</th>';
+        html += '<th class="text-center">Tipo</th>';
+        html += "<th>Código Mineral</th>";
+        html += "<th>Despacho</th>";
+        html += '<th class="text-center">Presentación</th>';
+        html += '<th class="text-end">P. Distribución (Kg)</th>';
+        html += '<th class="text-end">P. Bruto (Kg)</th>';
+        html += '<th class="text-end">Tara (Kg)</th>';
+        html += '<th class="text-end fw-bold">P. Neto (Kg)</th>';
+        html += "</tr></thead>";
+        var tbodyId = "tbl_unif_detail_pend_" + idx;
+        html +=
+          '<tbody id="' +
+          tbodyId +
+          '"><tr><td colspan="9" class="text-center text-muted">Cargando...</td></tr></tbody>';
+        html += "</table></div></div>";
+      } else {
+        // Para GENERADAS: contenedor simple, se llena al hacer click
+        html +=
+          '<div id="ctn_unif_guia_' +
+          item.id_guia +
+          '"><div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> Cargando...</div></div>';
+      }
+      html += "</td></tr>";
     });
+
+    // Guardar listado para acceso en f_VerDetalleUnificado
+    window._listadoUnificadoCache = listado;
 
     $("#tbl_listado_unificado").html(html);
   }
 
+  window.f_VerDetalleUnificado = function (id, tipo) {
+    var detailRowId =
+      tipo === "pend"
+        ? "tr_unif_pend_detail_" + id
+        : "tr_unif_guia_detail_" + id;
+    var mainRowId =
+      tipo === "pend" ? "tr_unif_pend_" + id : "tr_unif_guia_" + id;
+    var tbodyId = "tbl_unif_detail_pend_" + id; // solo para PENDIENTE
+
+    var detailRow = $("#" + detailRowId);
+    var mainRow = $("#" + mainRowId);
+
+    if (detailRow.is(":visible")) {
+      detailRow.hide();
+      return;
+    }
+
+    // Ocultar otros detalles abiertos
+    $("[id^='tr_unif_pend_detail_'], [id^='tr_unif_guia_detail_']").hide();
+    $("[id^='tr_unif_pend_'], [id^='tr_unif_guia_']").removeClass(
+      "table-active",
+    );
+    mainRow.addClass("table-active");
+    detailRow.fadeIn(150);
+
+    // PENDIENTE: cargar lotes via AJAX
+    if (tipo === "pend") {
+      var listado = window._listadoUnificadoCache || [];
+      var pendItem = null;
+      for (var i = 0; i < listado.length; i++) {
+        if (
+          listado[i].tipo === "PENDIENTE" &&
+          listado[i]._rowIdx === parseInt(id)
+        ) {
+          pendItem = listado[i];
+          break;
+        }
+      }
+      if (!pendItem) return;
+      var idsArr = pendItem.distribuciones.map(function (d) {
+        return d.id_distribucion;
+      });
+      $("#" + tbodyId).html(
+        '<tr><td colspan="9" class="text-center p-3"><span class="spinner-border spinner-border-sm"></span> Cargando lotes...</td></tr>',
+      );
+      f_callBackend("get_lotes_distribucion_grupo_2t", {
+        ids_distribuciones: JSON.stringify(idsArr),
+      }).done(function (resp) {
+        if (resp.estado === 1 && resp.data.length > 0) {
+          f_RenderizarLotesTabla(resp.data, "#" + tbodyId);
+        } else {
+          $("#" + tbodyId).html(
+            '<tr><td colspan="9" class="text-center text-muted p-3">Sin lotes encontrados.</td></tr>',
+          );
+        }
+      });
+    }
+    // GENERADA: cargar detalle completo de guía via AJAX
+    else {
+      var ctnId = "ctn_unif_guia_" + id;
+      f_callBackend("get_guia_segundo_tramo_detalle", { id_guia: id })
+        .done(function (resp) {
+          if (resp.estado === 1 && resp.data) {
+            f_RenderizarDetalleGuiaCompleto(resp.data, "#" + ctnId);
+          } else {
+            $("#" + ctnId).html(
+              '<div class="text-center text-muted p-3">Sin información disponible.</div>',
+            );
+          }
+        })
+        .fail(function () {
+          $("#" + ctnId).html(
+            '<div class="text-center text-danger p-3">Error de conexión.</div>',
+          );
+        });
+    }
+  };
+
   // ========================
-  // VER DETALLE AGRUPACIÓN
+  // RENDERIZAR DETALLE COMPLETO DE GUÍA GENERADA
+  // ========================
+  function f_RenderizarDetalleGuiaCompleto(g, ctnSelector) {
+    var nroGuia =
+      (g.guia_remitente_serie || "?") + "-" + (g.guia_remitente_numero || "?");
+    var nroGRT =
+      g.sin_guia_transportista == 1
+        ? "Sin GRT"
+        : (g.guia_transportista_serie || "?") +
+          "-" +
+          (g.guia_transportista_numero || "?");
+
+    var h = '<div class="card shadow-sm border-success">';
+    h +=
+      '<div class="card-header bg-success bg-opacity-10 py-1 d-flex justify-content-between align-items-center">';
+    h +=
+      '<span><i class="bi bi-file-earmark-text text-success me-2"></i><strong>Guía ' +
+      nroGuia +
+      "</strong></span>";
+    h +=
+      '<span class="badge bg-success">' +
+      formatNumber(g.peso_total_neto) +
+      " Kg neto</span>";
+    h += "</div>";
+    h += '<div class="card-body p-2">';
+
+    // Cabecera info en 2 filas
+    h += '<div class="row g-2 mb-2" style="font-size:15px !important;">';
+    h +=
+      '<div class="col-md-3"><span class="text-muted">Guía Remitente:</span> <strong>' +
+      nroGuia +
+      "</strong></div>";
+    h +=
+      '<div class="col-md-3"><span class="text-muted">Guía Transportista:</span> <strong>' +
+      nroGRT +
+      "</strong></div>";
+    h +=
+      '<div class="col-md-3"><span class="text-muted">Motivo:</span> ' +
+      (g.motivo_traslado || "-") +
+      "</div>";
+    h +=
+      '<div class="col-md-3"><span class="text-muted">Placa:</span> <span class="badge bg-dark">' +
+      (g.placa || "-") +
+      "</span></div>";
+    h +=
+      '<div class="col-md-4"><span class="text-muted">Transportista:</span> ' +
+      (g.empresa_transporte || "-") +
+      "</div>";
+    h +=
+      '<div class="col-md-4"><span class="text-muted">Conductor:</span> ' +
+      (g.conductor_nombre || "-") +
+      "</div>";
+    h +=
+      '<div class="col-md-4"><span class="text-muted">Planta Destino:</span> ' +
+      (g.planta_destino || "-") +
+      "</div>";
+    h +=
+      '<div class="col-md-4"><span class="text-muted">Inicio Traslado:</span> ' +
+      formatDateDMY(g.fecha_inicio_traslado || "") +
+      "</div>";
+    h +=
+      '<div class="col-md-4"><span class="text-muted">Emisión:</span> ' +
+      (g.fecha_hora_emision || "-") +
+      "</div>";
+    h +=
+      '<div class="col-md-4"><span class="text-muted">Llegada Planta:</span> ' +
+      (g.fecha_hora_planta || "-") +
+      "</div>";
+    h += "</div>";
+
+    // Tabla de lotes (sin columna Despacho)
+    h +=
+      '<table class="table table-bordered table-sm tabla-lotes-guia mb-0 bg-white"><thead><tr>';
+    h += '<th class="text-center" style="width:30px;">N°</th>';
+    h += '<th class="text-center">Tipo</th>';
+    h += "<th>Código Mineral</th>";
+    h += "<th>Ticket Balanza</th>";
+    h += '<th class="text-center">Presentación</th>';
+    h += '<th class="text-end">P. Distribución (Kg)</th>';
+    h += '<th class="text-end">P. Bruto (Kg)</th>';
+    h += '<th class="text-end">Tara (Kg)</th>';
+    h += '<th class="text-end fw-bold">P. Neto (Kg)</th>';
+    h += "</tr></thead><tbody>";
+
+    var sumNeto = 0,
+      sumBruto = 0,
+      sumTara = 0,
+      sumTomado = 0;
+    var lotes = g.lotes || [];
+    for (var i = 0; i < lotes.length; i++) {
+      var l = lotes[i];
+      var tipoBadge =
+        l.is_blending == 1
+          ? '<span class="badge badge-blending">Blending</span>'
+          : '<span class="badge badge-lote">Lote</span>';
+      var presentacion =
+        l.tipo_carga == 2
+          ? "Big Bag (" + (l.cantidad_bigbags || 0) + ")"
+          : l.tipo_carga == 1
+            ? "Granel"
+            : "?";
+      var neto = parseFloat(l.peso_neto) || 0;
+      var bruto = parseFloat(l.peso_bruto) || 0;
+      var tara = parseFloat(l.peso_tara) || 0;
+      var tomado = parseFloat(l.peso_tomado) || 0;
+      sumNeto += neto;
+      sumBruto += bruto;
+      sumTara += tara;
+      sumTomado += tomado;
+
+      h += "<tr>";
+      h += '<td class="text-center">' + (i + 1) + "</td>";
+      h += '<td class="text-center">' + tipoBadge + "</td>";
+      h += '<td class="fw-bold">' + (l.codigo_mineral || "-") + "</td>";
+      h +=
+        '<td><small class="text-muted">' +
+        (l.ticket_balanza || "-") +
+        "</small></td>";
+      h += '<td class="text-center">' + presentacion + "</td>";
+      h +=
+        '<td class="text-end font-monospace">' + formatNumber(tomado) + "</td>";
+      h +=
+        '<td class="text-end font-monospace">' + formatNumber(bruto) + "</td>";
+      h +=
+        '<td class="text-end font-monospace">' + formatNumber(tara) + "</td>";
+      h +=
+        '<td class="text-end font-monospace fw-bold text-success">' +
+        formatNumber(neto) +
+        "</td>";
+      h += "</tr>";
+    }
+
+    // Totales
+    h += '<tr class="table-light fw-bold">';
+    h += '<td colspan="5" class="text-end text-uppercase small">Totales:</td>';
+    h +=
+      '<td class="text-end font-monospace">' +
+      formatNumber(sumTomado) +
+      "</td>";
+    h +=
+      '<td class="text-end font-monospace">' + formatNumber(sumBruto) + "</td>";
+    h +=
+      '<td class="text-end font-monospace">' + formatNumber(sumTara) + "</td>";
+    h +=
+      '<td class="text-end font-monospace text-success">' +
+      formatNumber(sumNeto) +
+      "</td>";
+    h += "</tr>";
+
+    h += "</tbody></table></div></div>";
+    $(ctnSelector).html(h);
+  }
+
+  // ========================
+  // VER DETALLE AGRUPACIÓN (función legacy, mantenida por compatibilidad)
   // ========================
   window.f_VerDetalleAgrupacion = function (keyEncoded) {
     var key = decodeURIComponent(escape(atob(keyEncoded)));
@@ -480,8 +772,8 @@ document.addEventListener("DOMContentLoaded", function () {
   // ========================
   // ABRIR MODAL GENERAR GUÍA
   // ========================
-  window.f_AbrirModalGuiaUnificado = function (keyEncoded) {
-    var item = window._agrupacionesCache[keyEncoded];
+  window.f_AbrirModalGuiaUnificado = function (idx) {
+    var item = window._agrupacionesCache[idx];
     if (!item) return alert("Error al recuperar datos de la agrupacion.");
 
     // Seteamos modo Nuevo
@@ -568,11 +860,20 @@ document.addEventListener("DOMContentLoaded", function () {
             .val(first.id_empresa_transporte_tolva)
             .trigger("change");
         }
-        if (first.serie_segunda_placa) {
-          $("#guia_serie_tolva").val(first.serie_segunda_placa);
-        }
-        if (first.numero_segunda_placa) {
-          $("#guia_numero_tolva").val(first.numero_segunda_placa);
+        // Solo rellenar placa de tolva si el grupo tiene segunda placa real (no "-" ni vacío)
+        var segundaPlacaGrupo = item.distribuciones[0].segunda_placa || "";
+        var tieneSegundaPlaca =
+          segundaPlacaGrupo !== "" && segundaPlacaGrupo !== "-";
+        if (tieneSegundaPlaca) {
+          if (first.serie_segunda_placa) {
+            $("#guia_serie_tolva").val(first.serie_segunda_placa);
+          }
+          if (first.numero_segunda_placa) {
+            $("#guia_numero_tolva").val(first.numero_segunda_placa);
+          }
+        } else {
+          // Sin segunda placa, limpiar por si acaso
+          $("#guia_serie_tolva, #guia_numero_tolva").val("");
         }
       }
     });
@@ -1027,7 +1328,7 @@ document.addEventListener("DOMContentLoaded", function () {
       html += "<th>Código Mineral</th>";
       html += "<th>Despacho</th>";
       html += '<th class="text-center">Presentación</th>';
-      html += '<th class="text-end">P. Tomado (Kg)</th>';
+      html += '<th class="text-end">P. Distribución (Kg)</th>';
       html += '<th class="text-end">P. Bruto (Kg)</th>';
       html += '<th class="text-end">Tara (Kg)</th>';
       html += '<th class="text-end fw-bold">P. Neto (Kg)</th>';

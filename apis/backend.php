@@ -8,12 +8,12 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 
-// error_reporting(0);
-// ini_set('display_errors', 0);
-// ini_set('display_startuo_errors', 0);
+error_reporting(0);
+ini_set('display_errors', 0);
+ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -73210,7 +73210,7 @@ switch ($_POST["accion"]) {
 						'			<button class="btn btn-sm btn-warning me-1" style="width: 35px; margin-bottom: 3px; color: white;" title="Anular Comprobante" onclick="f_Anular_ComprobantePago(' .
 						$row_validacion["id_comprobante_pago"] .
 						');" ' .
-						($row_validacion["estado"] == 'C' || $row_validacion["estado"] == 'X' ? "hidden" : "") .
+						($row_validacion["estado"] == 'X' ? "hidden" : "") .
 						">";
 					$html .= '				<i class="bi bi-x-circle"></i>';
 					$html .= "			</button>";
@@ -78311,12 +78311,12 @@ switch ($_POST["accion"]) {
 
 	case "anular_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
-		$q_dists = "SELECT id, estado FROM distribucion WHERE id_despacho = $id_despacho";
+		$q_dists = "SELECT id, estado, IFNULL(estado_cierre, '0') as estado_cierre FROM distribucion WHERE id_despacho = $id_despacho";
 		$r_dists = mysqli_query($enlace, $q_dists);
 		while ($dis = mysqli_fetch_assoc($r_dists)) {
-			// No se puede anular un despacho si tiene alguna unidad ya en planta o que de planta
-			if ($dis['estado'] == 'B' || $dis['estado'] == 'C') {
-				echo json_encode(["estado" => 0, "mensaje" => "No se puede eliminar. Existen unidades en planta o emitidas."]);
+			// No se puede anular un despacho si tiene alguna unidad ya en planta o que de planta o ya fue cerrada
+			if ($dis['estado'] == 'B' || $dis['estado'] == 'C' || $dis['estado_cierre'] == '1') {
+				echo json_encode(["estado" => 0, "mensaje" => "No se puede eliminar. Existen unidades en planta, emitidas o aprobadas."]);
 				exit;
 			}
 		}
@@ -79452,7 +79452,7 @@ switch ($_POST["accion"]) {
 		$data = null;
 
 		$q = "
-		SELECT
+		SELECT DISTINCT
 			g.id as id_guia_segundo_tramo,
 			g.id_distribucion,
 			g.id_marca_tolva,
@@ -79476,6 +79476,7 @@ switch ($_POST["accion"]) {
 			cli.razon_social AS empresa_transporte,
 			con.nombres AS conductor_nombre,
 			mrc.descripcion as marca,
+			desp.correlativo as correlativo_despacho,
 			t.codigo_mtc,
 			(
 				SELECT
@@ -79513,6 +79514,8 @@ switch ($_POST["accion"]) {
 			guia_segundo_tramo g
 		INNER JOIN distribucion dist ON
 			g.id_distribucion = dist.id
+		INNER JOIN despacho desp ON
+			desp.id = dist.id_despacho
 		INNER JOIN transporte t ON
 			dist.id_unidad = t.id_transporte
 		LEFT JOIN tb_clientes cli ON

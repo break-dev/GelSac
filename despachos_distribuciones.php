@@ -480,7 +480,7 @@ $backendUrl = 'apis/backend.php';
                   <th class="text-end">P. Tara</th>
                   <th class="text-end">P. Bruto</th>
                   <th class="text-end">P. Neto</th>
-                  <th class="text-end">P. Tomado</th>
+                  <th class="text-end">P. Distribucion</th>
                   <th class="text-end">Nro. Partición</th>
                 </tr>
               </thead>

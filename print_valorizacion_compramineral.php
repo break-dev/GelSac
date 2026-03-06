@@ -3,8 +3,6 @@
 session_start();
 
 // Suprimir warnings de deprecación de PHP 8.2+ en Dompdf
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
-ini_set('display_errors', 1);
 
 include('cnx/cnx.php');
 include('global/variables.php');
@@ -14,6 +12,12 @@ require_once 'dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+
+error_reporting(0);
+ini_set('display_errors', 0);
+ini_set('display_startuo_errors', 0);
 
 $id_md5 = $_GET["x"];
 

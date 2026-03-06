@@ -220,8 +220,6 @@ document.addEventListener("DOMContentLoaded", function () {
               text_accent = "text-white";
             }
 
-            const attr_disabled = is_locked ? "disabled" : "";
-
             html_detalles += `
                     <div class="card shadow mb-4 ${border_class} ${bg_card}" id="card_detalle_${det.id_distribucion_detalle}" style="border-radius: 12px; overflow: hidden;">
                         <div class="card-header border-0 ${header_bg} text-white py-2 d-flex justify-content-between align-items-center">
@@ -243,8 +241,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-truck text-secondary"></i> Tara (Kg)</label>
                                     <div class="input-group input-group-sm">
-                                        <input type="number" ${attr_disabled} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_tara_${det.id_distribucion_detalle}" value="${tara}">
-                                        <button class="btn ${tara > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" ${attr_disabled} id="btn_conf_tara_${det.id_distribucion_detalle}" onclick="f_ConfirmarTara(${det.id_distribucion_detalle})" title="Confirmar Tara">
+                                        <input type="number" ${is_locked || tara > 0 ? "readonly" : ""} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_tara_${det.id_distribucion_detalle}" value="${tara}">
+                                        <button class="btn ${tara > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" id="btn_conf_tara_${det.id_distribucion_detalle}" onclick="f_ConfirmarTara(${det.id_distribucion_detalle})" title="Confirmar/Desconfirmar Tara" ${is_locked ? "disabled" : ""}>
                                             <i class="bi ${tara > 0 ? "bi-check2" : "bi-check2"}"></i>
                                         </button>
                                     </div>
@@ -252,22 +250,22 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-truck-front-fill text-secondary"></i> Bruto (Kg)</label>
                                     <div class="input-group input-group-sm">
-                                        <input type="number" ${attr_disabled} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_bruto_${det.id_distribucion_detalle}" value="${bruto}" ${tara > 0 || is_locked ? "" : "disabled"}>
-                                        <button class="btn ${bruto > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" ${attr_disabled} id="btn_conf_bruto_${det.id_distribucion_detalle}" onclick="f_ConfirmarBruto(${det.id_distribucion_detalle})" title="Confirmar Bruto" ${tara > 0 || is_locked ? "" : "disabled"}>
+                                        <input type="number" ${is_locked || bruto > 0 ? "readonly" : tara > 0 ? "" : "disabled"} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_bruto_${det.id_distribucion_detalle}" value="${bruto}">
+                                        <button class="btn ${bruto > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" id="btn_conf_bruto_${det.id_distribucion_detalle}" onclick="f_ConfirmarBruto(${det.id_distribucion_detalle})" title="Confirmar/Desconfirmar Bruto" ${is_locked ? "disabled" : bruto > 0 ? "" : tara > 0 ? "" : "disabled"}>
                                             <i class="bi ${bruto > 0 ? "bi-check2" : "bi-check2"}"></i>
                                         </button>
                                     </div>
                                 </div>
                                 <div class="col-md-2" style="${showBigBags}">
                                     <label class="form-label small fw-bold text-primary mb-1"><i class="bi bi-bag-fill"></i> Big Bags</label>
-                                    <input type="number" ${attr_disabled} class="form-control form-control-sm text-center fw-bold shadow-sm border-primary text-primary bg-info bg-opacity-10" id="txt_bbs_${det.id_distribucion_detalle}" value="${bigbags}">
+                                    <input type="number" ${neto > 0 ? "disabled" : ""} class="form-control form-control-sm text-center fw-bold shadow-sm border-primary text-primary bg-info bg-opacity-10" id="txt_bbs_${det.id_distribucion_detalle}" value="${bigbags}">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label small fw-bold text-success mb-1"><i class="bi bi-box"></i> Neto (Kg)</label>
                                     <input type="text" class="form-control form-control-sm text-center fw-bold bg-white text-dark shadow-sm border-success" id="txt_neto_${det.id_distribucion_detalle}" data-seco="${det.peso_seco}" data-tomado="${det.peso_tomado}" value="${formatNumber(neto)}" readonly>
                                 </div>
-                                <div class="col-md-2 text-end ${is_locked ? "d-none" : ""}" id="container_btn_save_${det.id_distribucion_detalle}">
-                                    <button style="margin-top: 22px !important" class="btn btn-primary w-100 fw-bold shadow-sm py-1 btn-sm" id="btn_save_${det.id_distribucion_detalle}" onclick="f_GuardarPesajeLote(${det.id_distribucion_detalle}, ${tipo_carga})" disabled>
+                                <div class="col-md-2 text-end ${neto > 0 ? "d-none" : ""}" id="container_btn_save_${det.id_distribucion_detalle}">
+                                    <button style="margin-top: 22px !important" class="btn btn-primary w-100 fw-bold shadow-sm py-1 btn-sm" id="btn_save_${det.id_distribucion_detalle}" onclick="f_GuardarPesajeLote(${det.id_distribucion_detalle}, ${tipo_carga})" ${bruto > 0 ? "" : "disabled"}>
                                         <i class="bi bi-save me-1"></i> Guardar
                                     </button>
                                 </div>
@@ -336,47 +334,96 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.f_ConfirmarTara = function (id_detalle) {
-    const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
-    if (tara <= 0) {
-      alert("Ingrese una Tara válida mayor a 0.");
-      return;
+    if ($(`#btn_conf_tara_${id_detalle}`).is(":disabled")) return;
+
+    const isConfirmed = $(`#txt_tara_${id_detalle}`).is("[readonly]");
+
+    if (isConfirmed) {
+      // Intentando desconfirmar Tara
+      // Verificar si Bruto está confirmado
+      const isBrutoConfirmed = $(`#txt_bruto_${id_detalle}`).is("[readonly]");
+      if (isBrutoConfirmed) {
+        alert(
+          "No puede desconfirmar Tara si el peso Bruto ya está confirmado. Desconfirme el Bruto primero.",
+        );
+        return;
+      }
+
+      // Desbloquear Tara, bloquear Bruto
+      $(`#txt_tara_${id_detalle}`)
+        .removeAttr("readonly")
+        .removeAttr("disabled");
+      $(`#btn_conf_tara_${id_detalle}`)
+        .removeClass("btn-success")
+        .addClass("btn-outline-secondary");
+
+      $(`#txt_bruto_${id_detalle}`).prop("disabled", true).val("");
+      $(`#btn_conf_bruto_${id_detalle}`).prop("disabled", true);
+    } else {
+      // Intentando confirmar Tara
+      const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
+      if (tara <= 0) {
+        alert("Ingrese una Tara válida mayor a 0.");
+        return;
+      }
+
+      // Lock Tara, unlock Bruto
+      $(`#txt_tara_${id_detalle}`).attr("readonly", "readonly");
+      $(`#btn_conf_tara_${id_detalle}`)
+        .removeClass("btn-outline-secondary")
+        .addClass("btn-success");
+
+      $(`#txt_bruto_${id_detalle}`)
+        .removeAttr("disabled")
+        .removeAttr("readonly")
+        .focus();
+      $(`#btn_conf_bruto_${id_detalle}`).removeAttr("disabled");
     }
-
-    // Lock Tara, unlock Bruto
-    $(`#txt_tara_${id_detalle}`).prop("readonly", true);
-    $(`#btn_conf_tara_${id_detalle}`)
-      .removeClass("btn-outline-secondary")
-      .addClass("btn-success")
-      .prop("disabled", true);
-
-    $(`#txt_bruto_${id_detalle}`).prop("disabled", false).focus();
-    $(`#btn_conf_bruto_${id_detalle}`).prop("disabled", false);
   };
 
   window.f_ConfirmarBruto = function (id_detalle) {
-    const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
-    const bruto = parseFloat($(`#txt_bruto_${id_detalle}`).val()) || 0;
+    if ($(`#btn_conf_bruto_${id_detalle}`).is(":disabled")) return;
 
-    if (bruto <= 0) {
-      alert("Ingrese un Bruto válido mayor a 0.");
-      return;
+    const isConfirmed = $(`#txt_bruto_${id_detalle}`).is("[readonly]");
+
+    if (isConfirmed) {
+      // Intentando desconfirmar Bruto
+      // Desbloquear Bruto, ocultar botón de guardar
+      $(`#txt_bruto_${id_detalle}`)
+        .removeAttr("readonly")
+        .removeAttr("disabled");
+      $(`#btn_conf_bruto_${id_detalle}`)
+        .removeClass("btn-success")
+        .addClass("btn-outline-secondary");
+
+      $(`#btn_save_${id_detalle}`).prop("disabled", true);
+      $(`#container_btn_save_${id_detalle}`).removeClass("d-none");
+      $(`#txt_bbs_${id_detalle}`).removeAttr("disabled").removeAttr("readonly");
+    } else {
+      // Intentando confirmar Bruto
+      const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
+      const bruto = parseFloat($(`#txt_bruto_${id_detalle}`).val()) || 0;
+
+      if (bruto <= 0) {
+        alert("Ingrese un Bruto válido mayor a 0.");
+        return;
+      }
+
+      if (bruto <= tara) {
+        alert("El peso bruto debe ser mayor al peso tara.");
+        return;
+      }
+
+      // Lock Bruto, unlock Save
+      $(`#txt_bruto_${id_detalle}`).attr("readonly", "readonly");
+      $(`#btn_conf_bruto_${id_detalle}`)
+        .removeClass("btn-outline-secondary")
+        .addClass("btn-success");
+
+      // Calculate and Enable Save
+      f_CalcularNetoLote(id_detalle);
+      $(`#btn_save_${id_detalle}`).prop("disabled", false);
     }
-
-    if (bruto <= tara) {
-      alert("El peso bruto debe ser mayor al peso tara.");
-      return;
-    }
-
-    // Lock Bruto, unlock Save
-    $(`#txt_bruto_${id_detalle}`).prop("readonly", true);
-    $(`#btn_conf_bruto_${id_detalle}`)
-      .removeClass("btn-outline-secondary")
-      .addClass("btn-success")
-      .prop("disabled", true);
-
-    // Calculate and Enable Save
-    f_CalcularNetoLote(id_detalle);
-    $(`#btn_save_${id_detalle}`).prop("disabled", false);
   };
 
   window.f_CalcularNetoLote = function (id_detalle) {
@@ -487,10 +534,8 @@ document.addEventListener("DOMContentLoaded", function () {
           }
 
           // Bloquear visualmente
-          $(`#txt_tara_${id_detalle}`).prop("disabled", true);
-          $(`#btn_conf_tara_${id_detalle}`).prop("disabled", true);
-          $(`#txt_bruto_${id_detalle}`).prop("disabled", true);
-          $(`#btn_conf_bruto_${id_detalle}`).prop("disabled", true);
+          $(`#txt_tara_${id_detalle}`).attr("readonly", "readonly");
+          $(`#txt_bruto_${id_detalle}`).attr("readonly", "readonly");
           $(`#txt_bbs_${id_detalle}`).prop("disabled", true);
 
           // Ocultar botón de guardar
