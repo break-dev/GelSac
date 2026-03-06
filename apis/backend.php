@@ -8,12 +8,12 @@ include "../global/variables.php";
 
 ini_set("memory_limit", "1024M");
 
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-error_reporting(0);
-ini_set('display_errors', 0);
-ini_set('display_startuo_errors', 0);
+// error_reporting(0);
+// ini_set('display_errors', 0);
+// ini_set('display_startuo_errors', 0);
 
 // Seteando librería para importar Excel
 require "vendor/autoload.php";
@@ -78866,6 +78866,8 @@ switch ($_POST["accion"]) {
 			$filtro_placa_sql = " AND (t.cplaca LIKE '%$filtro_placa%' OR CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa) LIKE '%$filtro_placa%') ";
 		}
 
+		$id_sucursal = $_SESSION["id_sucursal"];
+
 		$q = "
 		SELECT
 			d.id AS id_distribucion,
@@ -78909,17 +78911,21 @@ switch ($_POST["accion"]) {
 				SELECT COUNT(*) 
 				FROM distribucion_detalle dd 
 				WHERE dd.id_distribucion = d.id
-			) AS total_lotes
+			) AS total_lotes,
+			mrc.descripcion as marca,
+			t.codigo_mtc
 		FROM
 			distribucion d
 		INNER JOIN transporte t ON d.id_unidad = t.id_transporte
 		INNER JOIN despacho desp ON d.id_despacho = desp.id
 		LEFT JOIN tb_clientes cli ON d.id_empresa_transporte = cli.id
 		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
+		LEFT JOIN tbconfig_unidadesmarca mrc ON t.id_marca = mrc.Id
 		WHERE
 			d.estado_peso = 'A'
 			AND (d.id_guia_segundo_tramo IS NULL OR d.id_guia_segundo_tramo = 0)
-			AND d.estado IN ('B','C')
+			AND d.estado IN ('B','C') AND
+			d.id_sucursal = $id_sucursal
 			$filtro_fechas
 			$filtro_placa_sql
 		ORDER BY
@@ -78955,7 +78961,6 @@ switch ($_POST["accion"]) {
 		SELECT
 			g.id,
 			g.id_distribucion,
-			g.id_concesion,
 			g.id_marca_tolva,
 			g.id_empresa_transporte_tolva,
 			DATE_FORMAT(g.fecha_inicio_traslado,'%d/%m/%Y') AS fecha_inicio_traslado,
@@ -78976,7 +78981,6 @@ switch ($_POST["accion"]) {
 			g.numero_tolva,
 			g.numero_mtc_tolva,
 			g.estado,
-			conc.descripcion AS concesion_nombre,
 			marca.descripcion AS marca_tolva_nombre,
 			emp_tolva.razon_social AS empresa_tolva_nombre,
 			-- info de las distribuciones asociadas
@@ -79030,8 +79034,6 @@ switch ($_POST["accion"]) {
 			) AS total_lotes
 		FROM
 			guia_segundo_tramo g
-		LEFT JOIN tbconfig_proveedoresmineros_concesion conc ON
-			g.id_concesion = conc.Id
 		LEFT JOIN tbconfig_unidadesmarca marca ON
 			g.id_marca_tolva = marca.Id
 		LEFT JOIN tb_clientes emp_tolva ON
@@ -79097,7 +79099,6 @@ switch ($_POST["accion"]) {
 		$mensaje = '';
 
 		$ids_distribuciones = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
-		$id_concesion = intval($_POST["id_concesion"] ?? 0);
 		$id_marca_tolva = intval($_POST["id_marca_tolva"] ?? 0);
 		$id_empresa_transporte_tolva = intval($_POST["id_empresa_transporte_tolva"] ?? 0);
 		$fecha_inicio_traslado = mysqli_real_escape_string($enlace, $_POST["fecha_inicio_traslado"] ?? '');
@@ -79119,20 +79120,19 @@ switch ($_POST["accion"]) {
 		$fecha_hora_emision_sql = !empty($fecha_hora_emision) ? "'$fecha_hora_emision'" : "NULL";
 		$fecha_hora_planta_sql = !empty($fecha_hora_planta) ? "'$fecha_hora_planta'" : "NULL";
 		$fecha_inicio_traslado_sql = !empty($fecha_inicio_traslado) ? "'$fecha_inicio_traslado'" : "NULL";
-		$id_concesion_sql = $id_concesion > 0 ? $id_concesion : "NULL";
 		$id_marca_tolva_sql = $id_marca_tolva > 0 ? $id_marca_tolva : "NULL";
 		$id_empresa_transporte_tolva_sql = $id_empresa_transporte_tolva > 0 ? $id_empresa_transporte_tolva : "NULL";
 
 		$q_insert = "
 			INSERT INTO guia_segundo_tramo (
-				id_distribucion, id_concesion, id_marca_tolva, id_empresa_transporte_tolva,
+				id_distribucion, id_marca_tolva, id_empresa_transporte_tolva,
 				fecha_inicio_traslado, fecha_hora_emision, fecha_hora_planta,
 				planta_origen, guia_remitente_serie, guia_remitente_numero,
 				guia_transportista_serie, guia_transportista_numero, sin_guia_transportista,
 				motivo_traslado, serie_tolva, numero_tolva, numero_mtc_tolva,
 				created_at, estado
 			) VALUES (
-				$id_distribucion_ref, $id_concesion_sql, $id_marca_tolva_sql, $id_empresa_transporte_tolva_sql,
+				$id_distribucion_ref, $id_marca_tolva_sql, $id_empresa_transporte_tolva_sql,
 				$fecha_inicio_traslado_sql, $fecha_hora_emision_sql, $fecha_hora_planta_sql,
 				$planta_origen, '$guia_remitente_serie', '$guia_remitente_numero',
 				'$guia_transportista_serie', '$guia_transportista_numero', $sin_guia_transportista,
@@ -79163,7 +79163,6 @@ switch ($_POST["accion"]) {
 
 		$ids_distribuciones = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
 		$id_guia_editar = intval($_POST["id_guia"] ?? 0);
-		$id_concesion = intval($_POST["id_concesion"] ?? 0);
 		$id_marca_tolva = intval($_POST["id_marca_tolva"] ?? 0);
 		$id_empresa_transporte_tolva = intval($_POST["id_empresa_transporte_tolva"] ?? 0);
 		$fecha_inicio_traslado = mysqli_real_escape_string($enlace, $_POST["fecha_inicio_traslado"] ?? '');
@@ -79185,7 +79184,6 @@ switch ($_POST["accion"]) {
 		$fecha_hora_emision_sql = !empty($fecha_hora_emision) ? "'$fecha_hora_emision'" : "NULL";
 		$fecha_hora_planta_sql = !empty($fecha_hora_planta) ? "'$fecha_hora_planta'" : "NULL";
 		$fecha_inicio_traslado_sql = !empty($fecha_inicio_traslado) ? "'$fecha_inicio_traslado'" : "NULL";
-		$id_concesion_sql = $id_concesion > 0 ? $id_concesion : "NULL";
 		$id_marca_tolva_sql = $id_marca_tolva > 0 ? $id_marca_tolva : "NULL";
 		$id_empresa_transporte_tolva_sql = $id_empresa_transporte_tolva > 0 ? $id_empresa_transporte_tolva : "NULL";
 
@@ -79193,7 +79191,6 @@ switch ($_POST["accion"]) {
 			$q_update = "
 				UPDATE guia_segundo_tramo SET
 					id_distribucion = $id_distribucion_ref,
-					id_concesion = $id_concesion_sql,
 					id_marca_tolva = $id_marca_tolva_sql,
 					id_empresa_transporte_tolva = $id_empresa_transporte_tolva_sql,
 					fecha_inicio_traslado = $fecha_inicio_traslado_sql,
@@ -79286,12 +79283,17 @@ switch ($_POST["accion"]) {
 				t.cplaca AS placa,
 				dist.id_empresa_transporte_tolva,
 				dist.serie_segunda_placa,
-				dist.numero_segunda_placa
+				dist.numero_segunda_placa,
+				cli.razon_social AS transportista_rs,
+				mrc.descripcion AS marca,
+				t.codigo_mtc
 			FROM distribucion_detalle dd
 			INNER JOIN distribucion dist ON dd.id_distribucion = dist.id
 			INNER JOIN despacho_detalle dsd ON dsd.id = dd.id_despacho_detalle
 			INNER JOIN despacho desp ON desp.id = dist.id_despacho
 			INNER JOIN transporte t ON dist.id_unidad = t.id_transporte
+			LEFT JOIN tb_clientes cli ON dist.id_empresa_transporte = cli.id
+			LEFT JOIN tbconfig_unidadesmarca mrc ON t.id_marca = mrc.Id
 			WHERE dd.id_distribucion IN ($ids_str)
 			ORDER BY dist.id, dd.id
 			";
@@ -79388,129 +79390,7 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
-	case "get_distribuciones_pendientes_guia_2t":
-		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
-		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
-		$filtro_placa = mysqli_real_escape_string($enlace, $_POST["filtro_placa"] ?? '');
-
-		$filtro_fechas = "";
-		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
-			$filtro_fechas = " AND DATE(d.fecha_estimada) BETWEEN '$fecha_inicio' AND '$fecha_fin' ";
-		}
-
-		$filtro_placa_sql = "";
-		if (!empty($filtro_placa)) {
-			$filtro_placa_sql = " AND (t.cplaca LIKE '%$filtro_placa%' OR d.segunda_placa LIKE '%$filtro_placa%') ";
-		}
-
-		$q = "
-		SELECT
-			d.id AS id_distribucion,
-			DATE_FORMAT(d.fecha_estimada, '%Y-%m-%d') as fecha_estimada,
-			t.cplaca AS placa1,
-			d.segunda_placa AS placa2,
-			cli.documento as transportista_ruc,
-			cli.razon_social as transportista_rs,
-			con.nombres as conductor_nombre,
-			tv.descripcion as tipo_vehiculo,
-			d.id_despacho,
-			desp.correlativo as correlativo_despacho,
-			d.id_unidad,
-			d.id_empresa_transporte,
-			(SELECT COUNT(*) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as total_lotes,
-			(SELECT SUM(dd.peso_neto) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_neto,
-			(SELECT SUM(dd.peso_bruto) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_bruto,
-			(SELECT SUM(dd.peso_tara) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_tara,
-			(SELECT SUM(dd.peso_tomado) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_tomado
-		FROM distribucion d
-		INNER JOIN transporte t ON d.id_unidad = t.id_transporte
-		LEFT JOIN despacho desp ON d.id_despacho = desp.id
-		LEFT JOIN tb_clientes cli ON d.id_empresa_transporte = cli.id
-		LEFT JOIN tbconfig_tipovehiculo tv ON t.id_tipovehiculo = tv.id
-		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
-		WHERE 
-			d.estado_peso = 'A' 
-			AND d.id_guia_segundo_tramo IS NULL
-			$filtro_fechas
-			$filtro_placa_sql
-		ORDER BY d.fecha_estimada DESC
-		";
-
-		$data = [];
-		if ($r = mysqli_query($enlace, $q)) {
-			while ($row = mysqli_fetch_assoc($r)) {
-				$data[] = $row;
-			}
-			echo json_encode(["estado" => 1, "data" => $data]);
-		} else {
-			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
-		}
-		break;
-
-	// =========================================================================
-	// ENDPOINTS PARA GUIAS SEGUNDO TRAMO UNIFICADAS
-	// =========================================================================
-
-	case "get_distribuciones_pendientes_guia_2t":
-		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
-		$fecha_fin = mysqli_real_escape_string($enlace, $_POST["fecha_fin"] ?? '');
-		$filtro_placa = mysqli_real_escape_string($enlace, $_POST["filtro_placa"] ?? '');
-
-		$filtro_fechas = "";
-		if (!empty($fecha_inicio) && !empty($fecha_fin)) {
-			$filtro_fechas = " AND DATE(d.fecha_estimada) BETWEEN '$fecha_inicio' AND '$fecha_fin' ";
-		}
-
-		$filtro_placa_sql = "";
-		if (!empty($filtro_placa)) {
-			$filtro_placa_sql = " AND (t.cplaca LIKE '%$filtro_placa%' OR d.segunda_placa LIKE '%$filtro_placa%') ";
-		}
-
-		$q = "
-		SELECT
-			d.id AS id_distribucion,
-			DATE_FORMAT(d.fecha_estimada, '%Y-%m-%d') as fecha_estimada,
-			t.cplaca AS placa1,
-			d.segunda_placa AS placa2,
-			cli.documento as transportista_ruc,
-			cli.razon_social as transportista_rs,
-			con.nombres as conductor_nombre,
-			tv.descripcion as tipo_vehiculo,
-			d.id_despacho,
-			desp.correlativo as correlativo_despacho,
-			d.id_unidad,
-			d.id_empresa_transporte,
-			(SELECT COUNT(*) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as total_lotes,
-			(SELECT SUM(dd.peso_neto) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_neto,
-			(SELECT SUM(dd.peso_bruto) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_bruto,
-			(SELECT SUM(dd.peso_tara) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_tara,
-			(SELECT SUM(dd.peso_tomado) FROM distribucion_detalle dd WHERE dd.id_distribucion = d.id) as peso_total_tomado,
-			suc.nombre_sucursal as nombre_sucursal_llegada
-		FROM distribucion d
-		INNER JOIN transporte t ON d.id_unidad = t.id_transporte
-		LEFT JOIN despacho desp ON d.id_despacho = desp.id
-		LEFT JOIN tb_clientes cli ON d.id_empresa_transporte = cli.id
-		LEFT JOIN tbconfig_tipovehiculo tv ON t.id_tipovehiculo = tv.id
-		LEFT JOIN tbconfig_conductores con ON d.id_conductor = con.Id
-		LEFT JOIN tb_sucursales suc ON d.id_sucursal_llegada = suc.Id
-		WHERE 
-			d.estado_peso = 'A' 
-			AND d.id_guia_segundo_tramo IS NULL
-			$filtro_fechas
-			$filtro_placa_sql
-		ORDER BY d.fecha_estimada DESC
-		";
-
-		$data = [];
-		if ($r = mysqli_query($enlace, $q)) {
-			while ($row = mysqli_fetch_assoc($r)) {
-				$data[] = $row;
-			}
-			echo json_encode(["estado" => 1, "data" => $data]);
-		} else {
-			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
-		}
-		break;
+	
 
 	case "get_guias_segundo_tramo":
 		$fecha_inicio = mysqli_real_escape_string($enlace, $_POST["fecha_inicio"] ?? '');
@@ -79527,6 +79407,7 @@ switch ($_POST["accion"]) {
 			$filtro_placa_sql = " AND (t.cplaca LIKE '%$filtro_placa%' OR g.serie_tolva LIKE '%$filtro_placa%') ";
 		}
 
+		$id_sucursal = $_SESSION["id_sucursal"];
 		$q = "
 		SELECT
 			g.id as id_guia,
@@ -79538,13 +79419,17 @@ switch ($_POST["accion"]) {
 			con.nombres as conductor_nombre,
 			g.estado as estado_guia,
 			(SELECT COUNT(dd.id) FROM distribucion d INNER JOIN distribucion_detalle dd ON dd.id_distribucion = d.id WHERE d.id_guia_segundo_tramo = g.id) as total_lotes,
-			(SELECT SUM(dd.peso_neto) FROM distribucion d INNER JOIN distribucion_detalle dd ON dd.id_distribucion = d.id WHERE d.id_guia_segundo_tramo = g.id) as peso_total_neto
+			(SELECT SUM(dd.peso_neto) FROM distribucion d INNER JOIN distribucion_detalle dd ON dd.id_distribucion = d.id WHERE d.id_guia_segundo_tramo = g.id) as peso_total_neto,
+			mrc.descripcion as marca,
+			t.codigo_mtc
 		FROM guia_segundo_tramo g
 		INNER JOIN distribucion dist ON g.id_distribucion = dist.id
 		INNER JOIN transporte t ON dist.id_unidad = t.id_transporte
 		LEFT JOIN tb_clientes cli ON dist.id_empresa_transporte = cli.id
 		LEFT JOIN tbconfig_conductores con ON dist.id_conductor = con.Id
-		WHERE 1=1
+		LEFT JOIN tbconfig_unidadesmarca mrc ON t.id_marca = mrc.Id
+		WHERE 
+			dist.id_sucursal = $id_sucursal 
 			$filtro_fechas
 			$filtro_placa_sql
 		ORDER BY g.id DESC
@@ -79568,36 +79453,130 @@ switch ($_POST["accion"]) {
 
 		$q = "
 		SELECT
-			g.*,
-			t.cplaca as placas,
-			cli.razon_social as empresa_transporte,
-			con.nombres as conductor_nombre,
-			(SELECT suc.nombre_sucursal FROM distribucion d INNER JOIN tb_sucursales suc ON d.id_sucursal_llegada = suc.Id WHERE d.id_guia_segundo_tramo = g.id LIMIT 1) as nombre_sucursal_llegada,
-			(SELECT SUM(dd.peso_neto) FROM distribucion d INNER JOIN distribucion_detalle dd ON dd.id_distribucion = d.id WHERE d.id_guia_segundo_tramo = g.id) as peso_total_neto
-		FROM guia_segundo_tramo g
-		INNER JOIN distribucion dist ON g.id_distribucion = dist.id
-		INNER JOIN transporte t ON dist.id_unidad = t.id_transporte
-		LEFT JOIN tb_clientes cli ON dist.id_empresa_transporte = cli.id
-		LEFT JOIN tbconfig_conductores con ON dist.id_conductor = con.Id
-		WHERE g.id = $id_guia
+			g.id as id_guia_segundo_tramo,
+			g.id_distribucion,
+			g.id_marca_tolva,
+			g.id_empresa_transporte_tolva,
+			g.fecha_inicio_traslado,
+			g.fecha_hora_emision,
+			g.fecha_hora_planta,
+			g.planta_origen,
+			g.guia_remitente_serie,
+			g.guia_remitente_numero,
+			g.guia_transportista_serie,
+			g.guia_transportista_numero,
+			g.sin_guia_transportista,
+			g.motivo_traslado,
+			g.serie_tolva,
+			g.numero_tolva,
+			g.numero_mtc_tolva,
+			g.created_at,
+			g.estado,
+			t.cplaca AS placa,
+			cli.razon_social AS empresa_transporte,
+			con.nombres AS conductor_nombre,
+			mrc.descripcion as marca,
+			t.codigo_mtc,
+			(
+				SELECT
+					pln.descripcion
+				FROM
+					distribucion d
+				INNER JOIN despacho des on des.id = d.id_despacho
+				INNER JOIN tbconfig_plantas pln on pln.Id = des.id_planta
+				WHERE
+					d.id_guia_segundo_tramo = g.id
+				LIMIT 1
+			) AS planta_destino,
+			(
+				SELECT
+					pln.direccionguia_segundotramo
+				FROM
+					distribucion d
+				INNER JOIN despacho des on des.id = d.id_despacho
+				INNER JOIN tbconfig_plantas pln on pln.Id = des.id_planta
+				WHERE
+					d.id_guia_segundo_tramo = g.id
+				LIMIT 1
+			) AS direccion_planta_destino,
+			(
+				SELECT
+					SUM(dd.peso_neto)
+				FROM
+					distribucion d
+				INNER JOIN distribucion_detalle dd ON
+					dd.id_distribucion = d.id
+				WHERE
+					d.id_guia_segundo_tramo = g.id
+			) AS peso_total_neto
+		FROM
+			guia_segundo_tramo g
+		INNER JOIN distribucion dist ON
+			g.id_distribucion = dist.id
+		INNER JOIN transporte t ON
+			dist.id_unidad = t.id_transporte
+		LEFT JOIN tb_clientes cli ON
+			dist.id_empresa_transporte = cli.id
+		LEFT JOIN tbconfig_conductores con ON
+			dist.id_conductor = con.Id
+		LEFT JOIN tbconfig_unidadesmarca mrc ON
+			mrc.Id = t.id_marca
+		WHERE
+			g.id = $id_guia
 		";
 
 		if ($r = mysqli_query($enlace, $q)) {
 			if ($row = mysqli_fetch_assoc($r)) {
 				// Cargar lotes
 				$q_lotes = "
-					SELECT
-						dd.*,
-						dsd.is_blending,
-						CASE WHEN dsd.is_blending = 1 THEN (
-							SELECT bld.correlativo FROM blending bld WHERE bld.id = dsd.id_mineral LIMIT 1
-						) ELSE (
-							SELECT lot.ccod_Lote FROM catalogolotes lot WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
-						) END AS codigo_mineral
-					FROM distribucion d
-					INNER JOIN distribucion_detalle dd ON dd.id_distribucion = d.id
-					INNER JOIN despacho_detalle dsd ON dd.id_despacho_detalle = dsd.id
-					WHERE d.id_guia_segundo_tramo = $id_guia
+				SELECT
+					dd.id as id_distribucion_detalle,
+					dd.id_despacho_detalle,
+					dd.id_distribucion,
+					dd.peso_tomado,
+					dd.peso_actual_log,
+					dd.created_at,
+					dd.numero_parte,
+					dd.tipo_carga,
+					dd.cantidad_bigbags,
+					dd.peso_tara,
+					dd.peso_neto,
+					dd.peso_bruto,
+					dd.peso_en_planta_destino,
+					dd.codigo_en_planta_destino,
+					dd.ley_oro_en_planta_destino,
+					dd.ley_plata_en_planta_destino,
+					dd.ticket_balanza,
+					dd.numero_ticket_balanza,
+					dsd.is_blending,
+					CASE 
+						WHEN dsd.is_blending = 1 THEN(
+							SELECT
+								bld.correlativo
+							FROM
+								blending bld
+							WHERE
+								bld.id = dsd.id_mineral
+							LIMIT 1
+						) 
+						ELSE(
+							SELECT
+								lot.ccod_Lote
+							FROM
+								catalogolotes lot
+							WHERE
+								lot.id_CatalogoLotes = dsd.id_mineral
+							LIMIT 1
+						)
+				END AS codigo_mineral
+				FROM
+					distribucion d
+				INNER JOIN distribucion_detalle dd ON
+					dd.id_distribucion = d.id
+				INNER JOIN despacho_detalle dsd ON
+					dd.id_despacho_detalle = dsd.id
+				WHERE
+					d.id_guia_segundo_tramo = $id_guia
 				";
 				$res_l = mysqli_query($enlace, $q_lotes);
 				$lotes = [];
@@ -79611,134 +79590,6 @@ switch ($_POST["accion"]) {
 		}
 
 		echo json_encode(["estado" => $estado, "data" => $data]);
-		break;
-
-	case "get_Guia2T_concesiones":
-		$ids_despachos = mysqli_real_escape_string($enlace, $_POST["ids_despachos"] ?? '');
-		$in_clause = "0";
-		if (!empty($ids_despachos)) {
-			$ids_clean = preg_replace('/[^0-9,]/', '', $ids_despachos);
-			if (!empty($ids_clean)) $in_clause = $ids_clean;
-		}
-
-		$q = "
-		SELECT con.Id, con.descripcion
-		FROM tbconfig_proveedoresmineros_concesion con
-		INNER JOIN tb_clientes prov ON prov.documento = con.proveedorminero_documento
-		INNER JOIN despacho des ON des.id_proveedor = prov.id
-		WHERE des.id IN ($in_clause) AND con.estado = 'A'
-		GROUP BY con.Id, con.descripcion
-		ORDER BY con.descripcion
-		";
-		$data = [];
-		if ($r = mysqli_query($enlace, $q)) {
-			while ($row = mysqli_fetch_assoc($r)) $data[] = $row;
-			echo json_encode(["estado" => 1, "data" => $data]);
-		} else {
-			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
-		}
-		break;
-
-	case "get_Guia2T_marcas_tolva":
-		$q = "SELECT id as Id, descripcion FROM tbconfig_unidadesmarca WHERE estado = 'A' ORDER BY descripcion";
-		$data = [];
-		if ($r = mysqli_query($enlace, $q)) {
-			while ($row = mysqli_fetch_assoc($r)) $data[] = $row;
-			echo json_encode(["estado" => 1, "data" => $data]);
-		} else {
-			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
-		}
-		break;
-
-	case "get_Guia2T_empresas_transporte":
-		$q = "SELECT Id, documento, razon_social FROM tb_clientes WHERE cod_clientecondicion = 2 AND estado = 'A' ORDER BY razon_social";
-		$data = [];
-		if ($r = mysqli_query($enlace, $q)) {
-			while ($row = mysqli_fetch_assoc($r)) $data[] = $row;
-			echo json_encode(["estado" => 1, "data" => $data]);
-		} else {
-			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
-		}
-		break;
-
-	case "get_lotes_distribucion_grupo_2t":
-		$ids_distribuciones = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
-		$data = [];
-		if (!empty($ids_distribuciones)) {
-			$ids_str = implode(',', array_map('intval', $ids_distribuciones));
-			$q = "
-			SELECT
-				dd.*,
-				dsd.is_blending,
-				CASE WHEN dsd.is_blending = 1 THEN (
-					SELECT bld.correlativo FROM blending bld WHERE bld.id = dsd.id_mineral LIMIT 1
-				) ELSE (
-					SELECT lot.ccod_Lote FROM catalogolotes lot WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
-				) END AS codigo_mineral,
-				desp.correlativo AS correlativo_despacho,
-				dist.id_empresa_transporte_tolva,
-				dist.serie_segunda_placa,
-				dist.numero_segunda_placa
-			FROM distribucion_detalle dd
-			INNER JOIN distribucion dist ON dd.id_distribucion = dist.id
-			INNER JOIN despacho_detalle dsd ON dsd.id = dd.id_despacho_detalle
-			INNER JOIN despacho desp ON desp.id = dist.id_despacho
-			WHERE dd.id_distribucion IN ($ids_str)
-			ORDER BY dist.id, dd.id
-			";
-			$r = mysqli_query($enlace, $q);
-			while ($row = mysqli_fetch_assoc($r)) $data[] = $row;
-		}
-		echo json_encode(["estado" => 1, "data" => $data]);
-		break;
-
-	case "grabar_guia_segundo_tramo":
-		$estado = 0;
-		$ids_dist = json_decode($_POST["ids_distribuciones"] ?? '[]', true);
-		$id_guia = intval($_POST["id_guia"] ?? 0);
-		$id_concesion = intval($_POST["id_concesion"] ?? 0);
-		$id_marca = intval($_POST["id_marca_tolva"] ?? 0);
-		$id_emp_t = intval($_POST["id_empresa_transporte_tolva"] ?? 0);
-		$f_tra = mysqli_real_escape_string($enlace, $_POST["fecha_inicio_traslado"] ?? '');
-		$f_emi = mysqli_real_escape_string($enlace, $_POST["fecha_hora_emision"] ?? '');
-		$f_pla = mysqli_real_escape_string($enlace, $_POST["fecha_hora_planta"] ?? '');
-		$pl_ori = intval($_POST["planta_origen"] ?? 0);
-		$r_ser = mysqli_real_escape_string($enlace, strtoupper($_POST["guia_remitente_serie"] ?? ''));
-		$r_num = mysqli_real_escape_string($enlace, strtoupper($_POST["guia_remitente_numero"] ?? ''));
-		$t_ser = mysqli_real_escape_string($enlace, strtoupper($_POST["guia_transportista_serie"] ?? ''));
-		$t_num = mysqli_real_escape_string($enlace, strtoupper($_POST["guia_transportista_numero"] ?? ''));
-		$s_grt = intval($_POST["sin_guia_transportista"] ?? 0);
-		$mot = mysqli_real_escape_string($enlace, $_POST["motivo_traslado"] ?? '');
-		$s_tol = mysqli_real_escape_string($enlace, strtoupper($_POST["serie_tolva"] ?? ''));
-		$n_tol = mysqli_real_escape_string($enlace, strtoupper($_POST["numero_tolva"] ?? ''));
-		$m_tol = mysqli_real_escape_string($enlace, strtoupper($_POST["numero_mtc_tolva"] ?? ''));
-
-		$f_emi_s = !empty($f_emi) ? "'$f_emi'" : "NULL";
-		$f_pla_s = !empty($f_pla) ? "'$f_pla'" : "NULL";
-		$f_tra_s = !empty($f_tra) ? "'$f_tra'" : "NULL";
-		$con_s = $id_concesion > 0 ? $id_concesion : "NULL";
-		$mar_s = $id_marca > 0 ? $id_marca : "NULL";
-		$emp_s = $id_emp_t > 0 ? $id_emp_t : "NULL";
-
-		$ref_dist = !empty($ids_dist) ? intval($ids_dist[0]) : 0;
-
-		$q = "INSERT INTO guia_segundo_tramo (id_distribucion, id_concesion, id_marca_tolva, id_empresa_transporte_tolva, fecha_inicio_traslado, fecha_hora_emision, fecha_hora_planta, planta_origen, guia_remitente_serie, guia_remitente_numero, guia_transportista_serie, guia_transportista_numero, sin_guia_transportista, motivo_traslado, serie_tolva, numero_tolva, numero_mtc_tolva, created_at, estado)
-			  VALUES ($ref_dist, $con_s, $mar_s, $emp_s, $f_tra_s, $f_emi_s, $f_pla_s, $pl_ori, '$r_ser', '$r_num', '$t_ser', '$t_num', $s_grt, '$mot', '$s_tol', '$n_tol', '$m_tol', NOW(), 1)";
-
-		if (mysqli_query($enlace, $q)) {
-			$id_new = mysqli_insert_id($enlace);
-			foreach ($ids_dist as $id) mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = $id_new WHERE id = ".intval($id));
-			$estado = 1;
-		}
-		echo json_encode(["estado" => $estado]);
-		break;
-
-	case "anular_guia_segundo_tramo":
-		$id_guia = intval($_POST["id_guia"] ?? 0);
-		mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = NULL WHERE id_guia_segundo_tramo = $id_guia");
-		$q = "UPDATE guia_segundo_tramo SET estado = '0' WHERE id = $id_guia";
-		$res = mysqli_query($enlace, $q);
-		echo json_encode(["estado" => $res ? 1 : 0]);
 		break;
 
 	default:

@@ -331,7 +331,7 @@ $backendUrl = 'apis/backend.php';
                   <th>Código Mineral</th>
                   <th>Despacho</th>
                   <th class="text-center">Presentación</th>
-                  <th class="text-end">P. Tomado (Kg)</th>
+                  <th class="text-end">Peso (Kg)</th>
                   <th class="text-end">P. Bruto (Kg)</th>
                   <th class="text-end">Tara (Kg)</th>
                   <th class="text-end fw-bold">P. Neto (Kg)</th>
@@ -451,6 +451,31 @@ $backendUrl = 'apis/backend.php';
                 <option value="SERVICIO DE CHANCADO">SERVICIO DE CHANCADO</option>
                 <option value="TRASLADO ENTRE ESTABLECIMIENTOS">TRASLADO ENTRE ESTABLECIMIENTOS</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Sección 1-B: Información de la Unidad (Lectura) -->
+          <div class="row g-3 mt-3 mb-3 bg-light p-2 rounded border mx-0">
+            <div class="col-12">
+              <h6 class="fw-bold text-uppercase text-muted small mb-1">
+                <i class="bi bi-truck-flatbed me-1"></i> Información de la Unidad
+              </h6>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-bold mb-0">Empresa Transporte</label>
+              <input type="text" id="guia_unit_transportista" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold mb-0">Marca</label>
+              <input type="text" id="guia_unit_marca" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold mb-0">Placa</label>
+              <input type="text" id="guia_unit_placa" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold mb-0">MTC</label>
+              <input type="text" id="guia_unit_mtc" class="form-control form-control-sm" readonly>
             </div>
           </div>
 
@@ -645,11 +670,36 @@ $backendUrl = 'apis/backend.php';
             </div>
           </div>
 
+          <!-- Sección 1-B: Información de la Unidad (Lectura) -->
+          <div class="row g-3 mt-3 mb-3 bg-light p-2 rounded border mx-0">
+            <div class="col-12">
+              <h6 class="fw-bold text-uppercase text-muted small mb-1">
+                <i class="bi bi-truck-flatbed me-1"></i> Información de la Unidad
+              </h6>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-bold mb-0">Empresa Transporte</label>
+              <input type="text" id="guia_e_unit_transportista" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold mb-0">Marca</label>
+              <input type="text" id="guia_e_unit_marca" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold mb-0">Placa</label>
+              <input type="text" id="guia_e_unit_placa" class="form-control form-control-sm" readonly>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold mb-0">MTC</label>
+              <input type="text" id="guia_e_unit_mtc" class="form-control form-control-sm" readonly>
+            </div>
+          </div>
+
           <!-- Sección 4: Información de Tolva -->
           <div class="row g-3 mb-3">
             <div class="col-12">
               <h6 class="fw-bold text-uppercase text-muted small mb-2">
-                <i class="bi bi-truck me-1"></i> Información de Tolva (Segundo Vehículo)
+                <i class="bi bi-truck me-1"></i> Información de Tolva
               </h6>
               <hr class="mt-0 mb-2" style="border-color: #ddd;">
             </div>
@@ -701,7 +751,7 @@ $backendUrl = 'apis/backend.php';
                       <th>Código</th>
                       <th>Despacho</th>
                       <th class="text-center">Presentación</th>
-                      <th class="text-end">Tomado (Kg)</th>
+                      <th class="text-end">Peso (Kg)</th>
                       <th class="text-end">Bruto (Kg)</th>
                       <th class="text-end">Tara (Kg)</th>
                       <th class="text-end fw-bold">Neto (Kg)</th>

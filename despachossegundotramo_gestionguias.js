@@ -162,6 +162,8 @@ document.addEventListener("DOMContentLoaded", function () {
           transportista_rs: d.transportista_rs || "-",
           transportista_ruc: d.transportista_ruc || "-",
           conductor_nombre: d.conductor_nombre || "-",
+          marca: d.marca || "",
+          codigo_mtc: d.codigo_mtc || "",
           total_lotes: 0,
           peso_total_neto: 0,
           distribuciones: [],
@@ -297,9 +299,9 @@ document.addEventListener("DOMContentLoaded", function () {
             encodeURIComponent(
               item.fecha_egreso +
                 "|" +
-                item.id_unidad +
+                item.distribuciones[0].id_unidad +
                 "|" +
-                item.id_empresa_transporte,
+                item.distribuciones[0].id_empresa_transporte,
             ),
           ),
         );
@@ -511,6 +513,30 @@ document.addEventListener("DOMContentLoaded", function () {
     $("#guia_marca_tolva, #guia_empresa_tolva").val("").trigger("change");
     $("#guia_serie_tolva, #guia_numero_tolva, #guia_mtc_tolva").val("");
 
+    var dt = item;
+    if (
+      dt.tipo === "PENDIENTE" &&
+      dt.distribuciones &&
+      dt.distribuciones.length > 0
+    ) {
+      dt.marca = dt.distribuciones[0].marca || dt.marca;
+      dt.codigo_mtc = dt.distribuciones[0].codigo_mtc || dt.codigo_mtc;
+      dt.placa = dt.distribuciones[0].placa1 || dt.placa;
+    }
+
+    // Unidad info (Read-only)
+    console.log("Datos de Unidad (Generar):", {
+      transportista: dt.transportista_rs,
+      marca: dt.marca,
+      placa: dt.placa || dt.placa1,
+      mtc: dt.codigo_mtc,
+    });
+
+    $("#guia_unit_transportista").val(dt.transportista_rs || "");
+    $("#guia_unit_marca").val(dt.marca || "");
+    $("#guia_unit_placa").val(dt.placa || dt.placa1 || "");
+    $("#guia_unit_mtc").val(dt.codigo_mtc || "");
+
     // Resumen
     $("#div_resumen_modal").html(
       '<span class="badge bg-dark"><i class="bi bi-truck me-1"></i> ' +
@@ -571,8 +597,7 @@ document.addEventListener("DOMContentLoaded", function () {
           $("#hd_modo_guia_e").val("E");
           $("#hd_id_guia_e").val(idGuia);
           $("#modal_editar_guiaLabel").html(
-            '<i class="bi bi-pencil-square me-2"></i>Editar Guía de Remisión #' +
-              idGuia,
+            '<i class="bi bi-pencil-square me-2"></i>Editar Guía de Remisión',
           );
 
           // Seteamos fechas/horas
@@ -585,6 +610,12 @@ document.addEventListener("DOMContentLoaded", function () {
             var p = guiaData.fecha_hora_emision.split(" ");
             $("#guia_e_fecha_emision").val(dmyToYmd(p[0]));
             if (p[1]) $("#guia_e_hora_emision").val(p[1]);
+          }
+
+          if (guiaData.fecha_hora_planta) {
+            var pp = guiaData.fecha_hora_planta.split(" ");
+            $("#guia_e_fecha_planta").val(dmyToYmd(pp[0]));
+            if (pp[1]) $("#guia_e_hora_planta").val(pp[1]);
           }
           // ... (resto de seteos similares a f_EditarGuia original)
           $("#guia_e_planta_origen").val(guiaData.planta_origen || "1");
@@ -605,6 +636,14 @@ document.addEventListener("DOMContentLoaded", function () {
           $("#guia_e_serie_tolva").val(guiaData.serie_tolva || "");
           $("#guia_e_numero_tolva").val(guiaData.numero_tolva || "");
           $("#guia_e_mtc_tolva").val(guiaData.numero_mtc_tolva || "");
+
+          // Unidad info (Read-only)
+          $("#guia_e_unit_transportista").val(
+            guiaData.empresa_transporte || "",
+          );
+          $("#guia_e_unit_marca").val(guiaData.marca || "");
+          $("#guia_e_unit_placa").val(guiaData.placa || "");
+          $("#guia_e_unit_mtc").val(guiaData.codigo_mtc || "");
 
           var sgrt = parseInt(guiaData.sin_guia_transportista);
           $("#chk_sin_grt_e")
@@ -655,7 +694,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var fechaPlanta = $("#guia_fecha_planta").val();
     var horaPlanta = $("#guia_hora_planta").val();
     var plantaOrigen = $("#guia_planta_origen").val();
-    var concesion = $("#guia_concesion").val();
     var remSerie = $.trim($("#guia_rem_serie").val());
     var remNumero = $.trim($("#guia_rem_numero").val());
     var transpSerie = $.trim($("#guia_transp_serie").val());
@@ -697,7 +735,6 @@ document.addEventListener("DOMContentLoaded", function () {
       fecha_hora_emision: fechaEmision + " " + horaEmision + ":00",
       fecha_hora_planta: fechaPlanta + " " + horaPlanta + ":00",
       planta_origen: plantaOrigen,
-      id_concesion: concesion || 0,
       guia_remitente_serie: remSerie,
       guia_remitente_numero: remNumero,
       guia_transportista_serie: transpSerie,
@@ -751,7 +788,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var fechaPlanta = $("#guia_e_fecha_planta").val();
     var horaPlanta = $("#guia_e_hora_planta").val();
     var plantaOrigen = $("#guia_e_planta_origen").val();
-    var concesion = $("#guia_e_concesion").val();
     var remSerie = $.trim($("#guia_e_rem_serie").val());
     var remNumero = $.trim($("#guia_e_rem_numero").val());
     var transpSerie = $.trim($("#guia_e_transp_serie").val());
@@ -800,7 +836,6 @@ document.addEventListener("DOMContentLoaded", function () {
       fecha_hora_emision: fechaEmision + " " + horaEmision + ":00",
       fecha_hora_planta: fechaPlanta + " " + horaPlanta + ":00",
       planta_origen: plantaOrigen,
-      id_concesion: concesion || 0,
       guia_remitente_serie: remSerie,
       guia_remitente_numero: remNumero,
       guia_transportista_serie: transpSerie,
