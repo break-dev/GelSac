@@ -376,12 +376,12 @@ $backendUrl = 'apis/backend.php';
               <label class="form-label small fw-bold text-muted">3. Unidad (Placa)</label>
               <select id="dist_unidad" class="form-select" data-bs-theme="bootstrap-5" capacidad="0" disabled></select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-bold text-muted">4. Empresa Tolva</label>
+            <div class="col-md-4 d-none">
+              <label class="form-label small fw-bold text-muted">X. Empresa Tolva</label>
               <select id="dist_empresa_tolva" class="form-select" data-bs-theme="bootstrap-5"></select>
             </div>
             <div class="col-md-4">
-              <label class="form-label small fw-bold text-muted">5. Placa 2 (Tolva)</label>
+              <label class="form-label small fw-bold text-muted">4. Placa 2 (Tolva)</label>
               <div class="d-flex gap-1">
                 <div class="grow" style="min-width: 200px;">
                   <select id="dist_tolva" class="form-select" data-bs-theme="bootstrap-5" disabled>

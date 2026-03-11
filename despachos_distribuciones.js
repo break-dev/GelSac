@@ -1051,13 +1051,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let idTv = $("#dist_tipo_vehiculo").val();
 
     $("#dist_unidad").empty().prop("disabled", true);
-    $("#dist_tolva").empty().prop("disabled", true);
 
     if (idTr) {
-      // Cargar Empresa Tolva por defecto igual al transportista
-      if (!$("#dist_empresa_tolva").val()) {
-        $("#dist_empresa_tolva").val(idTr).trigger("change");
-      }
+      // Cargar Empresa Tolva igual al transportista (campo oculto)
+      $("#dist_empresa_tolva").val(idTr).trigger("change");
 
       // Cargar Unidades (Placa 1)
       if (idTv) {
@@ -1086,7 +1083,14 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         });
       }
+    }
+  }
 
+  function loadCarretas() {
+    let idTr = $("#dist_transportista").val();
+    $("#dist_tolva").empty().prop("disabled", true);
+
+    if (idTr) {
       // Cargar Carretas (Placa 2 - Tolva)
       f_callBackend("get_unidades_transporte_to_distribucion", {
         id_transportista: idTr,
@@ -1114,7 +1118,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  $("#dist_transportista, #dist_tipo_vehiculo").on("change", function () {
+  $("#dist_transportista").on("change", function () {
+    loadUnidades();
+    loadCarretas();
+  });
+
+  $("#dist_tipo_vehiculo").on("change", function () {
     loadUnidades();
   });
 
