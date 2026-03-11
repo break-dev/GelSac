@@ -491,7 +491,10 @@ $backendUrl = 'apis/backend.php';
         <div class="modal-footer d-flex justify-content-between">
           <div>
             <button type="button" class="btn btn-success d-none" id="btn_guardar_detalles_destino">
-              <i class="bi bi-save"></i> Guardar Trazabilidad Destino
+              <i class="bi bi-save"></i> Guardar
+            </button>
+            <button type="button" class="btn btn-danger d-none" id="btn_finalizar_distribucion">
+              <i class="bi bi-check-circle-fill"></i> Finalizar Distribución
             </button>
           </div>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>

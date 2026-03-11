@@ -327,6 +327,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (d.estado === "D") {
               badgeEstado =
                 '<span class="badge bg-info text-dark" style="font-size: 11px;">Llegó a destino</span>';
+            } else if (d.estado === "E") {
+              badgeEstado =
+                '<span class="badge bg-dark" style="font-size: 11px;">Finalizado</span>';
             }
 
             if (d.estado_peso === "A") {
@@ -440,6 +443,9 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (meta.estado === "D") {
       badgeEstado =
         '<span class="badge bg-info text-dark" style="font-size: 11px;">Llegó a destino</span>';
+    } else if (meta.estado === "E") {
+      badgeEstado =
+        '<span class="badge bg-dark" style="font-size: 11px;">Finalizado</span>';
     }
 
     if (meta.estado_peso === "A") {
@@ -491,6 +497,9 @@ document.addEventListener("DOMContentLoaded", function () {
       $("#btn_guardar_detalles_destino")
         .removeClass("d-none")
         .data("id_dist", id);
+      $("#btn_finalizar_distribucion")
+        .removeClass("d-none")
+        .data("id_dist", id);
     } else {
       $("#thead_view_dist_items").html(`
         <tr>
@@ -506,10 +515,16 @@ document.addEventListener("DOMContentLoaded", function () {
         </tr>
       `);
       $("#btn_guardar_detalles_destino").addClass("d-none");
+      $("#btn_finalizar_distribucion").addClass("d-none");
+    }
+
+    if (meta.estado === "E") {
+      $("#btn_guardar_detalles_destino").addClass("d-none");
+      $("#btn_finalizar_distribucion").addClass("d-none");
     }
 
     $("#tbl_view_dist_items").html(
-      `<tr><td colspan="${meta.estado === "D" ? 9 : 9}" class="text-center">Cargando detalles...</td></tr>`,
+      `<tr><td colspan="${meta.estado === "D" || meta.estado === "E" ? 9 : 9}" class="text-center">Cargando detalles...</td></tr>`,
     );
 
     modalView.show();
@@ -521,8 +536,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (r.estado === 1) {
         let html = "";
         let items = r.data.detalles || [];
+        let isFinalized = meta.estado === "E";
+
         if (items.length === 0) {
-          html = `<tr><td colspan="${meta.estado === "D" ? 9 : 9}" class="text-center">Sin items.</td></tr>`;
+          html = `<tr><td colspan="${meta.estado === "D" || meta.estado === "E" ? 9 : 9}" class="text-center">Sin items.</td></tr>`;
         } else {
           items.forEach((i) => {
             let isBlending = i.is_blending == 1;
@@ -539,13 +556,13 @@ document.addEventListener("DOMContentLoaded", function () {
               i.ticket_balanza ||
               '<span class="text-muted fst-italic">Pdte.</span>';
 
-            if (meta.estado === "D") {
+            if (meta.estado === "D" || meta.estado === "E") {
               html += `
                 <tr data-id-detalle="${i.id}">
-                    <td><input type="text" class="form-control form-control-sm i-codigo" value="${i.codigo_en_planta_destino || ""}" placeholder="Cód. Destino"></td>
-                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-peso" value="${i.peso_en_planta_destino || ""}" placeholder="0.00"></td>
-                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-au" value="${i.ley_oro_en_planta_destino || ""}" placeholder="0.00"></td>
-                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-ag" value="${i.ley_plata_en_planta_destino || ""}" placeholder="0.00"></td>
+                    <td><input type="text" class="form-control form-control-sm i-codigo" value="${i.codigo_en_planta_destino || ""}" placeholder="Cód. Destino" ${isFinalized ? 'disabled' : ''}></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-peso" value="${i.peso_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-au" value="${i.ley_oro_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-ag" value="${i.ley_plata_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
                     <td class="align-middle text-muted" style="font-size: 0.9em;">${i.codigo}</td>
                     <td class="text-center align-middle" style="font-size: 0.85em;">${strTicket}</td>
                     <td class="text-center align-middle text-muted" style="font-size: 0.9em;">${txtCarga}</td>
@@ -1757,6 +1774,35 @@ document.addEventListener("DOMContentLoaded", function () {
         $("#btn_confirmar_llegada_destino")
           .prop("disabled", false)
           .html('<i class="bi bi-check-lg"></i> Confirmar Llegada');
+        alert("Error de conexión");
+      });
+  });
+
+  $("#btn_finalizar_distribucion").click(function () {
+    let btn = $(this);
+    let idDist = btn.data("id_dist");
+
+    if (!confirm("¿Está seguro que desea finalizar esta distribución? Una vez finalizada no podrá editar los datos.")) return;
+
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span> Finalizando...');
+
+    f_callBackend("finalizar_distribucion", {
+      id_distribucion: idDist,
+    })
+      .done(function (r) {
+        btn.prop("disabled", false).html('<i class="bi bi-check-circle-fill"></i> Finalizar Distribución');
+        if (r.estado === 1) {
+          alert(r.mensaje);
+          bootstrap.Modal.getInstance(document.getElementById("modal_detalle_distribucion")).hide();
+          if (typeof selectedDespachoId !== "undefined" && selectedDespachoId) {
+            loadDistribuciones(selectedDespachoId);
+          }
+        } else {
+          alert(r.mensaje || "Error al finalizar");
+        }
+      })
+      .fail(function () {
+        btn.prop("disabled", false).html('<i class="bi bi-check-circle-fill"></i> Finalizar Distribución');
         alert("Error de conexión");
       });
   });

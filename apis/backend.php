@@ -79595,6 +79595,24 @@ switch ($_POST["accion"]) {
 		echo json_encode(["estado" => $estado, "data" => $data]);
 		break;
 
+	case "finalizar_distribucion":
+		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+		
+		$sql = "UPDATE distribucion dis SET dis.estado = 'E' WHERE dis.id = $id_distribucion";
+
+		if (mysqli_query($enlace, $sql)) {
+			echo json_encode([
+				"estado" => 1, 
+				"mensaje" => "Se finalizó la distribución correctamente."
+			]);
+		} else {
+			echo json_encode([
+				"estado" => 0, 
+				"mensaje" => "Error al finalizar la distribución: " . mysqli_error($enlace)
+			]);
+		}
+		break;
+
 	default:
 		# code...
 		break;
