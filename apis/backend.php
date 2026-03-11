@@ -79613,6 +79613,116 @@ switch ($_POST["accion"]) {
 		}
 		break;
 
+	case "update_tara_distribucion":
+		$id_distribucion_detalle = intval($_POST["id_distribucion_detalle"] ?? 0);
+		$peso_tara = floatval($_POST["peso_tara"] ?? 0);
+
+		// Primero revisamos si ya tiene ticket
+		$q_check = "SELECT ticket_balanza FROM distribucion_detalle WHERE id = $id_distribucion_detalle";
+		$res_check = mysqli_query($enlace, $q_check);
+		$row_check = mysqli_fetch_assoc($res_check);
+		
+		$ticket_balanza = $row_check['ticket_balanza'];
+		$ticket_fields = "";
+		
+		if (empty($ticket_balanza)) {
+			$nuevo_ticket = getNuevoNumeroCorrelativoDetalleDistribucion($enlace);
+			$t_num = $nuevo_ticket['numero_ticket_balanza'];
+			$t_txt = $nuevo_ticket['ticket_balanza'];
+			$ticket_fields = ", numero_ticket_balanza = $t_num, ticket_balanza = '$t_txt'";
+			$ticket_balanza = $t_txt;
+		}
+
+		$q_update = "
+			UPDATE distribucion_detalle 
+			SET 
+				peso_tara = $peso_tara
+				$ticket_fields
+			WHERE id = $id_distribucion_detalle
+		";
+
+		if (mysqli_query($enlace, $q_update)) {
+			echo json_encode(["estado" => 1, "mensaje" => "Peso actualizado correctamente.", "ticket_balanza" => $ticket_balanza]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al actualizar los pesos."]);
+		}
+		break;
+
+
+	case "update_bruto_distribucion":
+		$id_distribucion_detalle = intval($_POST["id_distribucion_detalle"] ?? 0);
+		$peso_bruto = floatval($_POST["peso_bruto"] ?? 0);
+		$peso_neto = floatval($_POST["peso_neto"] ?? 0);
+
+		$q_update = "
+			UPDATE distribucion_detalle 
+			SET 
+				peso_bruto = $peso_bruto,
+				peso_neto = $peso_neto
+			WHERE id = $id_distribucion_detalle
+		";
+
+		if (mysqli_query($enlace, $q_update)) {
+			// Obtener ticket para el front
+			$q_tk = "SELECT ticket_balanza FROM distribucion_detalle WHERE id = $id_distribucion_detalle";
+			$res_tk = mysqli_query($enlace, $q_tk);
+			$row_tk = mysqli_fetch_assoc($res_tk);
+			$ticket_balanza = $row_tk['ticket_balanza'] ?? '';
+
+			echo json_encode(["estado" => 1, "mensaje" => "Peso bruto actualizado correctamente.", "ticket_balanza" => $ticket_balanza]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al actualizar los pesos."]);
+		}
+		break;
+
+	case "update_bigbags_distribucion":
+		$id_distribucion_detalle = intval($_POST["id_distribucion_detalle"] ?? 0);
+		$cantidad_bigbags = isset($_POST["cantidad_bigbags"]) && is_numeric($_POST["cantidad_bigbags"]) ? intval($_POST["cantidad_bigbags"]) : 'NULL';
+
+		$q_update = "
+			UPDATE distribucion_detalle 
+			SET 
+				cantidad_bigbags = $cantidad_bigbags
+			WHERE id = $id_distribucion_detalle
+		";
+
+		if (mysqli_query($enlace, $q_update)) {
+			// Obtener ticket para el front
+			$q_tk = "SELECT ticket_balanza FROM distribucion_detalle WHERE id = $id_distribucion_detalle";
+			$res_tk = mysqli_query($enlace, $q_tk);
+			$row_tk = mysqli_fetch_assoc($res_tk);
+			$ticket_balanza = $row_tk['ticket_balanza'] ?? '';
+
+			echo json_encode(["estado" => 1, "mensaje" => "Cantidad de bigbags actualizados correctamente.", "ticket_balanza" => $ticket_balanza]);
+		} else {
+			echo json_encode(["estado" => 0, "mensaje" => "Error al actualizar los pesos."]);
+		}
+		break;
+
+	case "confirmar_pesos_distribucion":
+		$id_distribucion_detalle = intval($_POST["id_distribucion_detalle"] ?? 0);
+
+			// Find parent distribucion
+			$q_dist = "SELECT id_distribucion, ticket_balanza FROM distribucion_detalle WHERE id = $id_distribucion_detalle";
+			$res_dist = mysqli_query($enlace, $q_dist);
+			$ticket_balanza = '';
+			if ($row_dist = mysqli_fetch_assoc($res_dist)) {
+				$id_distribucion = $row_dist['id_distribucion'];
+				$ticket_balanza = $row_dist['ticket_balanza'];
+				// Check if ALL details for this distribucion have peso_neto > 0
+				$q_check = "SELECT COUNT(*) as incompletos FROM distribucion_detalle WHERE id_distribucion = $id_distribucion AND (peso_neto IS NULL OR peso_neto <= 0)";
+				$res_check = mysqli_query($enlace, $q_check);
+				if ($row_check = mysqli_fetch_assoc($res_check)) {
+					if ($row_check['incompletos'] == 0) {
+						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'A' WHERE id = $id_distribucion");
+					} else {
+						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'B' WHERE id = $id_distribucion");
+					}
+				}
+			}
+			echo json_encode(["estado" => 1, "mensaje" => "Pesos actualizados correctamente.", "ticket_balanza" => $ticket_balanza]);
+		break;
+
 	default:
 		# code...
 		break;

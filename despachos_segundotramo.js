@@ -203,18 +203,12 @@ document.addEventListener("DOMContentLoaded", function () {
             const showBigBags = tipo_carga == 2 ? "" : "display: none;";
 
             let bg_card = "bg-white";
-            let is_locked = false;
             let border_class = "border-0";
             let header_bg = "bg-dark";
             let text_accent = "text-warning";
 
-            if (
-              parseFloat(neto) > 0 ||
-              parseFloat(tara) > 0 ||
-              parseFloat(bruto) > 0
-            ) {
-              bg_card = "bg-success bg-opacity-10";
-              is_locked = true;
+            if (parseFloat(neto) > 0) {
+              bg_card = "bg-success bg-opacity-10 opacity-75";
               border_class = "border border-success border-2";
               header_bg = "bg-primary";
               text_accent = "text-white";
@@ -241,18 +235,18 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-truck text-secondary"></i> Tara (Kg)</label>
                                     <div class="input-group input-group-sm">
-                                        <input type="number" ${is_locked || tara > 0 ? "readonly" : ""} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_tara_${det.id_distribucion_detalle}" value="${tara}">
-                                        <button class="btn ${tara > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" id="btn_conf_tara_${det.id_distribucion_detalle}" onclick="f_ConfirmarTara(${det.id_distribucion_detalle})" title="Confirmar/Desconfirmar Tara" ${is_locked ? "disabled" : ""}>
-                                            <i class="bi ${tara > 0 ? "bi-check2" : "bi-check2"}"></i>
+                                        <input type="number" ${tara > 0 ? "readonly" : ""} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_tara_${det.id_distribucion_detalle}" value="${tara}">
+                                        <button class="btn ${tara > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" id="btn_conf_tara_${det.id_distribucion_detalle}" onclick="f_ConfirmarTara(${det.id_distribucion_detalle})" title="Confirmar/Desconfirmar Tara">
+                                            <i class="bi bi-check2"></i>
                                         </button>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-truck-front-fill text-secondary"></i> Bruto (Kg)</label>
                                     <div class="input-group input-group-sm">
-                                        <input type="number" ${is_locked || bruto > 0 ? "readonly" : tara > 0 ? "" : "disabled"} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_bruto_${det.id_distribucion_detalle}" value="${bruto}">
-                                        <button class="btn ${bruto > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" id="btn_conf_bruto_${det.id_distribucion_detalle}" onclick="f_ConfirmarBruto(${det.id_distribucion_detalle})" title="Confirmar/Desconfirmar Bruto" ${is_locked ? "disabled" : bruto > 0 ? "" : tara > 0 ? "" : "disabled"}>
-                                            <i class="bi ${bruto > 0 ? "bi-check2" : "bi-check2"}"></i>
+                                        <input type="number" ${bruto > 0 ? "readonly" : tara > 0 ? "" : "disabled"} class="form-control text-center fw-bold shadow-sm border-dark" id="txt_bruto_${det.id_distribucion_detalle}" value="${bruto}">
+                                        <button class="btn ${bruto > 0 ? "btn-success" : "btn-outline-secondary"}" type="button" id="btn_conf_bruto_${det.id_distribucion_detalle}" onclick="f_ConfirmarBruto(${det.id_distribucion_detalle})" title="Confirmar/Desconfirmar Bruto" ${bruto > 0 || tara > 0 ? "" : "disabled"}>
+                                            <i class="bi bi-check2"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -269,7 +263,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                         <i class="bi bi-save me-1"></i> Guardar
                                     </button>
                                 </div>
-                                <!-- Aquí pondremos los mensajes y validaciones si corresponde -->
                                 <div class="col-12 mt-2 pt-2 border-top text-end" id="msg_val_${det.id_distribucion_detalle}" style="font-size: 0.85rem; min-height: 24px;">
                                 </div>
                             </div>
@@ -339,8 +332,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const isConfirmed = $(`#txt_tara_${id_detalle}`).is("[readonly]");
 
     if (isConfirmed) {
-      // Intentando desconfirmar Tara
-      // Verificar si Bruto está confirmado
+      // Intentando desconfirmar Tara (Visual solamente en este punto para permitir corrección rápida antes de bruto)
       const isBrutoConfirmed = $(`#txt_bruto_${id_detalle}`).is("[readonly]");
       if (isBrutoConfirmed) {
         alert(
@@ -349,35 +341,46 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      // Desbloquear Tara, bloquear Bruto
-      $(`#txt_tara_${id_detalle}`)
-        .removeAttr("readonly")
-        .removeAttr("disabled");
-      $(`#btn_conf_tara_${id_detalle}`)
-        .removeClass("btn-success")
-        .addClass("btn-outline-secondary");
-
+      $(`#txt_tara_${id_detalle}`).removeAttr("readonly").removeAttr("disabled");
+      $(`#btn_conf_tara_${id_detalle}`).removeClass("btn-success").addClass("btn-outline-secondary");
       $(`#txt_bruto_${id_detalle}`).prop("disabled", true).val("");
       $(`#btn_conf_bruto_${id_detalle}`).prop("disabled", true);
     } else {
-      // Intentando confirmar Tara
+      // Confirmando Tara -> Backend
       const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
       if (tara <= 0) {
         alert("Ingrese una Tara válida mayor a 0.");
         return;
       }
 
-      // Lock Tara, unlock Bruto
-      $(`#txt_tara_${id_detalle}`).attr("readonly", "readonly");
-      $(`#btn_conf_tara_${id_detalle}`)
-        .removeClass("btn-outline-secondary")
-        .addClass("btn-success");
+      const btn = $(`#btn_conf_tara_${id_detalle}`);
+      btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
 
-      $(`#txt_bruto_${id_detalle}`)
-        .removeAttr("disabled")
-        .removeAttr("readonly")
-        .focus();
-      $(`#btn_conf_bruto_${id_detalle}`).removeAttr("disabled");
+      f_callBackend("update_tara_distribucion", {
+        id_distribucion_detalle: id_detalle,
+        peso_tara: tara
+      }).done(function(resp) {
+        btn.prop("disabled", false).html('<i class="bi bi-check2"></i>');
+        if(resp.estado === 1) {
+          $(`#txt_tara_${id_detalle}`).attr("readonly", "readonly");
+          btn.removeClass("btn-outline-secondary").addClass("btn-success");
+          
+          $(`#txt_bruto_${id_detalle}`).removeAttr("disabled").removeAttr("readonly").focus();
+          $(`#btn_conf_bruto_${id_detalle}`).removeAttr("disabled");
+
+          if (resp.ticket_balanza) {
+            $(`#card_detalle_${id_detalle} .badge[title="Ticket de Balanza"]`).html(
+              `<i class="bi bi-receipt text-light" style="font-size: 1rem;"></i> ${resp.ticket_balanza}`
+            );
+            f_ImprimirTicketBalanza(id_detalle);
+          }
+        } else {
+          alert(resp.mensaje);
+        }
+      }).fail(() => {
+        btn.prop("disabled", false).html('<i class="bi bi-check2"></i>');
+        alert("Error de conexión.");
+      });
     }
   };
 
@@ -387,43 +390,46 @@ document.addEventListener("DOMContentLoaded", function () {
     const isConfirmed = $(`#txt_bruto_${id_detalle}`).is("[readonly]");
 
     if (isConfirmed) {
-      // Intentando desconfirmar Bruto
-      // Desbloquear Bruto, ocultar botón de guardar
-      $(`#txt_bruto_${id_detalle}`)
-        .removeAttr("readonly")
-        .removeAttr("disabled");
-      $(`#btn_conf_bruto_${id_detalle}`)
-        .removeClass("btn-success")
-        .addClass("btn-outline-secondary");
-
+      $(`#txt_bruto_${id_detalle}`).removeAttr("readonly").removeAttr("disabled");
+      $(`#btn_conf_bruto_${id_detalle}`).removeClass("btn-success").addClass("btn-outline-secondary");
       $(`#btn_save_${id_detalle}`).prop("disabled", true);
       $(`#container_btn_save_${id_detalle}`).removeClass("d-none");
-      $(`#txt_bbs_${id_detalle}`).removeAttr("disabled").removeAttr("readonly");
     } else {
-      // Intentando confirmar Bruto
       const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
       const bruto = parseFloat($(`#txt_bruto_${id_detalle}`).val()) || 0;
 
-      if (bruto <= 0) {
-        alert("Ingrese un Bruto válido mayor a 0.");
-        return;
+      if (bruto <= 0 || bruto <= tara) {
+        alert("Verifique el peso bruto ingresado."); return;
       }
 
-      if (bruto <= tara) {
-        alert("El peso bruto debe ser mayor al peso tara.");
-        return;
-      }
+      const neto = bruto - tara;
+      const btn = $(`#btn_conf_bruto_${id_detalle}`);
+      btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
 
-      // Lock Bruto, unlock Save
-      $(`#txt_bruto_${id_detalle}`).attr("readonly", "readonly");
-      $(`#btn_conf_bruto_${id_detalle}`)
-        .removeClass("btn-outline-secondary")
-        .addClass("btn-success");
-
-      // Calculate and Enable Save
-      f_CalcularNetoLote(id_detalle);
-      $(`#btn_save_${id_detalle}`).prop("disabled", false);
+      f_callBackend("update_bruto_distribucion", {
+        id_distribucion_detalle: id_detalle,
+        peso_bruto: bruto,
+        peso_neto: neto
+      }).done(function(resp) {
+        btn.prop("disabled", false).html('<i class="bi bi-check2"></i>');
+        if(resp.estado === 1) {
+          $(`#txt_bruto_${id_detalle}`).attr("readonly", "readonly");
+          btn.removeClass("btn-outline-secondary").addClass("btn-success");
+          f_CalcularNetoLote(id_detalle);
+          $(`#btn_save_${id_detalle}`).prop("disabled", false);
+          f_ImprimirTicketBalanza(id_detalle);
+        } else {
+          alert(resp.mensaje);
+        }
+      }).fail(() => {
+        btn.prop("disabled", false).html('<i class="bi bi-check2"></i>');
+        alert("Error de conexión.");
+      });
     }
+  };
+
+  window.f_ImprimirTicketBalanza = function (id_detalle) {
+    window.open(`print_ticketbalanza_dist.php?id=${id_detalle}`, "_blank");
   };
 
   window.f_CalcularNetoLote = function (id_detalle) {
@@ -468,92 +474,50 @@ document.addEventListener("DOMContentLoaded", function () {
     const tara = parseFloat($(`#txt_tara_${id_detalle}`).val()) || 0;
     const bruto = parseFloat($(`#txt_bruto_${id_detalle}`).val()) || 0;
 
-    if (tara <= 0 && bruto <= 0) {
-      alert("Debe ingresar al menos el peso Tara o Bruto.");
+    if (tara <= 0 || bruto <= 0) {
+      alert("Debe confirmar Tara y Bruto antes de finalizar.");
       return;
     }
 
-    if (bruto > 0 && bruto <= tara) {
-      alert("El peso bruto debe ser mayor al peso tara.");
-      return;
-    }
-
-    const neto = bruto - tara;
-
-    let cantidad_bigbags = "";
-    if (tipo_carga == 2) {
-      cantidad_bigbags = $(`#txt_bbs_${id_detalle}`).val();
-      if (!cantidad_bigbags || cantidad_bigbags <= 0) {
-        alert("Debe ingresar la cantidad de Big Bags para este lote.");
-        return;
-      }
-    }
-
-    const payload = {
-      id_distribucion_detalle: id_detalle,
-      peso_tara: tara,
-      peso_bruto: bruto,
-      peso_neto: neto,
-    };
-
-    if (tipo_carga == 2) {
-      payload.cantidad_bigbags = cantidad_bigbags;
-    }
-
-    // Mostrar indicador de carga en el botón
     const btn = $(`#btn_save_${id_detalle}`);
     const originalText = btn.html();
-    btn
-      .html(
-        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>',
-      )
-      .prop("disabled", true);
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
 
-    f_callBackend("update_PesajesSegundoTramo", payload)
-      .done(function (response) {
+    // Si es Big Bags, primero actualizamos la cantidad
+    const updateBbs = (tipo_carga == 2) 
+      ? f_callBackend("update_bigbags_distribucion", { id_distribucion_detalle: id_detalle, cantidad_bigbags: $(`#txt_bbs_${id_detalle}`).val() })
+      : $.Deferred().resolve({estado: 1});
+
+    updateBbs.done(function(respBbs) {
+      if(respBbs.estado === 1) {
+        // Confirmación final del lote
+        f_callBackend("confirmar_pesos_distribucion", { id_distribucion_detalle: id_detalle })
+          .done(function (response) {
+            btn.html(originalText).prop("disabled", false);
+            if (response.estado === 1) {
+              f_ImprimirTicketBalanza(id_detalle);
+              
+              $(`#card_detalle_${id_detalle}`).addClass("bg-success bg-opacity-10 opacity-75");
+              $(`#txt_bbs_${id_detalle}`).prop("disabled", true);
+              $(`#container_btn_save_${id_detalle}`).addClass("d-none");
+
+              f_LoadDistribucionesSilently();
+              f_CheckCompletadoDistribucion();
+            } else {
+              alert(response.mensaje);
+            }
+          }).fail(() => {
+            btn.html(originalText).prop("disabled", false);
+            alert("Error al confirmar pesos.");
+          });
+      } else {
         btn.html(originalText).prop("disabled", false);
-        if (response.estado === 1) {
-          // Visual confirmation
-          btn.removeClass("btn-success").addClass("btn-outline-success");
-          setTimeout(() => {
-            btn.removeClass("btn-outline-success").addClass("btn-success");
-          }, 2000);
-
-          if (response.ticket_balanza) {
-            $(
-              `#card_detalle_${id_detalle} .card-header .badge[title="Ticket de Balanza"]`,
-            ).html(
-              `<i class="bi bi-receipt text-light" style="font-size: 1rem;"></i> ${response.ticket_balanza}`,
-            );
-          }
-
-          if (neto > 0) {
-            $(`#card_detalle_${id_detalle}`).addClass(
-              "bg-success bg-opacity-10 opacity-75",
-            );
-          }
-
-          // Bloquear visualmente
-          $(`#txt_tara_${id_detalle}`).attr("readonly", "readonly");
-          $(`#txt_bruto_${id_detalle}`).attr("readonly", "readonly");
-          $(`#txt_bbs_${id_detalle}`).prop("disabled", true);
-
-          // Ocultar botón de guardar
-          $(`#container_btn_save_${id_detalle}`).addClass("d-none");
-
-          // Recargar tabla silently in background to update states in left panel
-          f_LoadDistribucionesSilently();
-
-          // Verificar si todos los lotes ya fueron cerrados (no existen botones visibles)
-          f_CheckCompletadoDistribucion();
-        } else {
-          alert(response.mensaje || "Error al guardar.");
-        }
-      })
-      .fail(function () {
-        btn.html(originalText).prop("disabled", false);
-        alert("Error al conectar con el servidor.");
-      });
+        alert(respBbs.mensaje);
+      }
+    }).fail(() => {
+      btn.html(originalText).prop("disabled", false);
+      alert("Error al actualizar Big Bags.");
+    });
   };
 
   window.f_CheckCompletadoDistribucion = function () {
