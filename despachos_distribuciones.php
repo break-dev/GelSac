@@ -82,6 +82,117 @@ $backendUrl = 'apis/backend.php';
       background-color: #6f42c1;
       color: white;
     }
+
+    /* Modern Timeline Styles */
+    .timeline {
+      position: relative;
+      padding: 10px 0;
+      list-style: none;
+    }
+    .timeline:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      /* Soft gradient line */
+      background: linear-gradient(to bottom, #0d6efd, #0dcaf0, #198754);
+      left: 31px;
+      margin: 0;
+      border-radius: 4px;
+    }
+    .timeline > li {
+      position: relative;
+      margin-bottom: 25px;
+    }
+    .timeline > li:before, .timeline > li:after {
+      content: " ";
+      display: table;
+    }
+    .timeline > li:after {
+      clear: both;
+    }
+    .timeline > li > .timeline-item {
+      margin-left: 65px;
+      background: #fff;
+      color: #444;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      border-left: 5px solid #0d6efd;
+      transition: all 0.3s ease;
+    }
+    .timeline > li > .timeline-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    .timeline > li > .timeline-badge {
+      color: #fff;
+      width: 20px;
+      height: 20px;
+      line-height: 20px;
+      font-size: 1.2em;
+      text-align: center;
+      position: absolute;
+      top: 15px;
+      left: 23px;
+      border-radius: 50%;
+      background-color: #fff;
+      border: 4px solid #0d6efd;
+      box-shadow: 0 0 0 4px rgba(13,110,253,0.2);
+      z-index: 1;
+    }
+    .timeline > li > .timeline-badge.bg-success {
+      border-color: #198754;
+      box-shadow: 0 0 0 4px rgba(25,135,84,0.2);
+    }
+    .timeline > li > .timeline-badge.bg-warning {
+      border-color: #ffc107;
+      box-shadow: 0 0 0 4px rgba(255,193,7,0.2);
+    }
+    .timeline > li > .timeline-badge.bg-info {
+      border-color: #0dcaf0;
+      box-shadow: 0 0 0 4px rgba(13,202,240,0.2);
+    }
+    .timeline > li > .timeline-badge.bg-primary {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 4px rgba(13,110,253,0.2);
+    }
+    .timeline > li > .timeline-badge.bg-danger {
+      border-color: #dc3545;
+      box-shadow: 0 0 0 4px rgba(220,53,69,0.2);
+    }
+    .timeline > li > .timeline-badge.bg-dark {
+      border-color: #212529;
+      box-shadow: 0 0 0 4px rgba(33,37,41,0.2);
+    }
+    .timeline-item > .time {
+      color: #777;
+      float: right;
+      padding: 3px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 4px 10px;
+    }
+    .timeline-item > .timeline-header {
+      margin: 0 0 8px 0;
+      color: #2c3e50;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #e9ecef;
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .timeline-item > .timeline-body {
+      padding: 5px 0 0 0;
+      font-size: 14.5px;
+      color: #555;
+      line-height: 1.5;
+    }
   </style>
 </head>
 
@@ -631,6 +742,26 @@ $backendUrl = 'apis/backend.php';
           <button type="button" class="btn btn-primary" id="btn_confirmar_registro_carreta">
             <i class="bi bi-save"></i> Registrar Carreta
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Trazabilidad Distribución -->
+  <div class="modal fade" id="modal_trazabilidad_distribucion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-primary bg-gradient text-white border-0">
+          <h5 class="modal-title fw-bold"><i class="bi bi-clock-history me-2"></i> Trazabilidad de la Distribución</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" style="background-color: #f4f6f9; padding: 25px;">
+          <ul class="timeline" id="trazabilidad_timeline">
+            <!-- Timeline elements injected via JS -->
+          </ul>
+        </div>
+        <div class="modal-footer bg-light border-0">
+          <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>

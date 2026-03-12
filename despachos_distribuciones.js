@@ -405,6 +405,9 @@ document.addEventListener("DOMContentLoaded", function () {
                           <button class="btn btn-sm btn-link text-primary" onclick="viewDistribucion(${d.id_distribucion}, '${meta}')" title="Ver Detalles">
                             <i class="bi bi-eye-fill"></i>
                           </button>
+                          <button class="btn btn-sm btn-link text-info" onclick="viewTrazabilidad(${d.id_distribucion})" title="Ver Trazabilidad">
+                            <i class="bi bi-clock-history"></i>
+                          </button>
                           ${btnLlegada}
                           ${btnActionCierre}
                           ${deleteButton}
@@ -637,6 +640,70 @@ document.addEventListener("DOMContentLoaded", function () {
 
     $("#tfoot_detalle_despacho").show();
   }
+
+  // --------------------------------------------------------------------------------
+  // LOGIC: TRAZABILIDAD TIMELINE
+  // --------------------------------------------------------------------------------
+
+  window.viewTrazabilidad = function (id) {
+    const modalTrazabilidad = new window.bootstrap.Modal(
+      document.getElementById("modal_trazabilidad_distribucion")
+    );
+    let html = '<li><div class="timeline-item"><div class="timeline-body text-center">Cargando trazabilidad...</div></div></li>';
+    $("#trazabilidad_timeline").html(html);
+    modalTrazabilidad.show();
+
+    f_callBackend("get_trazabilidad_by_distribucion", { id_distribucion: id }).done(function (r) {
+      if (r.estado === 1) {
+        let logs = r.data || [];
+        if (logs.length === 0) {
+          $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-muted">No hay registros de trazabilidad para esta unidad.</div></div></li>');
+        } else {
+          
+          let estadoColors = {
+            'Registrado': { badge: 'bg-primary', border: '#0d6efd', icon: 'bi-journal-check' },
+            'Distribución Cerrada': { badge: 'bg-success', border: '#198754', icon: 'bi-lock-fill' },
+            'Distribución Abierta': { badge: 'bg-warning', border: '#ffc107', icon: 'bi-unlock-fill' },
+            'Llegó a Destino': { badge: 'bg-info', border: '#0dcaf0', icon: 'bi-geo-alt-fill' },
+            'Pesaje Completo': { badge: 'bg-success', border: '#198754', icon: 'bi-check-circle-fill' },
+            'Pesaje Modificado': { badge: 'bg-warning', border: '#ffc107', icon: 'bi-exclamation-circle-fill' },
+            'Pesaje Confirmado': { badge: 'bg-success', border: '#198754', icon: 'bi-check-circle-fill' },
+            'Guía Creada': { badge: 'bg-primary', border: '#0d6efd', icon: 'bi-file-earmark-text' },
+            'Guía Modificada': { badge: 'bg-info', border: '#0dcaf0', icon: 'bi-pencil-square' },
+            'Guía Anulada': { badge: 'bg-danger', border: '#dc3545', icon: 'bi-file-earmark-x' },
+            'Finalizado': { badge: 'bg-dark', border: '#212529', icon: 'bi-flag-fill' }
+          };
+
+          html = "";
+          logs.forEach((log) => {
+             let colorConfig = estadoColors[log.estado] || { badge: 'bg-primary', border: '#0d6efd', icon: 'bi-info-circle-fill' };
+             
+             html += `
+              <li>
+                <div class="timeline-badge ${colorConfig.badge}"></div>
+                <div class="timeline-item" style="border-left-color: ${colorConfig.border};">
+                  <h3 class="timeline-header">
+                    <span><i class="${colorConfig.icon} me-2" style="color: ${colorConfig.border};"></i>${log.estado}</span>
+                    <span class="time"><i class="bi bi-calendar-event me-1"></i> ${log.created_at}</span>
+                  </h3>
+                  <div class="timeline-body">
+                    ${log.descripcion}
+                    <div class="mt-2 text-end"><span class="badge bg-light text-dark border pt-1 pb-1 px-2"><i class="bi bi-person-fill text-secondary"></i> ${log.empleado}</span></div>
+                  </div>
+                </div>
+              </li>
+             `;
+          });
+          $("#trazabilidad_timeline").html(html);
+        }
+      } else {
+         $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-danger">Error obteniendo trazabilidad.</div></div></li>');
+      }
+    }).fail(function () {
+      $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-danger">Error de conexión.</div></div></li>');
+    });
+  };
+
 
   // --------------------------------------------------------------------------------
   // MODAL LOGIC: NUEVO DESPACHO

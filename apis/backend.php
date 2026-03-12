@@ -26194,6 +26194,7 @@ switch ($_POST["accion"]) {
 				WHERE 
 					id = $id_placadespacho";
 				mysqli_query($enlace, $q_upd_dist);
+				f_LogDistribucion($enlace, $id_placadespacho, "Ingreso a Planta", "El vigilante registró la llegada de la unidad a planta.");
 			}
 
 			// Guardando información de Placa 1
@@ -77965,6 +77966,7 @@ switch ($_POST["accion"]) {
 
 		if (mysqli_query($enlace, $q_cabecera)) {
 			$id_distribucion = mysqli_insert_id($enlace);
+			f_LogDistribucion($enlace, $id_distribucion, 'Registrado', 'Distribución creada y lista para envío.');
 			foreach ($detalle as $item) {
 				$id_dd = intval($item['id_despacho_detalle']);
 				$peso = floatval($item['peso_tomado']);
@@ -78034,6 +78036,7 @@ switch ($_POST["accion"]) {
 		";
 
 		if (mysqli_query($enlace, $q_upd)) {
+			f_LogDistribucion($enlace, $id_distribucion, "Distribucion cerrada", "La distribucion ha sido cerrada, dejándola apta para la recepción.");
 			echo json_encode(["estado" => 1, "mensaje" => "Distribución cerrada con éxito"]);
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al cerrar"]);
@@ -78059,6 +78062,7 @@ switch ($_POST["accion"]) {
 		";
 
 		if (mysqli_query($enlace, $q_upd)) {
+			f_LogDistribucion($enlace, $id_distribucion, "Carga Reabierta", "Se reabrió la carga para su modificación.");
 			echo json_encode(["estado" => 1, "mensaje" => "Distribución reabierta con éxito"]);
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al reabrir"]);
@@ -78084,6 +78088,7 @@ switch ($_POST["accion"]) {
 
 		if (mysqli_query($enlace, $q_upd)) {
 			if (mysqli_affected_rows($enlace) > 0) {
+				f_LogDistribucion($enlace, $id_distribucion, "Llegada Destino", "La unidad llegó a la planta de destino.");
 				echo json_encode(["estado" => 1, "mensaje" => "Llegada a destino registrada con éxito"]);
 			} else {
 				echo json_encode(["estado" => 0, "mensaje" => "No se pudo actualizar. Verifique que la distribución esté en estado 'Salió de planta'."]);
@@ -78343,6 +78348,7 @@ switch ($_POST["accion"]) {
 		while ($dis = mysqli_fetch_assoc($r_dists)) {
 			$id_dist = $dis['id'];
 			mysqli_query($enlace, "DELETE FROM distribucion_detalle WHERE id_distribucion = $id_dist");
+			mysqli_query($enlace, "DELETE FROM distribucion_log WHERE id_distribucion = $id_dist");
 		}
 		mysqli_query($enlace, "DELETE FROM distribucion WHERE id_despacho = $id_despacho");
 
@@ -78382,6 +78388,7 @@ switch ($_POST["accion"]) {
 
 		// Eliminar Distribucion
 		mysqli_query($enlace, "DELETE FROM distribucion_detalle WHERE id_distribucion = $id_distribucion");
+		mysqli_query($enlace, "DELETE FROM distribucion_log WHERE id_distribucion = $id_distribucion");
 		if (mysqli_query($enlace, "DELETE FROM distribucion WHERE id = $id_distribucion")) {
 			echo json_encode(["estado" => 1, "mensaje" => "Distribución eliminada y peso revertido."]);
 		} else {
@@ -78565,6 +78572,7 @@ switch ($_POST["accion"]) {
 		if (mysqli_query($enlace, $q)) {
 			// Verificar si realmente se encontró el registro y se actualizó
 			$filas_afectadas = mysqli_affected_rows($enlace);
+			f_LogDistribucion($enlace, $id_distribucion, "Llegada a Planta", "El vigilante verificó y registró el ingreso a la planta.");
 
 			echo json_encode([
 				"estado" => 1,
@@ -78598,6 +78606,7 @@ switch ($_POST["accion"]) {
 		if (mysqli_query($enlace, $q)) {
 			// Verificar si realmente se encontró el registro y se actualizó
 			$filas_afectadas = mysqli_affected_rows($enlace);
+			f_LogDistribucion($enlace, $id_distribucion, "Salió de Planta", "El vigilante registró la salida de la unidad de la planta origen.");
 
 			echo json_encode([
 				"estado" => 1,
@@ -78834,8 +78843,10 @@ switch ($_POST["accion"]) {
 				if ($row_check = mysqli_fetch_assoc($res_check)) {
 					if ($row_check['incompletos'] == 0) {
 						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'A' WHERE id = $id_distribucion");
+						f_LogDistribucion($enlace, $id_distribucion, 'Pesaje Completo', 'Pesaje en destino completado para todos los items.');
 					} else {
 						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'B' WHERE id = $id_distribucion");
+						f_LogDistribucion($enlace, $id_distribucion, 'Pesaje Modificado', 'Se registraron pesajes, pero la distribución sigue incompleta.');
 					}
 				}
 			}
@@ -79147,6 +79158,7 @@ switch ($_POST["accion"]) {
 			foreach ($ids_distribuciones as $id_dist) {
 				$id_dist = intval($id_dist);
 				mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = $id_guia_nuevo WHERE id = $id_dist");
+				f_LogDistribucion($enlace, $id_dist, "Guía Emitida", "Se emitió la guía de remisión N° $guia_remitente_serie-$guia_remitente_numero para el traslado.");
 			}
 			$estado = 1;
 			$mensaje = "Guía generada correctamente.";
@@ -79216,6 +79228,7 @@ switch ($_POST["accion"]) {
 				foreach ($ids_distribuciones as $id_dist) {
 					$id_dist = intval($id_dist);
 					mysqli_query($enlace, "UPDATE distribucion SET id_guia_segundo_tramo = $id_guia_editar WHERE id = $id_dist");
+					f_LogDistribucion($enlace, $id_dist, "Guía Editada", "Se actualizó la guía de remisión N° $guia_remitente_serie-$guia_remitente_numero vinculada.");
 				}
 				$estado = 1;
 				$mensaje = "Guía actualizada correctamente.";
@@ -79237,6 +79250,13 @@ switch ($_POST["accion"]) {
 		if ($id_guia <= 0) {
 			echo json_encode(["estado" => 0, "mensaje" => "ID de guía inválido."]);
 			exit;
+		}
+
+		$q_d_gt = "SELECT id FROM distribucion WHERE id_guia_segundo_tramo = $id_guia";
+		if ($r_d_gt = mysqli_query($enlace, $q_d_gt)) {
+			while ($row_d_gt = mysqli_fetch_assoc($r_d_gt)) {
+				f_LogDistribucion($enlace, $row_d_gt['id'], "Guía Anulada", "Se anuló la guía de traslado vinculada a esta distribución.");
+			}
 		}
 
 		// Desvincular distribuciones
@@ -79601,6 +79621,7 @@ switch ($_POST["accion"]) {
 		$sql = "UPDATE distribucion dis SET dis.estado = 'E' WHERE dis.id = $id_distribucion";
 
 		if (mysqli_query($enlace, $sql)) {
+			f_LogDistribucion($enlace, $id_distribucion, "Finalizado", "Se dio por finalizada la distribución en su destino. Ya no es editable.");
 			echo json_encode([
 				"estado" => 1, 
 				"mensaje" => "Se finalizó la distribución correctamente."
@@ -79715,18 +79736,65 @@ switch ($_POST["accion"]) {
 				if ($row_check = mysqli_fetch_assoc($res_check)) {
 					if ($row_check['incompletos'] == 0) {
 						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'A' WHERE id = $id_distribucion");
+						f_LogDistribucion($enlace, $id_distribucion, 'Pesaje Confirmado', 'El supervisor confirmó que el pesaje en destino está completo.');
 					} else {
 						mysqli_query($enlace, "UPDATE distribucion SET estado_peso = 'B' WHERE id = $id_distribucion");
+						f_LogDistribucion($enlace, $id_distribucion, 'Pesaje Modificado', 'El estado del pesaje cambió a incompleto.');
 					}
 				}
 			}
 			echo json_encode(["estado" => 1, "mensaje" => "Pesos actualizados correctamente.", "ticket_balanza" => $ticket_balanza]);
 		break;
 
+	case "get_trazabilidad_by_distribucion":
+        $id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+
+        // Cambiamos las comillas dobles por simples en el CONCAT
+        $q = "
+        SELECT
+            log.id AS id_trazabilidad,
+            CONCAT(emp.nombres, ' ', emp.apellido_paterno) as empleado,
+            log.estado,
+            log.descripcion,
+            log.created_at
+        FROM
+            distribucion_log log
+        INNER JOIN tb_empleados emp on emp.Id = log.id_empleado
+        WHERE log.id_distribucion = $id_distribucion
+        ORDER BY log.created_at DESC;
+        ";
+
+        $data = [];
+        if ($r = mysqli_query($enlace, $q)) {
+            while ($row = mysqli_fetch_assoc($r)) {
+                $data[] = $row;
+            }
+            echo json_encode(["estado" => 1, "data" => $data]);
+        } else {
+            echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
+        }
+        
+        break;
+
 	default:
 		# code...
 		break;
 }
+
+
+// Proceso para registrar eventos de trazabilidad de distribuciones
+function f_LogDistribucion($enlace, $id_distribucion, $estado, $descripcion)
+{
+	$id_empleado = intval($_SESSION["id_empleado"] ?? 0);
+	$estado = mysqli_real_escape_string($enlace, $estado);
+	$descripcion = mysqli_real_escape_string($enlace, $descripcion);
+
+	$q_log = "INSERT INTO distribucion_log (id_distribucion, id_empleado, estado, descripcion, created_at) 
+			  VALUES ($id_distribucion, $id_empleado, '$estado', '$descripcion', NOW())";
+
+	mysqli_query($enlace, $q_log);
+}
+
 
 
 function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
