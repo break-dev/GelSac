@@ -149,20 +149,36 @@ document.addEventListener("DOMContentLoaded", function () {
     var totalGeneradas = 0;
 
     // 1. Procesar Pendientes (Agrupar)
-    agrupacionesMap = {}; // Reusar variable del scope externo
+    var multiAgrupaciones = {}; // BaseKey -> Array of Groups
     for (var i = 0; i < pendientes.length; i++) {
       var d = pendientes[i];
-      var key =
-        d.fecha_estimada +
+      var baseKey =
+        d.id_empresa_transporte +
         "|" +
         d.id_unidad +
         "|" +
-        d.id_empresa_transporte +
+        d.fecha_estimada +
         "|" +
-        (d.segunda_placa || "");
-      if (!agrupacionesMap[key]) {
-        agrupacionesMap[key] = {
+        d.id_conductor;
+
+      var s_placa = (d.segunda_placa || "").trim().toUpperCase();
+      if (s_placa === "-") s_placa = "";
+
+      if (!multiAgrupaciones[baseKey]) multiAgrupaciones[baseKey] = [];
+
+      // Buscar grupo compatible: misma placa, o una de las dos vacía
+      var grupo = multiAgrupaciones[baseKey].find(function (g) {
+        return (
+          g._placa_busqueda === "" ||
+          s_placa === "" ||
+          g._placa_busqueda === s_placa
+        );
+      });
+
+      if (!grupo) {
+        grupo = {
           tipo: "PENDIENTE",
+          _placa_busqueda: s_placa,
           fecha_egreso: d.fecha_estimada,
           placa: d.placa1,
           transportista_rs: d.transportista_rs || "-",
@@ -175,30 +191,43 @@ document.addEventListener("DOMContentLoaded", function () {
           distribuciones: [],
           correlativos_despacho: [],
         };
+        multiAgrupaciones[baseKey].push(grupo);
+      } else {
+        // Actualizar placa de búsqueda si el grupo estaba vacío y este tiene dato
+        if (grupo._placa_busqueda === "" && s_placa !== "") {
+          grupo._placa_busqueda = s_placa;
+        }
       }
-      agrupacionesMap[key].distribuciones.push(d);
-      agrupacionesMap[key].total_lotes += parseInt(d.total_lotes) || 0;
-      agrupacionesMap[key].peso_total_neto +=
-        parseFloat(d.peso_total_neto) || 0;
+
+      grupo.distribuciones.push(d);
+      grupo.total_lotes += parseInt(d.total_lotes) || 0;
+      grupo.peso_total_neto += parseFloat(d.peso_total_neto) || 0;
       if (
         d.correlativo_despacho &&
-        agrupacionesMap[key].correlativos_despacho.indexOf(
-          d.correlativo_despacho,
-        ) === -1
+        grupo.correlativos_despacho.indexOf(d.correlativo_despacho) === -1
       ) {
-        agrupacionesMap[key].correlativos_despacho.push(d.correlativo_despacho);
+        grupo.correlativos_despacho.push(d.correlativo_despacho);
       }
     }
 
+    // Aplanar para el listado final y mantener compatibilidad con agrupacionesMap
+    agrupacionesMap = {};
     var listado = [];
+    var totalPendientes = 0;
+    var gIdx = 0;
 
-    // Agregar pendientes al listado final si aplica filtro
-    if (estadoFiltro === "TODOS" || estadoFiltro === "POR_ASIGNAR") {
-      Object.keys(agrupacionesMap).forEach(function (k) {
-        listado.push(agrupacionesMap[k]);
-        totalPendientes++;
+    Object.keys(multiAgrupaciones).forEach(function (bk) {
+      multiAgrupaciones[bk].forEach(function (g) {
+        var flatKey = bk + "|G" + gIdx++;
+        agrupacionesMap[flatKey] = g;
+        if (estadoFiltro === "TODOS" || estadoFiltro === "POR_ASIGNAR") {
+          listado.push(g);
+          totalPendientes++;
+        }
       });
-    } else {
+    });
+
+    if (estadoFiltro !== "TODOS" && estadoFiltro !== "POR_ASIGNAR") {
       totalPendientes = Object.keys(agrupacionesMap).length;
     }
 
@@ -853,23 +882,27 @@ document.addEventListener("DOMContentLoaded", function () {
       if (resp.estado === 1 && resp.data.length > 0) {
         f_RenderizarLotesTabla(resp.data, "#tbl_modal_lotes");
 
-        // Auto-completar datos de tolva si vienen en el primer registro
-        var first = resp.data[0];
-        if (first.id_empresa_transporte_tolva) {
-          $("#guia_empresa_tolva")
-            .val(first.id_empresa_transporte_tolva)
-            .trigger("change");
-        }
-        // Solo rellenar placa de tolva si el grupo tiene segunda placa real (no "-" ni vacío)
-        var segundaPlacaGrupo = item.distribuciones[0].segunda_placa || "";
-        var tieneSegundaPlaca =
-          segundaPlacaGrupo !== "" && segundaPlacaGrupo !== "-";
-        if (tieneSegundaPlaca) {
-          if (first.serie_segunda_placa) {
-            $("#guia_serie_tolva").val(first.serie_segunda_placa);
+        // Auto-completar datos de tolva buscando el primer registro que tenga placa real
+        var regConTolva = resp.data.find(function (r) {
+          var p2 = (r.serie_segunda_placa || "").trim();
+          return p2 !== "" && p2 !== "-";
+        });
+
+        if (regConTolva) {
+          if (regConTolva.id_empresa_transporte_tolva) {
+            $("#guia_empresa_tolva")
+              .val(regConTolva.id_empresa_transporte_tolva)
+              .trigger("change");
           }
-          if (first.numero_segunda_placa) {
-            $("#guia_numero_tolva").val(first.numero_segunda_placa);
+          if (regConTolva.serie_segunda_placa) {
+            $("#guia_serie_tolva").val(regConTolva.serie_segunda_placa);
+          }
+          if (regConTolva.numero_segunda_placa) {
+            $("#guia_numero_tolva").val(regConTolva.numero_segunda_placa);
+          }
+          // Si el backend devuelve MTC de la tolva, podrías ponerlo aquí también
+          if (regConTolva.numero_mtc_tolva) {
+            $("#guia_mtc_tolva").val(regConTolva.numero_mtc_tolva);
           }
         } else {
           // Sin segunda placa, limpiar por si acaso

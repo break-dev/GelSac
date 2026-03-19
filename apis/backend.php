@@ -15,7 +15,7 @@ error_reporting(0);
 ini_set('display_errors', 0);
 ini_set('display_startuo_errors', 0);
 
-// Seteando librería para importar Excel
+// Seteando librería para importar Excels
 require "vendor/autoload.php";
 
 // Para obtener el valor de las columnas de Excel
@@ -72993,7 +72993,7 @@ switch ($_POST["accion"]) {
 															V.is_aprobado_fechahoraregistro,
 															V.is_aprobado_usuarioregistro,
 
-															-- Agrupando múltiples detalles
+															
 															GROUP_CONCAT(DISTINCT V.correlativo ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_CODVALORIZACION,
 															GROUP_CONCAT(DISTINCT VD.total ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_VALORIZACION_TOTAL,
 															GROUP_CONCAT(DISTINCT VD.cod_lote ORDER BY VD.cod_gel SEPARATOR ',') AS cod_lote,
@@ -73104,6 +73104,8 @@ switch ($_POST["accion"]) {
 		$q_validacion .= " GROUP BY CP.Id";
 		$q_validacion .= " ORDER BY CP.fecha_emision_comprobante";
 
+
+		saveLog(["query" => $q_validacion]);
 		if ($res_validacion = mysqli_query($enlace, $q_validacion)) {
 			if (mysqli_num_rows($res_validacion) > 0) {
 				$estado = 1;
@@ -77966,7 +77968,7 @@ switch ($_POST["accion"]) {
 
 		if (mysqli_query($enlace, $q_cabecera)) {
 			$id_distribucion = mysqli_insert_id($enlace);
-			f_LogDistribucion($enlace, $id_distribucion, 'Registrado', 'Distribución creada y lista para envío.');
+			f_LogDistribucion($enlace, $id_distribucion, 'Registrado', 'Distribución creada.');
 			foreach ($detalle as $item) {
 				$id_dd = intval($item['id_despacho_detalle']);
 				$peso = floatval($item['peso_tomado']);
@@ -78036,7 +78038,7 @@ switch ($_POST["accion"]) {
 		";
 
 		if (mysqli_query($enlace, $q_upd)) {
-			f_LogDistribucion($enlace, $id_distribucion, "Distribucion cerrada", "La distribucion ha sido cerrada, dejándola apta para la recepción.");
+			f_LogDistribucion($enlace, $id_distribucion, "Distribucion cerrada", "Todo listo para recepcionar a la unidad.");
 			echo json_encode(["estado" => 1, "mensaje" => "Distribución cerrada con éxito"]);
 		} else {
 			echo json_encode(["estado" => 0, "mensaje" => "Error al cerrar"]);
@@ -79435,7 +79437,9 @@ switch ($_POST["accion"]) {
 			g.guia_remitente_numero,
 			DATE_FORMAT(g.fecha_inicio_traslado, '%Y-%m-%d') as fecha_inicio_traslado,
 			t.cplaca as placas,
+			cli.id as id_empresa_transporte,
 			cli.razon_social as empresa_transporte,
+			con.Id as id_conductor,
 			con.nombres as conductor_nombre,
 			g.estado as estado_guia,
 			(SELECT COUNT(dd.id) FROM distribucion d INNER JOIN distribucion_detalle dd ON dd.id_distribucion = d.id WHERE d.id_guia_segundo_tramo = g.id) as total_lotes,

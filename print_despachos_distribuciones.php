@@ -1,9 +1,6 @@
 <?php
 session_start();
 
-// Suprimir warnings de deprecación de PHP 8.2+ en Dompdf
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
-ini_set('display_errors', 1);
 
 include('cnx/cnx.php');
 include('global/variables.php');
@@ -16,6 +13,15 @@ if (!isset($_SESSION["Id"])) {
     echo "Acceso denegado.";
     exit;
 }
+
+// Suprimir warnings de deprecación de PHP 8.2+ en Dompdf
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+
+error_reporting(0);
+ini_set('display_errors', 0);
+ini_set('display_startuo_errors', 0);
+
 
 // Parametros de Filtro
 $f_planta = $_GET['planta'] ?? '';
@@ -143,7 +149,7 @@ if ($res_despachos) {
             trn.razon_social AS nombre_transportista,
             tpv.descripcion AS tipo_vehiculo,
             uni.cplaca AS placa,
-            CONCAT(d.serie_segunda_placa, '-', d.numero_segunda_placa) AS segunda_placa,
+            CONCAT(dist.serie_segunda_placa, '-', dist.numero_segunda_placa) AS segunda_placa,
             uni.nCapacidad AS capacidad,
             (
                 SELECT SUM(dstd.peso_tomado)
