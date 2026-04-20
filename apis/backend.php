@@ -79783,6 +79783,169 @@ switch ($_POST["accion"]) {
 	default:
 		# code...
 		break;
+
+	// ─────────────────────────────────────────────────────────────
+// GET: Lista de plantas activas
+// ─────────────────────────────────────────────────────────────
+case "get_plantas":
+    $q = "
+        SELECT
+            pln.id          AS id_planta,
+            pln.ruc,
+            pln.descripcion,
+            pln.direccionguia_segundotramo
+        FROM tbconfig_plantas pln
+        WHERE pln.estado = 'A'
+        ORDER BY pln.descripcion ASC
+    ";
+ 
+    $result  = mysqli_query($enlace, $q);
+    $plantas = [];
+ 
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $plantas[] = $row;
+        }
+    }
+ 
+    echo json_encode([
+        "estado" => 1,
+        "data"   => ["plantas" => $plantas]
+    ]);
+    break;
+ 
+// ─────────────────────────────────────────────────────────────
+// GET: Lista de condiciones comerciales de una planta
+// ─────────────────────────────────────────────────────────────
+case "get_ListaCondicionesComercialesVenta":
+    $res      = [];
+    $estado   = 0;
+ 
+    $id_planta = mysqli_real_escape_string($enlace, $_POST["id_planta"]);
+ 
+    $q = "
+        SELECT
+            cc.id,
+            cc.id_planta,
+            cc.ley_auoz_inicio,
+            cc.ley_auoz_fin,
+            cc.maquila,
+            cc.recuperacion,
+            cc.consumo,
+            cc.riesgo_comercial,
+            cc.estado
+        FROM condiciones_comerciales_planta cc
+        INNER JOIN tbconfig_plantas pln ON pln.id = cc.id_planta
+        WHERE cc.estado  != 'X'
+          AND cc.id_planta = '$id_planta'
+    ";
+ 
+    $result = mysqli_query($enlace, $q);
+ 
+    if ($result && mysqli_num_rows($result) > 0) {
+        $estado = 1;
+        while ($row = mysqli_fetch_assoc($result)) {
+            $res[] = $row;
+        }
+    }
+ 
+    echo json_encode(["estado" => $estado, "registros" => $res]);
+    break;
+ 
+// ─────────────────────────────────────────────────────────────
+// GRABAR: Nueva o editar condición comercial
+// ─────────────────────────────────────────────────────────────
+case "grabar_CondicionComercialVenta":
+    $estado = 0;
+ 
+    $modo_grabar           = $_POST["modo_grabar"];
+    $id_condicion_comercial = (int) $_POST["id_condicion_comercial"];
+    $id_planta             = (int) $_POST["id_planta"];
+    $ley_auoz_inicio       = (float) $_POST["ley_auoz_inicio"];
+    $ley_auoz_fin          = (float) $_POST["ley_auoz_fin"];
+    $maquila               = $_POST["maquila"]        === "" ? 0 : (float) $_POST["maquila"];
+    $recuperacion          = $_POST["recuperacion"]   === "" ? 0 : (float) $_POST["recuperacion"];
+    $consumo               = $_POST["consumo"]        === "" ? 0 : (float) $_POST["consumo"];
+    $riesgo_comercial      = $_POST["riesgo_comercial"] === "" ? 0 : (float) $_POST["riesgo_comercial"];
+    $usuario_registro      = $_SESSION["usu_usuario"];
+ 
+    if ($modo_grabar === "N") {
+        // INSERT
+        $q_save  = "INSERT INTO condiciones_comerciales_planta ";
+        $q_save .= "  (id_planta, ley_auoz_inicio, ley_auoz_fin, maquila, recuperacion, consumo, riesgo_comercial, estado) ";
+        $q_save .= "VALUES (";
+        $q_save .= $id_planta        . ", ";
+        $q_save .= $ley_auoz_inicio  . ", ";
+        $q_save .= $ley_auoz_fin     . ", ";
+        $q_save .= $maquila          . ", ";
+        $q_save .= $recuperacion     . ", ";
+        $q_save .= $consumo          . ", ";
+        $q_save .= $riesgo_comercial . ", ";
+        $q_save .= "'A')";
+    } else {
+        // UPDATE
+        $q_save  = "UPDATE condiciones_comerciales_planta";
+        $q_save .= "   SET ley_auoz_inicio  = " . $ley_auoz_inicio;
+        $q_save .= "      ,ley_auoz_fin     = " . $ley_auoz_fin;
+        $q_save .= "      ,maquila          = " . $maquila;
+        $q_save .= "      ,recuperacion     = " . $recuperacion;
+        $q_save .= "      ,consumo          = " . $consumo;
+        $q_save .= "      ,riesgo_comercial = " . $riesgo_comercial;
+        $q_save .= " WHERE id = " . $id_condicion_comercial;
+    }
+ 
+    if (mysqli_query($enlace, $q_save)) {
+        $estado = 1;
+        if ($modo_grabar === "N") {
+            $id_condicion_comercial = mysqli_insert_id($enlace);
+        }
+    }
+ 
+    echo json_encode([
+        "estado"                 => $estado,
+        "id_condicion_comercial" => $id_condicion_comercial
+    ]);
+    break;
+ 
+// ─────────────────────────────────────────────────────────────
+// UPDATE: Cambiar estado (A / I)
+// ─────────────────────────────────────────────────────────────
+case "update_EstadoCondicionComercialVenta":
+    $id_registro = mysqli_real_escape_string($enlace, $_POST["id_registro"]);
+    $nuevo_estado = mysqli_real_escape_string($enlace, $_POST["estado"]);
+    $estado      = 0;
+ 
+    // Solo permite A o I; no permite X por esta vía
+    if (in_array($nuevo_estado, ['A', 'I'])) {
+        $q_save = "UPDATE condiciones_comerciales_planta
+                      SET estado = '$nuevo_estado'
+                    WHERE id = $id_registro";
+ 
+        if (mysqli_query($enlace, $q_save)) {
+            $estado = 1;
+        }
+    }
+ 
+    echo json_encode(["estado" => $estado]);
+    break;
+ 
+// ─────────────────────────────────────────────────────────────
+// DELETE: Eliminación lógica (estado = 'X')
+// ─────────────────────────────────────────────────────────────
+case "eliminar_CondicionComercialVenta":
+    $estado      = 0;
+    $id_registro = mysqli_real_escape_string($enlace, $_POST["id_registro"]);
+ 
+    $q_save = "UPDATE condiciones_comerciales_planta
+                  SET estado = 'X'
+                WHERE id = $id_registro";
+ 
+    if (mysqli_query($enlace, $q_save)) {
+        $estado = 1;
+    }
+ 
+    echo json_encode(["estado" => $estado]);
+    break;
 }
 
 
