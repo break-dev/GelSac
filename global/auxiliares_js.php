@@ -633,6 +633,7 @@ include('modal_global.php');
 
 	function GetVoices() {
 		voices = tts.getVoices();
+		if (!voiceList) return;
 		voiceList.innerHTML = '';
 		voices.forEach((voice) => {
 			var listItem = document.createElement('option');
