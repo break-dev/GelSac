@@ -1293,7 +1293,7 @@ if (!isset($_SESSION["Id"])) {
       $("#tbl_guialistalotes").html('');
       $("#guia_capacidadunidad").val(((_is_edit == 1) ? ((parseFloat(_unidad_capacidad) || 0) + (parseFloat(_unidad_capacidad2) || 0)) : ''));
 
-      f_AgregarLotesDesdeGuiaRemitente(_guiaremitente_serie, _guiaremitente_numero, _is_edit);
+      f_AgregarLotesDesdeGuiaRemitente(_id_proveedorminero,_guiaremitente_serie, _guiaremitente_numero, _is_edit);
 
       f_OpenModal('modal_adminguias');
 
@@ -1706,12 +1706,13 @@ if (!isset($_SESSION["Id"])) {
       }, "json");
     }
 
-    function f_AgregarLotesDesdeGuiaRemitente(serie, numero, _is_edit = null) {
+    function f_AgregarLotesDesdeGuiaRemitente(id_proveedor,serie, numero, _is_edit = null) {
       const tbody = $('#tbl_guialistalotes');
       let index = $('#tbl_guialistalotes tr.fila-lote').length;
 
       $.post('apis/backend.php', {
         accion: 'get_lotes_por_guiaremitente',
+        id_proveedor:id_proveedor,
         serie: serie,
         numero: numero
       }, function (data) {
@@ -2211,7 +2212,8 @@ if (!isset($_SESSION["Id"])) {
         guia_conductor: guia_conductor,
         guia_motivotraslado: guia_motivotraslado,
         guia_capacidadunidad: guia_capacidadunidad,
-        detalles_lotes: detalles_lotes_json
+        detalles_lotes: detalles_lotes_json,
+        isEdit:1
       },
         function (data) {
           if (data.estado == 1) {

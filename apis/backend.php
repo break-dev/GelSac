@@ -3328,323 +3328,256 @@ function saveLog($datos)
 	}
 }
 
-// Función principal para generar el código GEL a partir de la tabla despachos_primertramo_validaciondatos
-// IMPORTANTE: $arr_lote_ids es el array de IDs de los lotes SELECCIONADOS por el usuario
 function f_Guia_GenerarCodigoGel(
-	$enlace,
-	$arr_lote_ids,
-	$guia_remitente,
-	$guia_fechahoraemision,
-	$planta_fechallegada,
-	$g_fecha,
-	$g_anho
-) {
-	$estado = 0;
-	$anho_actual = date("Y");
+    $enlace,
+    array  $arr_lote_ids,
+    string $guia_remitente,
+    string $guia_fechahoraemision,
+    string $planta_fechallegada,
+    string $g_fecha,
+    string $g_anho
+): int {
+    if (empty($arr_lote_ids)) return 0;
 
-	// 1. Buscar si hay lotes cerrados con fecha posterior a la llegada de planta
-	$q_validacion = "SELECT COUNT(*) AS cantidad
-											FROM despachos_primertramo_validaciondatos V
-											INNER JOIN correlativo_codigosgel C ON C.codigo_gel = V.codigo_gel
-											WHERE DATE(V.lote_pesoinicial_fechahoraregistro) >= '$planta_fechallegada'
-												AND V.is_cerradolote = 1
-												AND V.codigo_gel IS NOT NULL
-												AND C.estado = 'A'
-												AND C.cod_anho = '$anho_actual'";
+    $lote_ids_str          = implode(", ", array_map("intval", $arr_lote_ids));
+    $guia_remitente_esc    = mysqli_real_escape_string($enlace, $guia_remitente);
+    $guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
 
-	$hay_lotes_posteriores = false;
+    // ----------------------------------------------------------
+    // Lotes SIN código GEL dentro de los seleccionados
+    // ----------------------------------------------------------
+    $lotes_sin_gel = [];
+    if ($rs = mysqli_query($enlace, "
+        SELECT V.Id AS id_validaciondatos,
+               V.lote_pesoinicial_fechahoraregistro AS fecha_llegada,
+               V.guias_posicion
+        FROM   despachos_primertramo_validaciondatos V
+        WHERE  V.Id IN ($lote_ids_str)
+          AND  V.codigo_gel IS NULL
+        ORDER  BY V.guias_posicion ASC, V.Id ASC")) {
+        while ($row = mysqli_fetch_assoc($rs)) $lotes_sin_gel[] = $row;
+        mysqli_free_result($rs);
+    }
 
-	if ($res_validacion = mysqli_query($enlace, $q_validacion)) {
-		if ($row = mysqli_fetch_assoc($res_validacion)) {
-			$hay_lotes_posteriores = intval($row["cantidad"]) > 0;
-		}
-	}
+    if (empty($lotes_sin_gel)) return 1;
 
-	// 2. Según resultado, llamar PADRE o HIJO
-	if (!$hay_lotes_posteriores) {
-		$estado = f_GuiaInsertarCodigoGel_Padre(
-			$enlace,
-			$arr_lote_ids,
-			$planta_fechallegada,
-			$g_fecha,
-			$g_anho
-		);
-	} else {
-		$estado = f_GuiaInsertarCodigoGel_Hijo(
-			$enlace,
-			$guia_remitente,
-			$guia_fechahoraemision,
-			$planta_fechallegada,
-			$g_fecha,
-			$g_anho
-		);
-	}
+    // ----------------------------------------------------------
+    // Último código BJ de ESTA GUÍA
+    // Ordenamos por correlativo DESC y luego por codigo_gel DESC
+    // pero separamos: primero el mayor correlativo, luego dentro
+    // de ese correlativo el que tenga letra más alta (o ninguna)
+    // ----------------------------------------------------------
+    $ultimo_codigo_guia      = null;
+    $ultimo_correlativo_guia = 0;
 
-	return $estado;
+    // Paso 1: ¿cuál es el mayor correlativo de esta guía?
+    if ($rs = mysqli_query($enlace, "
+        SELECT MAX(C.correlativo) AS max_corr
+        FROM   despachos_primertramo_validaciondatos V
+        INNER  JOIN correlativo_codigosgel C
+                 ON C.id_validaciondatos = V.Id
+                AND C.estado   = 'A'
+                AND C.cod_anho = '$g_anho'
+        WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
+          AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
+          AND  V.codigo_gel IS NOT NULL")) {
+        if ($row = mysqli_fetch_assoc($rs)) {
+            $ultimo_correlativo_guia = intval($row["max_corr"]);
+        }
+        mysqli_free_result($rs);
+    }
+
+    if ($ultimo_correlativo_guia === 0) {
+        // Guía nueva → correlativos nuevos sin letra
+        return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
+    }
+
+    // Paso 2: dentro de ese correlativo, ¿hay alguno con letra?
+    // Si hay letras, traer la última letra asignada (ORDER BY codigo_gel DESC)
+    // Si no hay letras, traer el código sin letra
+    $ultimo_codigo_guia      = null;
+    $tiene_letra             = false;
+    $ultima_letra_idx        = 0;
+
+    if ($rs = mysqli_query($enlace, "
+        SELECT C.codigo_gel
+        FROM   despachos_primertramo_validaciondatos V
+        INNER  JOIN correlativo_codigosgel C
+                 ON C.id_validaciondatos = V.Id
+                AND C.estado   = 'A'
+                AND C.cod_anho = '$g_anho'
+        WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
+          AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
+          AND  V.codigo_gel IS NOT NULL
+          AND  C.correlativo = $ultimo_correlativo_guia
+        ORDER  BY V.codigo_gel DESC")) {
+
+        // Recorremos todos y nos quedamos con el de mayor letra
+        $max_letra_idx = 0;
+        $codigo_sin_letra = null;
+
+        while ($row = mysqli_fetch_assoc($rs)) {
+            $cod = $row["codigo_gel"];
+            if (preg_match('/([A-Z]+)$/', $cod, $m)) {
+                $idx = _letraAIndice($m[1]);
+                if ($idx > $max_letra_idx) {
+                    $max_letra_idx   = $idx;
+                    $ultimo_codigo_guia = $cod;
+                    $tiene_letra     = true;
+                    $ultima_letra_idx = $idx;
+                }
+            } else {
+                $codigo_sin_letra = $cod;
+            }
+        }
+
+        if (!$tiene_letra) {
+            $ultimo_codigo_guia = $codigo_sin_letra;
+        }
+
+        mysqli_free_result($rs);
+    }
+
+    // ----------------------------------------------------------
+    // CASO B1: Último código TIENE letra → continuar secuencia
+    //          BJ-26-0009A → B   |   BJ-26-0009B → C
+    // ----------------------------------------------------------
+    if ($tiene_letra) {
+        return _asignarCodigosConLetra(
+            $enlace, $lotes_sin_gel,
+            $ultimo_correlativo_guia,
+            $ultima_letra_idx + 1,   // siguiente letra
+            $g_fecha, $g_anho
+        );
+    }
+
+    // ----------------------------------------------------------
+    // CASO B2: Último código SIN letra
+    //          ¿es el último correlativo global del año?
+    // ----------------------------------------------------------
+    $max_corr_global = 0;
+    if ($rs = mysqli_query($enlace, "
+        SELECT MAX(correlativo) AS max_corr
+        FROM   correlativo_codigosgel
+        WHERE  cod_anho = '$g_anho' AND estado = 'A'")) {
+        if ($row = mysqli_fetch_assoc($rs)) $max_corr_global = intval($row["max_corr"]);
+        mysqli_free_result($rs);
+    }
+
+    if ($ultimo_correlativo_guia >= $max_corr_global) {
+        // B2a: ES la última guía → nuevos correlativos sin letra
+        //      BJ-26-0009 → BJ-26-0010, BJ-26-0011 ...
+        return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
+    } else {
+        // B2b: NO es la última → letras desde A
+        //      BJ-26-0008 → BJ-26-0008A, BJ-26-0008B ...
+        return _asignarCodigosConLetra(
+            $enlace, $lotes_sin_gel,
+            $ultimo_correlativo_guia, 1,
+            $g_fecha, $g_anho
+        );
+    }
 }
 
-// Ahora recibe directamente los IDs de los lotes seleccionados
-function f_GuiaInsertarCodigoGel_Padre(
-	$enlace,
-	$arr_lote_ids,
-	$planta_fechallegada,
-	$g_fecha,
-	$g_anho
-) {
-	$estado = 0;
-	$usuario_registro = $_SESSION["usu_usuario"];
+function _asignarCodigosNuevos(
+    $enlace,
+    array  $lotes,
+    string $g_fecha,
+    string $g_anho
+): int {
+    $usuario = $_SESSION["usu_usuario"];
 
-	// Validar que hay lotes para procesar
-	if (empty($arr_lote_ids)) {
-		return 0;
-	}
+    $siguiente = 1;
+    if ($rs = mysqli_query($enlace, "
+        SELECT IFNULL(MAX(correlativo), 0) AS max_corr
+        FROM   correlativo_codigosgel
+        WHERE  cod_anho = '$g_anho' AND estado = 'A'")) {
+        if ($row = mysqli_fetch_assoc($rs)) $siguiente = intval($row["max_corr"]) + 1;
+        mysqli_free_result($rs);
+    }
 
-	// Convertir a string para usar en IN clause
-	$lote_ids_str = implode(", ", array_map("intval", $arr_lote_ids));
+    foreach ($lotes as $lote) {
+        $id     = intval($lote["id_validaciondatos"]);
+        $fec    = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
+        $codigo = sprintf("BJ-%02d-%04d", date("y"), $siguiente);
 
-	// Obtener el último correlativo GLOBAL del año que YA tiene un lote asociado
-	// Esto asegura que empecemos desde donde quedó el último código asignado correctamente
-	$q_max = "SELECT IFNULL(MAX(C.correlativo), 0) AS correlativo
-								FROM correlativo_codigosgel C
-								INNER JOIN despachos_primertramo_validaciondatos V ON C.id_validaciondatos = V.Id
-								WHERE C.cod_anho = '$g_anho'
-									AND C.estado = 'A'
-									AND V.codigo_gel IS NOT NULL";
+        mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
+                                WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
 
-	$ultimo_correlativo_gel = 1;
+        mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos
+                                SET    codigo_gel                   = '$codigo',
+                                       codigo_gel_fechahoraregistro = '$g_fecha',
+                                       codigo_gel_usuarioregistro   = '$usuario'
+                                WHERE  Id = $id");
 
-	if ($res_max = mysqli_query($enlace, $q_max)) {
-		if ($row = mysqli_fetch_assoc($res_max)) {
-			$ultimo_correlativo_gel = intval($row["correlativo"]) + 1;
-		}
-	}
+        mysqli_query($enlace, "INSERT INTO correlativo_codigosgel
+                                   (cod_anho, fecha_llegadaplanta, correlativo, codigo_gel,
+                                    id_validaciondatos, fechahora_registro, usuario_registro)
+                               VALUES
+                                   ($g_anho, '$fec', $siguiente, '$codigo',
+                                    $id, '$g_fecha', '$usuario')");
 
-	// Obtener SOLO los lotes que fueron seleccionados por el usuario
-	// Ordenados por la posición de la guía para mantener el orden de selección
-	$q_lotes = "SELECT V.Id AS id_validaciondatos,
-												V.lote_cod_lote,
-												V.lote_pesoinicial_fechahoraregistro,
-												V.guias_posicion
-									FROM despachos_primertramo_validaciondatos V
-									WHERE V.Id IN ($lote_ids_str)
-									ORDER BY V.guias_posicion ASC, V.Id ASC";
+        $siguiente++;
+    }
 
-	if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
-		if (mysqli_num_rows($res_lotes) > 0) {
-			while ($row = mysqli_fetch_assoc($res_lotes)) {
-				$id_validaciondatos = intval($row["id_validaciondatos"]);
-				$fecha_llegada = $row["lote_pesoinicial_fechahoraregistro"];
-
-				$codigo_gel_asignado = sprintf(
-					"BJ-%02d-%04d",
-					date("y"),
-					$ultimo_correlativo_gel
-				);
-
-				// Eliminar código anterior si existe
-				$q_delete = "DELETE FROM correlativo_codigosgel 
-												WHERE id_validaciondatos = $id_validaciondatos AND cod_anho = '$g_anho'";
-				mysqli_query($enlace, $q_delete);
-
-				// Actualizar el lote con el nuevo código GEL
-				$q_update = "UPDATE despachos_primertramo_validaciondatos VD
-												SET VD.codigo_gel = '$codigo_gel_asignado',
-														VD.codigo_gel_fechahoraregistro = '$g_fecha',
-														VD.codigo_gel_usuarioregistro = '$usuario_registro'
-												WHERE VD.Id = $id_validaciondatos";
-				mysqli_query($enlace, $q_update);
-
-				// Insertar nuevo correlativo en la tabla de control
-				$q_insert = "INSERT INTO correlativo_codigosgel (
-														cod_anho, fecha_llegadaplanta, correlativo, codigo_gel,
-														id_validaciondatos, fechahora_registro, usuario_registro
-												) VALUES (
-														$g_anho, '$fecha_llegada', $ultimo_correlativo_gel,
-														'$codigo_gel_asignado', $id_validaciondatos,
-														'$g_fecha', '$usuario_registro'
-												)";
-				mysqli_query($enlace, $q_insert);
-
-				$ultimo_correlativo_gel++;
-			}
-
-			$estado = 1;
-		}
-	}
-
-	return $estado;
+    return 1;
 }
 
-function f_GuiaInsertarCodigoGel_Hijo(
-	$enlace,
-	$guia_remitente,
-	$guia_fechahoraemision,
-	$planta_fechallegada,
-	$g_fecha,
-	$g_anho
-) {
-	$estado = 0;
-	$usuario_registro = $_SESSION["usu_usuario"];
+function _asignarCodigosConLetra(
+    $enlace,
+    array  $lotes,
+    int    $correlativo_base,
+    int    $idx_letra_inicio,
+    string $g_fecha,
+    string $g_anho
+): int {
+    $usuario = $_SESSION["usu_usuario"];
+    $idx     = $idx_letra_inicio;
 
-	// --- 1) Buscar base en ESTA GUÍA (último lote con GEL asignado en la guía) ---
-	$q_ultimo_en_guia = "
-				SELECT C.correlativo, C.codigo_gel
-				FROM despachos_primertramo_validaciondatos V
-				INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado='A'
-				WHERE CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente'
-					AND V.guias_fechahoraemision = '$guia_fechahoraemision'
-					AND C.cod_anho = '$g_anho'
-				ORDER BY V.guias_posicion DESC
-				LIMIT 1";
+    foreach ($lotes as $lote) {
+        $id     = intval($lote["id_validaciondatos"]);
+        $fec    = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
+        $sufijo = _indiceALetra($idx);
+        $codigo = sprintf("BJ-%02d-%04d%s", date("y"), $correlativo_base, $sufijo);
 
-	$correlativo_base = 0;
-	if ($rs = mysqli_query($enlace, $q_ultimo_en_guia)) {
-		if ($row = mysqli_fetch_assoc($rs)) {
-			$correlativo_base = intval($row["correlativo"]); // BASE por guía
-		}
-		mysqli_free_result($rs);
-	}
+        mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
+                                WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
 
-	// Helpers letras
-	$letraAIndice = function ($letra) {
-		$v = 0;
-		for ($i = 0; $i < strlen($letra); $i++) {
-			$v = $v * 26 + (ord($letra[$i]) - 64);
-		}
-		return $v;
-	};
-	$indiceALetra = function ($n) {
-		$s = "";
-		while ($n > 0) {
-			$m = ($n - 1) % 26;
-			$s = chr(65 + $m) . $s;
-			$n = intval(($n - $m - 1) / 26);
-		}
-		return $s;
-	};
+        mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos
+                                SET    codigo_gel                   = '$codigo',
+                                       codigo_gel_fechahoraregistro = '$g_fecha',
+                                       codigo_gel_usuarioregistro   = '$usuario'
+                                WHERE  Id = $id");
 
-	$ultima_letra = "";
+        mysqli_query($enlace, "INSERT INTO correlativo_codigosgel
+                                   (cod_anho, fecha_llegadaplanta, correlativo, codigo_gel,
+                                    id_validaciondatos, fechahora_registro, usuario_registro)
+                               VALUES
+                                   ($g_anho, '$fec', $correlativo_base, '$codigo',
+                                    $id, '$g_fecha', '$usuario')");
 
-	if ($correlativo_base > 0) {
-		// --- 2) Última letra usada en ESTA GUÍA para ese correlativo ---
-		$q_letra = "
-					SELECT C.codigo_gel
-					FROM despachos_primertramo_validaciondatos V
-					INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado='A'
-					WHERE CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente'
-						AND V.guias_fechahoraemision = '$guia_fechahoraemision'
-						AND C.cod_anho = '$g_anho'
-						AND C.correlativo = $correlativo_base
-						AND C.codigo_gel REGEXP '[A-Z]$'
-					ORDER BY C.codigo_gel DESC
-					LIMIT 1";
-		if ($rs = mysqli_query($enlace, $q_letra)) {
-			if ($r = mysqli_fetch_assoc($rs)) {
-				if (preg_match('/([A-Z]+)$/', $r["codigo_gel"], $m)) {
-					$ultima_letra = $m[1];
-				}
-			}
-			mysqli_free_result($rs);
-		}
-	} else {
-		// --- Fallback: SIN base en la guía → usar tu lógica anterior (último PADRE global ≤ fecha) ---
-		$q_last_global = "
-					SELECT correlativo, codigo_gel
-					FROM correlativo_codigosgel
-					WHERE cod_anho = '$g_anho'
-						AND DATE(fecha_llegadaplanta) <= '$planta_fechallegada'
-						AND estado = 'A'
-						AND codigo_gel NOT REGEXP '[A-Z]$'
-					ORDER BY correlativo DESC
-					LIMIT 1";
-		if ($rs = mysqli_query($enlace, $q_last_global)) {
-			if ($row = mysqli_fetch_assoc($rs)) {
-				$correlativo_base = intval($row["correlativo"]);
-			}
-			mysqli_free_result($rs);
-		}
-		if ($correlativo_base > 0) {
-			$q_hijos_global = "
-						SELECT codigo_gel FROM correlativo_codigosgel
-						WHERE correlativo = $correlativo_base
-							AND cod_anho = '$g_anho'
-							AND codigo_gel REGEXP '[A-Z]$'
-							AND DATE(fecha_llegadaplanta) <= '$planta_fechallegada'
-							AND estado = 'A'
-						ORDER BY codigo_gel DESC LIMIT 1";
-			if ($rs = mysqli_query($enlace, $q_hijos_global)) {
-				if ($r = mysqli_fetch_assoc($rs)) {
-					if (preg_match('/([A-Z]+)$/', $r["codigo_gel"], $m)) {
-						$ultima_letra = $m[1];
-					}
-				}
-				mysqli_free_result($rs);
-			}
-		} else {
-			// No hay base posible > no generamos hijos
-			return 0;
-		}
-	}
+        $idx++;
+    }
 
-	$idx_letra = $ultima_letra !== "" ? $letraAIndice($ultima_letra) + 1 : 1;
+    return 1;
+}
 
-	// --Lotes PENDIENTES de ESTA GUÍA (sin GEL) en orden de la guía 
-	$q_pend = "
-				SELECT V.Id AS id_validaciondatos, V.lote_pesoinicial_fechahoraregistro AS fecha_llegada
-				FROM despachos_primertramo_validaciondatos V
-				WHERE CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente'
-					AND V.guias_fechahoraemision = '$guia_fechahoraemision'
-					AND V.codigo_gel IS NULL
-				ORDER BY V.guias_posicion ASC";
+function _letraAIndice(string $letra): int {
+    $v = 0;
+    for ($i = 0; $i < strlen($letra); $i++) {
+        $v = $v * 26 + (ord($letra[$i]) - 64);
+    }
+    return $v;
+}
 
-	if ($rs = mysqli_query($enlace, $q_pend)) {
-		if (mysqli_num_rows($rs) > 0) {
-			while ($row = mysqli_fetch_assoc($rs)) {
-				$id_validaciondatos = intval($row["id_validaciondatos"]);
-				$fecha_llegada = $row["fecha_llegada"];
-
-				$sufijo = $indiceALetra($idx_letra);
-				// $codigo = sprintf(
-				//     "GEL-%02d-%04d%s",
-				//     date("y"),
-				//     $correlativo_base,
-				//     $sufijo
-				// );
-
-				$codigo = sprintf(
-					"BJ-%02d-%04d%s",
-					date("y"),
-					$correlativo_base,
-					$sufijo
-				);
-
-				mysqli_query(
-					$enlace,
-					"
-							UPDATE despachos_primertramo_validaciondatos
-							SET codigo_gel = '$codigo',
-									codigo_gel_fechahoraregistro = '$g_fecha',
-									codigo_gel_usuarioregistro   = '$usuario_registro'
-							WHERE Id = $id_validaciondatos"
-				);
-
-				mysqli_query(
-					$enlace,
-					"
-							INSERT INTO correlativo_codigosgel
-								(cod_anho, fecha_llegadaplanta, correlativo, codigo_gel, id_validaciondatos, fechahora_registro, usuario_registro)
-							VALUES
-								($g_anho, '$fecha_llegada', $correlativo_base, '$codigo', $id_validaciondatos, '$g_fecha', '$usuario_registro')"
-				);
-
-				$idx_letra++;
-			}
-			$estado = 1;
-		}
-		mysqli_free_result($rs);
-	}
-
-	return $estado;
+function _indiceALetra(int $n): string {
+    $s = "";
+    while ($n > 0) {
+        $m = ($n - 1) % 26;
+        $s = chr(65 + $m) . $s;
+        $n = intval(($n - $m - 1) / 26);
+    }
+    return $s;
 }
 
 // Función para obtener la fecha de llegada del lote
@@ -28828,7 +28761,7 @@ switch ($_POST["accion"]) {
 			I.dFechaIngreso,
 			I.dhoraingresoPlanta
 		";
-		saveLog(["query"=>$q_ingreso]);
+		saveLog(["query" => $q_ingreso]);
 		if ($res_ingreso = mysqli_query($enlace, $q_ingreso)) {
 			if (mysqli_num_rows($res_ingreso) > 0) {
 				$estado = 1;
@@ -71472,8 +71405,8 @@ switch ($_POST["accion"]) {
 		$q_save .= "'" . $g_time . "', ";
 		$q_save .= "'" . $id_sucursal . "', ";
 		$q_save .= "'" . $usuario_registro . "')";
-		
-		saveLog(["q"=> $q_save]);
+
+		saveLog(["q" => $q_save]);
 		if ($res_save = mysqli_query($enlace, $q_save)) {
 			$estado = 1;
 
@@ -71489,318 +71422,159 @@ switch ($_POST["accion"]) {
 		$estado = 0;
 		$planta_destino = intval($_POST["planta_destino"] ?? 0);  // 1: Huanchaco | 2: Laredo
 		// Recupera parámetros
-		$modograbar_guia = mysqli_real_escape_string(
-			$enlace,
-			$_POST["modograbar_guia"]
-		);
-		$guia_fechas = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_fechas"]
-		);
-		$guia_fechaemision = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_fechaemision"]
-		);
-		$guia_horaemision = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_horaemision"]
-		);
-		$guia_balanza_fecharegistro = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_balanza_fecharegistro"]
-		);
-		$guia_balanza_horaregistro = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_balanza_horaregistro"]
-		);
-		$guia_proveedor = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_proveedor"]
-		);
-		$guia_concesion = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_concesion"]
-		);
-		$guia_remitenteserie = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_remitenteserie"]
-		);
-		$guia_remitentenumero = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_remitentenumero"]
-		);
-		$guia_transportistaserie = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_transportistaserie"]
-		);
-		$guia_transportistanumero = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_transportistanumero"]
-		);
-		$guia_puntopartida = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_puntopartida"]
-		);
-		$guia_puntodestino = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_puntodestino"]
-		);
-		$guia_destinatario = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_destinatario"]
-		);
+		$modograbar_guia = mysqli_real_escape_string($enlace, $_POST["modograbar_guia"]);
+		$guia_fechas = mysqli_real_escape_string($enlace, $_POST["guia_fechas"]);
+		$guia_fechaemision = mysqli_real_escape_string($enlace, $_POST["guia_fechaemision"]);
+		$guia_horaemision = mysqli_real_escape_string($enlace, $_POST["guia_horaemision"]);
+		$guia_balanza_fecharegistro = mysqli_real_escape_string($enlace, $_POST["guia_balanza_fecharegistro"]);
+		$guia_balanza_horaregistro = mysqli_real_escape_string($enlace, $_POST["guia_balanza_horaregistro"]);
+		$guia_proveedor = mysqli_real_escape_string($enlace, $_POST["guia_proveedor"]);
+		$guia_concesion = mysqli_real_escape_string($enlace, $_POST["guia_concesion"]);
+		$guia_remitenteserie = mysqli_real_escape_string($enlace, $_POST["guia_remitenteserie"]);
+		$guia_remitentenumero = mysqli_real_escape_string($enlace, $_POST["guia_remitentenumero"]);
+		$guia_transportistaserie = mysqli_real_escape_string($enlace, $_POST["guia_transportistaserie"]);
+		$guia_transportistanumero = mysqli_real_escape_string($enlace, $_POST["guia_transportistanumero"]);
+		$guia_puntopartida = mysqli_real_escape_string($enlace, $_POST["guia_puntopartida"]);
+		$guia_puntodestino = mysqli_real_escape_string($enlace, $_POST["guia_puntodestino"]);
+		$guia_destinatario = mysqli_real_escape_string($enlace, $_POST["guia_destinatario"]);
 		$guia_placa = mysqli_real_escape_string($enlace, $_POST["guia_placa"]);
-		$guia_placa_numero = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_placa_numero"]
-		);
-		$guia_empresatransporte = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_empresatransporte"]
-		);
-		$guia_constanciamtc = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_constanciamtc"]
-		);
-		$guia_marcaunidad = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_marcaunidad"]
-		);
-
-		$guia_placa2 = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_placa2"]
-		);
-		$guia_placa_numero2 = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_placa_numero2"]
-		);
-		$guia_empresatransporte2 = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_empresatransporte2"]
-		);
-		$guia_constanciamtc2 = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_constanciamtc2"]
-		);
-		$guia_marcaunidad2 = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_marcaunidad2"]
-		);
-
-		$guia_conductor = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_conductor"]
-		);
-		$guia_motivotraslado = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_motivotraslado"]
-		);
-		$guia_capacidadunidad = mysqli_real_escape_string(
-			$enlace,
-			$_POST["guia_capacidadunidad"]
-		);
+		$guia_placa_numero = mysqli_real_escape_string($enlace, $_POST["guia_placa_numero"]);
+		$guia_empresatransporte = mysqli_real_escape_string($enlace, $_POST["guia_empresatransporte"]);
+		$guia_constanciamtc = mysqli_real_escape_string($enlace, $_POST["guia_constanciamtc"]);
+		$guia_marcaunidad = mysqli_real_escape_string($enlace, $_POST["guia_marcaunidad"]);
+		$guia_placa2 = mysqli_real_escape_string($enlace, $_POST["guia_placa2"]);
+		$guia_placa_numero2 = mysqli_real_escape_string($enlace, $_POST["guia_placa_numero2"]);
+		$guia_empresatransporte2 = mysqli_real_escape_string($enlace, $_POST["guia_empresatransporte2"]);
+		$guia_constanciamtc2 = mysqli_real_escape_string($enlace, $_POST["guia_constanciamtc2"]);
+		$guia_marcaunidad2 = mysqli_real_escape_string($enlace, $_POST["guia_marcaunidad2"]);
+		$guia_conductor = mysqli_real_escape_string($enlace, $_POST["guia_conductor"]);
+		$guia_motivotraslado = mysqli_real_escape_string($enlace, $_POST["guia_motivotraslado"]);
+		$guia_capacidadunidad = mysqli_real_escape_string($enlace, $_POST["guia_capacidadunidad"]);
 
 		$detalles_lotes = json_decode($_POST["detalles_lotes"], true);
 		$usuario_registro = $_SESSION["usu_usuario"];
 
 		// Setea array de Lotes
 		$id_distribucion_arr = array_column($detalles_lotes, "id_distribucion");
-		$id_distribucion_str = implode(
-			", ",
-			array_map("intval", $id_distribucion_arr)
-		);
-
+		$id_distribucion_str = implode(", ", array_map("intval", $id_distribucion_arr));
+		$is_edit = mysqli_real_escape_string($enlace, $_POST["is_edit"]);
 		// ============================================================
 		// Validación previa: Duplicidad exacta SOLO dentro del MISMO proveedor
-		// (Se permite que GR/GT existan en otros proveedores)
 		// ============================================================
-		$GR_SERIE = mb_strtoupper($guia_remitenteserie);
-		$GR_NUM = mb_strtoupper($guia_remitentenumero);
-		$GT_SERIE_IN = mb_strtoupper($guia_transportistaserie);
-		$GT_NUM_IN = mb_strtoupper($guia_transportistanumero);
+		if ($modograbar_guia == "N") {
+			$GR_SERIE = mb_strtoupper($guia_remitenteserie);
+			$GR_NUM = mb_strtoupper($guia_remitentenumero);
+			$GT_SERIE_IN = mb_strtoupper($guia_transportistaserie);
+			$GT_NUM_IN = mb_strtoupper($guia_transportistanumero);
 
-		// Condiciones NULL-safe para campos del transportista
-		$cond_gt_serie =
-			strlen($GT_SERIE_IN) > 0
-			? "guiatransportista_serie = '" . $GT_SERIE_IN . "'"
-			: "guiatransportista_serie IS NULL";
-		$cond_gt_numero =
-			strlen($GT_NUM_IN) > 0
-			? "guiatransportista_numero = '" . $GT_NUM_IN . "'"
-			: "guiatransportista_numero IS NULL";
+			$cond_gt_serie = strlen($GT_SERIE_IN) > 0
+				? "guiatransportista_serie = '" . $GT_SERIE_IN . "'"
+				: "guiatransportista_serie IS NULL";
+			$cond_gt_numero = strlen($GT_NUM_IN) > 0
+				? "guiatransportista_numero = '" . $GT_NUM_IN . "'"
+				: "guiatransportista_numero IS NULL";
 
-		// Excluir los Ids actuales si es edición
-		$cond_excluir =
-			$modograbar_guia == "E"
-			? " AND Id NOT IN (" . $id_distribucion_str . ")"
-			: "";
+			$cond_excluir = $modograbar_guia == "E"
+				? " AND Id NOT IN (" . $id_distribucion_str . ")"
+				: "";
 
-		// Duplicidad exacta: mismo GR, mismo GT, mismo PROVEEDOR
-		$q_validar =
-			"
-				SELECT COUNT(*) AS total
-				FROM despachos_primertramo_validaciondatos
-				WHERE guiaremitente_serie  = '" .
-			$GR_SERIE .
-			"'
-				AND guiaremitente_numero = '" .
-			$GR_NUM .
-			"'
-				AND " .
-			$cond_gt_serie .
-			"
-				AND " .
-			$cond_gt_numero .
-			"
-				AND lote_id_proveedorminero = " .
-			intval($guia_proveedor) .
-			"
-				" .
-			$cond_excluir .
-			"
-			";
-		$res_validar = mysqli_query($enlace, $q_validar);
-		$row_validar = mysqli_fetch_assoc($res_validar);
-		if (intval($row_validar["total"]) > 0) {
-			echo json_encode(["estado" => -1]); // Duplicado exacto en el mismo proveedor
-			break;
+			$q_validar = "
+        SELECT COUNT(*) AS total
+        FROM despachos_primertramo_validaciondatos
+        WHERE guiaremitente_serie  = '" . $GR_SERIE . "'
+          AND guiaremitente_numero = '" . $GR_NUM . "'
+          AND " . $cond_gt_serie . "
+          AND " . $cond_gt_numero . "
+          AND lote_id_proveedorminero = " . intval($guia_proveedor) . "
+          " . $cond_excluir . "
+    ";
+			$res_validar = mysqli_query($enlace, $q_validar);
+			$row_validar = mysqli_fetch_assoc($res_validar);
+			if (intval($row_validar["total"]) > 0) {
+				echo json_encode(["estado" => -1]);
+				break;
+			}
 		}
+
 
 		// ===========================================
 		// Grabando datos principales (UPDATE masivo)
 		// ===========================================
 		$q_save = "UPDATE despachos_primertramo_validaciondatos SET";
-		$q_save .= "  planta_destino = '" . $planta_destino . "'"; // guardamos la planta de destino
+		$q_save .= "  planta_destino = '" . $planta_destino . "'";
 		$q_save .= "  , guias_fecha = '" . $guia_fechas . "'";
-		$q_save .=
-			", guias_fechahoraemision = '" .
-			$guia_fechaemision .
-			" " .
-			$guia_horaemision .
-			"'";
-		$q_save .=
-			", lote_pesoinicial_fechahoraregistro = '" .
-			$guia_balanza_fecharegistro .
-			" " .
-			$guia_balanza_horaregistro .
-			"'";
-
+		$q_save .= ", guias_fechahoraemision = '" . $guia_fechaemision . " " . $guia_horaemision . "'";
+		$q_save .= ", lote_pesoinicial_fechahoraregistro = '" . $guia_balanza_fecharegistro . " " . $guia_balanza_horaregistro . "'";
 		$q_save .= ", lote_id_proveedorminero = " . intval($guia_proveedor);
-		$q_save .=
-			", lote_proveedorminero_fechahoraregistro = '" . $g_date . "'";
-		$q_save .=
-			", lote_proveedorminero_usuarioregistro = '" .
-			$usuario_registro .
-			"'";
-
-		$q_save .=
-			", lote_id_proveedorminero_concesion = " . intval($guia_concesion);
-		$q_save .=
-			", lote_id_proveedorminero_concesion_fechahoraregistro = '" .
-			$g_date .
-			"'";
-		$q_save .=
-			", lote_id_proveedorminero_concesion_usuarioregistro = '" .
-			$usuario_registro .
-			"'";
-
-		$q_save .=
-			", guiaremitente_serie = '" .
-			mb_strtoupper($guia_remitenteserie) .
-			"'";
-		$q_save .=
-			", guiaremitente_numero = '" .
-			mb_strtoupper($guia_remitentenumero) .
-			"'";
-		$q_save .=
-			", guiatransportista_serie = " .
-			(strlen($guia_transportistaserie) > 0
-				? "'" . mb_strtoupper($guia_transportistaserie) . "'"
-				: "NULL");
-		$q_save .=
-			", guiatransportista_numero = " .
-			(strlen($guia_transportistanumero) > 0
-				? "'" . mb_strtoupper($guia_transportistanumero) . "'"
-				: "NULL");
-		$q_save .=
-			", guias_puntopartida = '" .
-			mb_strtoupper($guia_puntopartida) .
-			"'";
-		$q_save .=
-			", guias_puntodestino = '" .
-			mb_strtoupper($guia_puntodestino) .
-			"'";
-		$q_save .=
-			", guias_destinatario = '" .
-			mb_strtoupper($guia_destinatario) .
-			"'";
+		$q_save .= ", lote_proveedorminero_fechahoraregistro = '" . $g_date . "'";
+		$q_save .= ", lote_proveedorminero_usuarioregistro = '" . $usuario_registro . "'";
+		$q_save .= ", lote_id_proveedorminero_concesion = " . intval($guia_concesion);
+		$q_save .= ", lote_id_proveedorminero_concesion_fechahoraregistro = '" . $g_date . "'";
+		$q_save .= ", lote_id_proveedorminero_concesion_usuarioregistro = '" . $usuario_registro . "'";
+		$q_save .= ", guiaremitente_serie = '" . mb_strtoupper($guia_remitenteserie) . "'";
+		$q_save .= ", guiaremitente_numero = '" . mb_strtoupper($guia_remitentenumero) . "'";
+		$q_save .= ", guiatransportista_serie = " . (strlen($guia_transportistaserie) > 0
+			? "'" . mb_strtoupper($guia_transportistaserie) . "'"
+			: "NULL");
+		$q_save .= ", guiatransportista_numero = " . (strlen($guia_transportistanumero) > 0
+			? "'" . mb_strtoupper($guia_transportistanumero) . "'"
+			: "NULL");
+		$q_save .= ", guias_puntopartida = '" . mb_strtoupper($guia_puntopartida) . "'";
+		$q_save .= ", guias_puntodestino = '" . mb_strtoupper($guia_puntodestino) . "'";
+		$q_save .= ", guias_destinatario = '" . mb_strtoupper($guia_destinatario) . "'";
 		$q_save .= ", guias_idchofer = '" . $guia_conductor . "'";
 		$q_save .= ", guias_glosa = 'MINERAL AURIFERO EN BRUTO SIN PROCESAR'";
 		$q_save .= ", guias_motivotraslado = '" . $guia_motivotraslado . "'";
-		$q_save .=
-			", balanza_id_transportista = '" .
-			intval($guia_empresatransporte) .
-			"'";
+		$q_save .= ", balanza_id_transportista = '" . intval($guia_empresatransporte) . "'";
 		$q_save .= ", balanza_placa = '" . $guia_placa_numero . "'";
 
 		if (strlen($guia_placa) > 0) {
-			// $q_save .= ", unidad_capacidad = '".($guia_capacidadunidad * 1000)."'";
 			$q_save .= ", unidad_constanciamtc = '" . $guia_constanciamtc . "'";
 			$q_save .= ", unidad_idmarca = '" . $guia_marcaunidad . "'";
-			$q_save .= ", unidad_constanciamtc = '" . $guia_constanciamtc . "'";
 		}
 
 		if (strlen($guia_placa2) > 0) {
-			// $q_save .= ", unidad_capacidad2 = '".($guia_capacidadunidad2 * 1000)."'";
 			$q_save .= ", balanza_placa2 = '" . $guia_placa_numero2 . "'";
-			$q_save .=
-				", unidad_constanciamtc2 = '" . $guia_constanciamtc2 . "'";
+			$q_save .= ", unidad_constanciamtc2 = '" . $guia_constanciamtc2 . "'";
 			$q_save .= ", unidad_idmarca2 = '" . $guia_marcaunidad2 . "'";
 		}
 
-		// $q_save .= ", guias_ajustecapacidad = ".((strlen($guia_ajustecapacidad) > 0) ? $guia_ajustecapacidad : 'NULL');
 		$q_save .= ", guias_fechahoraregistro = '" . $g_fecha . "'";
 		$q_save .= ", guias_usuarioregistro = '" . $usuario_registro . "'";
 		$q_save .= " WHERE Id IN (" . $id_distribucion_str . ")";
 
 		if ($res_save = mysqli_query($enlace, $q_save)) {
-			// Actualizar datos por cada lote
+
+			// -----------------------------------------------
+			// Actualizar datos por cada lote (peso + posición + ticket)
+			// -----------------------------------------------
 			$d = 0;
 			$id_distribucion = "";
-			$peso_bruto = 0;
-			$peso_tara = 0;
 
 			foreach ($detalles_lotes as $lote) {
 				$id_distribucion = intval($lote["id_distribucion"]);
 				$peso_bruto = floatval($lote["peso_bruto"]);
 				$peso_tara = floatval($lote["peso_tara"]);
 
-				// 1. Peso Ajustado Bruto, Tara, Neto y posición
+				// 1. Peso Ajustado Bruto, Tara y posición
 				$q_update = "UPDATE despachos_primertramo_validaciondatos SET";
-				$q_update .= "   lote_peso_bruto = " . $peso_bruto * 1000;
-				$q_update .= " , lote_peso_tara  = " . $peso_tara * 1000;
+				$q_update .= "   lote_peso_bruto = " . ($peso_bruto * 1000);
+				$q_update .= " , lote_peso_tara  = " . ($peso_tara * 1000);
 				$q_update .= " , guias_posicion  = " . $d;
 				$q_update .= " WHERE Id = " . $id_distribucion;
 				mysqli_query($enlace, $q_update);
 
 				// 2. Código de Ticket Contable
 				$fecha_pesoinicial = "";
-				$q_fechainicial =
-					"SELECT DATE(lote_pesoinicial_fechahoraregistro) AS FECHA_PESOINICIAL
-									FROM despachos_primertramo_validaciondatos
-									WHERE Id = " . $id_distribucion;
-				if (
-					$res_fechainicial = mysqli_query($enlace, $q_fechainicial)
-				) {
+				$q_fechainicial = "
+                SELECT DATE(lote_pesoinicial_fechahoraregistro) AS FECHA_PESOINICIAL
+                FROM despachos_primertramo_validaciondatos
+                WHERE Id = " . $id_distribucion;
+
+				if ($res_fechainicial = mysqli_query($enlace, $q_fechainicial)) {
 					if (mysqli_num_rows($res_fechainicial) > 0) {
-						while (
-							$row_fechainicial = mysqli_fetch_array(
-								$res_fechainicial
-							)
-						) {
-							$fecha_pesoinicial =
-								$row_fechainicial["FECHA_PESOINICIAL"];
+						while ($row_fechainicial = mysqli_fetch_array($res_fechainicial)) {
+							$fecha_pesoinicial = $row_fechainicial["FECHA_PESOINICIAL"];
 						}
 					}
 				}
@@ -71809,12 +71583,11 @@ switch ($_POST["accion"]) {
 				$cod_mes = intval(explode("-", $fecha_pesoinicial)[1]);
 				$cod_dia = intval(explode("-", $fecha_pesoinicial)[2]);
 
-				// Genera el correlativo del ticket
+				// Genera el correlativo del ticket contable
 				$correlativo_ticket = 0;
 				$correlativo_ticket_x = 0;
 
-				$q_correlativo =
-					"SELECT IFNULL(MAX(correlativo), 0) + 1 AS CORRELATIVO";
+				$q_correlativo = "SELECT IFNULL(MAX(correlativo), 0) + 1 AS CORRELATIVO";
 				$q_correlativo .= "  FROM correlativo_ticketsbalanza_contable";
 				$q_correlativo .= " WHERE cod_anho = " . $cod_anho;
 				$q_correlativo .= "   AND cod_mes  = " . $cod_mes;
@@ -71822,13 +71595,8 @@ switch ($_POST["accion"]) {
 
 				if ($res_correlativo = mysqli_query($enlace, $q_correlativo)) {
 					if (mysqli_num_rows($res_correlativo) > 0) {
-						while (
-							$row_correlativo = mysqli_fetch_array(
-								$res_correlativo
-							)
-						) {
-							$correlativo_ticket =
-								$row_correlativo["CORRELATIVO"];
+						while ($row_correlativo = mysqli_fetch_array($res_correlativo)) {
+							$correlativo_ticket = $row_correlativo["CORRELATIVO"];
 							$correlativo_ticket_x = $correlativo_ticket;
 
 							// ddmmyy-xxx
@@ -71837,35 +71605,23 @@ switch ($_POST["accion"]) {
 								str_pad($cod_mes, 2, "0", STR_PAD_LEFT) .
 								substr($cod_anho, 2) .
 								"-" .
-								str_pad(
-									$correlativo_ticket,
-									3,
-									"0",
-									STR_PAD_LEFT
-								);
+								str_pad($correlativo_ticket, 3, "0", STR_PAD_LEFT);
 
-							// Graba el correlativo en la validación
-							$q_update =
-								"UPDATE despachos_primertramo_validaciondatos SET";
-							$q_update .=
-								"   guias_ticketbalanza = '" .
-								$correlativo_ticket .
-								"'";
+							$q_update = "UPDATE despachos_primertramo_validaciondatos SET";
+							$q_update .= "   guias_ticketbalanza = '" . $correlativo_ticket . "'";
 							$q_update .= " WHERE Id = " . $id_distribucion;
+
 							if (mysqli_query($enlace, $q_update)) {
-								// Inserta el correlativo en su tabla
-								$q_correlativo_x =
-									"INSERT INTO correlativo_ticketsbalanza_contable (is_primertramo, cod_anho, cod_mes, cod_dia, correlativo, id_validaciondatos, fechahora_registro, usuario_registro) VALUES (";
+								$q_correlativo_x = "INSERT INTO correlativo_ticketsbalanza_contable";
+								$q_correlativo_x .= " (is_primertramo, cod_anho, cod_mes, cod_dia, correlativo, id_validaciondatos, fechahora_registro, usuario_registro) VALUES (";
 								$q_correlativo_x .= "1, ";
 								$q_correlativo_x .= $cod_anho . ", ";
 								$q_correlativo_x .= $cod_mes . ", ";
 								$q_correlativo_x .= $cod_dia . ", ";
-								$q_correlativo_x .=
-									$correlativo_ticket_x . ", ";
+								$q_correlativo_x .= $correlativo_ticket_x . ", ";
 								$q_correlativo_x .= $id_distribucion . ", ";
 								$q_correlativo_x .= "'" . $g_fecha . "', ";
-								$q_correlativo_x .=
-									"'" . $usuario_registro . "')";
+								$q_correlativo_x .= "'" . $usuario_registro . "')";
 								mysqli_query($enlace, $q_correlativo_x);
 							}
 						}
@@ -71875,40 +71631,58 @@ switch ($_POST["accion"]) {
 				$d++;
 			}
 
+			// -----------------------------------------------
 			// Actualiza datos en el maestro de unidades (transporte)
+			// -----------------------------------------------
 			if (strlen($guia_placa2) > 0) {
 				$q_update = "UPDATE transporte SET";
-				// $q_update .= " nCapacidad = '".($guia_capacidadunidad2 * 1000)."'";
 				$q_update .= " codigo_mtc = '" . $guia_constanciamtc2 . "'";
 				$q_update .= ", id_marca = '" . $guia_marcaunidad2 . "'";
-				$q_update .=
-					", id_Transportista = " . intval($guia_empresatransporte2);
+				$q_update .= ", id_Transportista = " . intval($guia_empresatransporte2);
 				$q_update .= " WHERE cplaca = '" . $guia_placa_numero2 . "'";
 			} else {
 				$q_update = "UPDATE transporte SET";
-				// $q_update .= " nCapacidad = '".($guia_capacidadunidad * 1000)."'";
 				$q_update .= " codigo_mtc = '" . $guia_constanciamtc . "'";
 				$q_update .= ", id_marca = '" . $guia_marcaunidad . "'";
-				$q_update .=
-					", id_Transportista = " . intval($guia_empresatransporte);
+				$q_update .= ", id_Transportista = " . intval($guia_empresatransporte);
 				$q_update .= " WHERE cplaca = '" . $guia_placa_numero . "'";
 			}
 			mysqli_query($enlace, $q_update);
 
-			// Devuelve Números de Guía MD5
+			// -----------------------------------------------
+			// Generar códigos BJ (GEL) — nueva lógica unificada
+			// -----------------------------------------------
+			$guia_remitente = mb_strtoupper($guia_remitenteserie) . "-" . mb_strtoupper($guia_remitentenumero);
+			$planta_fechallegada = $guia_balanza_fecharegistro;
+			$guia_fechaemision_x = $guia_fechaemision . " " . $guia_horaemision;
+
+			f_Guia_GenerarCodigoGel(
+				$enlace,
+				$id_distribucion_arr,
+				$guia_remitente,
+				$guia_fechaemision_x,
+				$planta_fechallegada,
+				$g_fecha,
+				$g_anho
+			);
+
+			// -----------------------------------------------
+			// Devuelve hashes MD5 de los números de guía
+			// -----------------------------------------------
 			$gr_serie = "";
 			$gr_numero = "";
 			$gt_serie = "";
 			$gt_numero = "";
 
-			$q_md5 =
-				"SELECT DISTINCT
-							MD5(guiaremitente_serie)  AS GR_SERIE,
-							MD5(guiaremitente_numero) AS GR_NUMERO,
-							MD5(guiatransportista_serie)  AS GT_SERIE,
-							MD5(guiatransportista_numero) AS GT_NUMERO
-						FROM despachos_primertramo_validaciondatos
-						WHERE Id = " . $id_distribucion;
+			$q_md5 = "
+            SELECT DISTINCT
+                MD5(guiaremitente_serie)     AS GR_SERIE,
+                MD5(guiaremitente_numero)    AS GR_NUMERO,
+                MD5(guiatransportista_serie)  AS GT_SERIE,
+                MD5(guiatransportista_numero) AS GT_NUMERO
+            FROM despachos_primertramo_validaciondatos
+            WHERE Id = " . $id_distribucion;
+
 			if ($res_md5 = mysqli_query($enlace, $q_md5)) {
 				if (mysqli_num_rows($res_md5) > 0) {
 					while ($row_md5 = mysqli_fetch_array($res_md5)) {
@@ -71919,22 +71693,6 @@ switch ($_POST["accion"]) {
 					}
 				}
 			}
-
-			// Generar código GEL - CORREGIDO: Pasando los IDs de los lotes seleccionados
-			$guia_remitente =
-				$guia_remitenteserie . "-" . $guia_remitentenumero;
-			$planta_fechallegada = $guia_balanza_fecharegistro;
-			$guia_fechaemision_x = $guia_fechaemision . " " . $guia_horaemision;
-
-			f_Guia_GenerarCodigoGel(
-				$enlace,
-				$id_distribucion_arr,  // <- IMPORTANTE: Pasamos los IDs de los lotes seleccionados
-				$guia_remitente,
-				$guia_fechaemision_x,
-				$planta_fechallegada,
-				$g_fecha,
-				$g_anho
-			);
 
 			$estado = 1;
 		}
@@ -81372,7 +81130,8 @@ SQL;
 		$res = mysqli_query($enlace, $q);
 		$rows = [];
 		if ($res) {
-			while ($row = mysqli_fetch_assoc($res)) $rows[] = $row;
+			while ($row = mysqli_fetch_assoc($res))
+				$rows[] = $row;
 		}
 		echo json_encode(["estado" => count($rows) ? 1 : 0, "registros" => $rows]);
 		break;
@@ -81813,8 +81572,10 @@ SQL;
 		$id = intval($_POST["id"] ?? 0);
 
 		$tabla = 'factura_venta';
-		if ($tipo == 'P') $tabla = 'pago_factura_venta';
-		if ($tipo == 'A') $tabla = 'anticipo_planta';
+		if ($tipo == 'P')
+			$tabla = 'pago_factura_venta';
+		if ($tipo == 'A')
+			$tabla = 'anticipo_planta';
 
 		$q = "SELECT evidencias FROM $tabla WHERE id = $id";
 		$res = mysqli_query($enlace, $q);
@@ -81835,10 +81596,13 @@ SQL;
 		}
 
 		$folder = "factura_venta_docs/";
-		if ($tipo == 'P') $folder = "factura_venta_pagos_docs/";
-		if ($tipo == 'A') $folder = "anticipos_plantas_docs/";
+		if ($tipo == 'P')
+			$folder = "factura_venta_pagos_docs/";
+		if ($tipo == 'A')
+			$folder = "anticipos_plantas_docs/";
 
-		if (!file_exists("../" . $folder)) mkdir("../" . $folder, 0777, true);
+		if (!file_exists("../" . $folder))
+			mkdir("../" . $folder, 0777, true);
 
 		$name = $_FILES['archivo']['name'];
 		$ext = pathinfo($name, PATHINFO_EXTENSION);
@@ -81847,9 +81611,11 @@ SQL;
 
 		if (move_uploaded_file($_FILES['archivo']['tmp_name'], "../" . $path)) {
 			$tabla = 'factura_venta';
-			if ($tipo == 'P') $tabla = 'pago_factura_venta';
-			if ($tipo == 'A') $tabla = 'anticipo_planta';
-			
+			if ($tipo == 'P')
+				$tabla = 'pago_factura_venta';
+			if ($tipo == 'A')
+				$tabla = 'anticipo_planta';
+
 			// Obtener actuales
 			$q_cur = "SELECT evidencias FROM $tabla WHERE id = $id";
 			$res_cur = mysqli_query($enlace, $q_cur);
@@ -81857,10 +81623,10 @@ SQL;
 			if ($res_cur && $row = mysqli_fetch_assoc($res_cur)) {
 				$evs = json_decode($row['evidencias'] ?: '[]', true);
 			}
-			
+
 			$evs[] = ["filename" => $name, "path" => $path];
 			$evs_json = mysqli_real_escape_string($enlace, json_encode($evs));
-			
+
 			$q_upd = "UPDATE $tabla SET evidencias = '$evs_json' WHERE id = $id";
 			if (mysqli_query($enlace, $q_upd)) {
 				echo json_encode(["estado" => 1]);
@@ -81883,8 +81649,10 @@ SQL;
 		}
 
 		$tabla = 'factura_venta';
-		if ($tipo == 'P') $tabla = 'pago_factura_venta';
-		if ($tipo == 'A') $tabla = 'anticipo_planta';
+		if ($tipo == 'P')
+			$tabla = 'pago_factura_venta';
+		if ($tipo == 'A')
+			$tabla = 'anticipo_planta';
 
 		$q_cur = "SELECT evidencias FROM $tabla WHERE id = $id";
 		$res_cur = mysqli_query($enlace, $q_cur);
@@ -81892,8 +81660,9 @@ SQL;
 			$evs = json_decode($row['evidencias'] ?: '[]', true);
 			if (isset($evs[$index])) {
 				$file_to_delete = "../" . $evs[$index]['path'];
-				if (file_exists($file_to_delete)) unlink($file_to_delete);
-				
+				if (file_exists($file_to_delete))
+					unlink($file_to_delete);
+
 				array_splice($evs, $index, 1);
 				$evs_json = mysqli_real_escape_string($enlace, json_encode($evs));
 				$q_upd = "UPDATE $tabla SET evidencias = '$evs_json' WHERE id = $id";
