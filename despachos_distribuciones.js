@@ -243,12 +243,11 @@ document.addEventListener("DOMContentLoaded", function () {
                        <td class="text-center">
                          <button class="btn btn-sm btn-link text-primary"><i class="bi bi-eye-fill"></i></button>
 
-                         ${
-                           parseInt(d.distribuciones_cerradas) > 0 ||
-                           parseInt(d.distribuciones_aprobadas) > 0
-                             ? `<button class="btn btn-sm btn-link text-secondary" title="No se puede anular, tiene distribuciones cerradas o aprobadas" disabled><i class="bi bi-trash-fill"></i></button>`
-                             : `<button class="btn btn-sm btn-link text-danger" onclick="anularDespacho(${d.id_despacho}, event)" title="Anular Despacho"><i class="bi bi-trash-fill"></i></button>`
-                         }
+                         ${parseInt(d.distribuciones_cerradas) > 0 ||
+            parseInt(d.distribuciones_aprobadas) > 0
+            ? `<button class="btn btn-sm btn-link text-secondary" title="No se puede anular, tiene distribuciones cerradas o aprobadas" disabled><i class="bi bi-trash-fill"></i></button>`
+            : `<button class="btn btn-sm btn-link text-danger" onclick="anularDespacho(${d.id_despacho}, event)" title="Anular Despacho"><i class="bi bi-trash-fill"></i></button>`
+          }
                        </td>
                    </tr>
                   `;
@@ -490,6 +489,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <th class="text-end">Peso Destino</th>
           <th class="text-end">Ley Au</th>
           <th class="text-end">Ley Ag</th>
+          <th class="text-end">Ley H2O</th>
           <th>Cód. Origen</th>
           <th class="text-center">Ticket</th>
           <th class="text-center">T. Carga</th>
@@ -506,15 +506,16 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       $("#thead_view_dist_items").html(`
         <tr>
-          <th>Código Origen</th>
+          <th>Cód. Destino</th>
+          <th class="text-end">Peso Destino</th>
+          <th class="text-end">Ley Au</th>
+          <th class="text-end">Ley Ag</th>
+          <th class="text-end">Ley H2O</th>
+          <th>Cód. Origen</th>
           <th class="text-center">Ticket</th>
-          <th class="text-center">Tipo Min.</th>
-          <th class="text-center">Tipo Carga</th>
-          <th class="text-end">P. Tara</th>
-          <th class="text-end">P. Bruto</th>
-          <th class="text-end">P. Neto</th>
-          <th class="text-end">P. Distribución</th>
-          <th class="text-end">Nro. Part.</th>
+          <th class="text-center">T. Carga</th>
+          <th class="text-end">P. Neto O.</th>
+          <th class="text-end" title="Número de partición/Lote origen">Nro.</th>
         </tr>
       `);
       $("#btn_guardar_detalles_destino").addClass("d-none");
@@ -566,6 +567,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-peso" value="${i.peso_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
                     <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-au" value="${i.ley_oro_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
                     <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-ag" value="${i.ley_plata_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
+                    <td><input type="number" step="0.001" class="form-control form-control-sm text-end i-h2o" value="${i.ley_humedad_en_planta_destino || ""}" placeholder="0.00" ${isFinalized ? 'disabled' : ''}></td>
                     <td class="align-middle text-muted" style="font-size: 0.9em;">${i.codigo}</td>
                     <td class="text-center align-middle" style="font-size: 0.85em;">${strTicket}</td>
                     <td class="text-center align-middle text-muted" style="font-size: 0.9em;">${txtCarga}</td>
@@ -659,7 +661,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (logs.length === 0) {
           $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-muted">No hay registros de trazabilidad para esta unidad.</div></div></li>');
         } else {
-          
+
           let estadoColors = {
             'Registrado': { badge: 'bg-primary', border: '#0d6efd', icon: 'bi-journal-check' },
             'Distribución Cerrada': { badge: 'bg-success', border: '#198754', icon: 'bi-lock-fill' },
@@ -676,9 +678,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
           html = "";
           logs.forEach((log) => {
-             let colorConfig = estadoColors[log.estado] || { badge: 'bg-primary', border: '#0d6efd', icon: 'bi-info-circle-fill' };
-             
-             html += `
+            let colorConfig = estadoColors[log.estado] || { badge: 'bg-primary', border: '#0d6efd', icon: 'bi-info-circle-fill' };
+
+            html += `
               <li>
                 <div class="timeline-badge ${colorConfig.badge}"></div>
                 <div class="timeline-item" style="border-left-color: ${colorConfig.border};">
@@ -697,7 +699,7 @@ document.addEventListener("DOMContentLoaded", function () {
           $("#trazabilidad_timeline").html(html);
         }
       } else {
-         $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-danger">Error obteniendo trazabilidad.</div></div></li>');
+        $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-danger">Error obteniendo trazabilidad.</div></div></li>');
       }
     }).fail(function () {
       $("#trazabilidad_timeline").html('<li><div class="timeline-item"><div class="timeline-body text-center text-danger">Error de conexión.</div></div></li>');
@@ -1507,10 +1509,10 @@ document.addEventListener("DOMContentLoaded", function () {
           if (
             !confirm(
               "La capacidad del vehículo (" +
-                formatNumber(capacidadUnidad) +
-                ") es inferior al peso total (" +
-                formatNumber(totalPesoDistribucion) +
-                ").\n¿Desea continuar?",
+              formatNumber(capacidadUnidad) +
+              ") es inferior al peso total (" +
+              formatNumber(totalPesoDistribucion) +
+              ").\n¿Desea continuar?",
             )
           ) {
             return;
@@ -1895,6 +1897,7 @@ document.addEventListener("DOMContentLoaded", function () {
       let peso = parseFloat(tr.find(".i-peso").val()) || 0;
       let au = parseFloat(tr.find(".i-au").val()) || 0;
       let ag = parseFloat(tr.find(".i-ag").val()) || 0;
+      let h2o = parseFloat(tr.find(".i-h2o").val()) || 0;
 
       detalles.push({
         id: idDetalle,
@@ -1902,6 +1905,7 @@ document.addEventListener("DOMContentLoaded", function () {
         peso: peso,
         ley_oro: au,
         ley_plata: ag,
+        ley_humedad: h2o,
       });
     });
 

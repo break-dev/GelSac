@@ -89,6 +89,7 @@ $backendUrl = 'apis/backend.php';
       padding: 10px 0;
       list-style: none;
     }
+
     .timeline:before {
       content: '';
       position: absolute;
@@ -101,32 +102,39 @@ $backendUrl = 'apis/backend.php';
       margin: 0;
       border-radius: 4px;
     }
-    .timeline > li {
+
+    .timeline>li {
       position: relative;
       margin-bottom: 25px;
     }
-    .timeline > li:before, .timeline > li:after {
+
+    .timeline>li:before,
+    .timeline>li:after {
       content: " ";
       display: table;
     }
-    .timeline > li:after {
+
+    .timeline>li:after {
       clear: both;
     }
-    .timeline > li > .timeline-item {
+
+    .timeline>li>.timeline-item {
       margin-left: 65px;
       background: #fff;
       color: #444;
       padding: 15px;
       border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
       border-left: 5px solid #0d6efd;
       transition: all 0.3s ease;
     }
-    .timeline > li > .timeline-item:hover {
+
+    .timeline>li>.timeline-item:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
     }
-    .timeline > li > .timeline-badge {
+
+    .timeline>li>.timeline-badge {
       color: #fff;
       width: 20px;
       height: 20px;
@@ -139,34 +147,41 @@ $backendUrl = 'apis/backend.php';
       border-radius: 50%;
       background-color: #fff;
       border: 4px solid #0d6efd;
-      box-shadow: 0 0 0 4px rgba(13,110,253,0.2);
+      box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.2);
       z-index: 1;
     }
-    .timeline > li > .timeline-badge.bg-success {
+
+    .timeline>li>.timeline-badge.bg-success {
       border-color: #198754;
-      box-shadow: 0 0 0 4px rgba(25,135,84,0.2);
+      box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.2);
     }
-    .timeline > li > .timeline-badge.bg-warning {
+
+    .timeline>li>.timeline-badge.bg-warning {
       border-color: #ffc107;
-      box-shadow: 0 0 0 4px rgba(255,193,7,0.2);
+      box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.2);
     }
-    .timeline > li > .timeline-badge.bg-info {
+
+    .timeline>li>.timeline-badge.bg-info {
       border-color: #0dcaf0;
-      box-shadow: 0 0 0 4px rgba(13,202,240,0.2);
+      box-shadow: 0 0 0 4px rgba(13, 202, 240, 0.2);
     }
-    .timeline > li > .timeline-badge.bg-primary {
+
+    .timeline>li>.timeline-badge.bg-primary {
       border-color: #0d6efd;
-      box-shadow: 0 0 0 4px rgba(13,110,253,0.2);
+      box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.2);
     }
-    .timeline > li > .timeline-badge.bg-danger {
+
+    .timeline>li>.timeline-badge.bg-danger {
       border-color: #dc3545;
-      box-shadow: 0 0 0 4px rgba(220,53,69,0.2);
+      box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.2);
     }
-    .timeline > li > .timeline-badge.bg-dark {
+
+    .timeline>li>.timeline-badge.bg-dark {
       border-color: #212529;
-      box-shadow: 0 0 0 4px rgba(33,37,41,0.2);
+      box-shadow: 0 0 0 4px rgba(33, 37, 41, 0.2);
     }
-    .timeline-item > .time {
+
+    .timeline-item>.time {
       color: #777;
       float: right;
       padding: 3px;
@@ -176,7 +191,8 @@ $backendUrl = 'apis/backend.php';
       border-radius: 12px;
       padding: 4px 10px;
     }
-    .timeline-item > .timeline-header {
+
+    .timeline-item>.timeline-header {
       margin: 0 0 8px 0;
       color: #2c3e50;
       padding-bottom: 8px;
@@ -187,7 +203,8 @@ $backendUrl = 'apis/backend.php';
       align-items: center;
       justify-content: space-between;
     }
-    .timeline-item > .timeline-body {
+
+    .timeline-item>.timeline-body {
       padding: 5px 0 0 0;
       font-size: 14.5px;
       color: #555;
@@ -499,7 +516,8 @@ $backendUrl = 'apis/backend.php';
                     <option selected>Seleccione Tolva</option>
                   </select>
                 </div>
-                <button class="btn btn-primary" type="button" id="btn_add_carreta_rapida" title="Registrar Carreta Rápida">
+                <button class="btn btn-primary" type="button" id="btn_add_carreta_rapida"
+                  title="Registrar Carreta Rápida">
                   <i class="bi bi-plus-lg"></i>
                 </button>
               </div>
@@ -660,7 +678,8 @@ $backendUrl = 'apis/backend.php';
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-info text-white">
-          <h5 class="modal-title"><i class="bi bi-eye"></i> Detalle de Blending: <span id="lbl_blending_codigo_sugerido"></span></h5>
+          <h5 class="modal-title"><i class="bi bi-eye"></i> Detalle de Blending: <span
+              id="lbl_blending_codigo_sugerido"></span></h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -715,7 +734,8 @@ $backendUrl = 'apis/backend.php';
   </div>
 
   <!-- Modal Registrar Carreta Rapida -->
-  <div class="modal fade" id="modal_registrar_carreta_rapida" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal fade" id="modal_registrar_carreta_rapida" tabindex="-1" aria-hidden="true"
+    data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -731,8 +751,10 @@ $backendUrl = 'apis/backend.php';
           <div class="mb-3">
             <label class="form-label fw-bold">Placa (Serie y Número)</label>
             <div class="d-flex gap-2">
-              <input type="text" class="form-control text-uppercase w-25" id="reg_carreta_serie" placeholder="ABC" maxlength="4">
-              <input type="text" class="form-control text-uppercase grow" id="reg_carreta_numero" placeholder="123" maxlength="6">
+              <input type="text" class="form-control text-uppercase w-25" id="reg_carreta_serie" placeholder="ABC"
+                maxlength="4">
+              <input type="text" class="form-control text-uppercase grow" id="reg_carreta_numero" placeholder="123"
+                maxlength="6">
             </div>
             <small class="text-muted">Ejemplo: F1A-987</small>
           </div>

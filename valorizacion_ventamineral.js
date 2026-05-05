@@ -93,6 +93,7 @@ function f_LoadValorizaciones() {
               data-id="${row.id}"
               data-planta="${row.descripcion_planta}"
               data-correlativo="${row.numero_correlativo}"
+              data-codigo-val="${row.codigo_valorizacion_venta || ''}"
               onclick="f_SelectValorizacion(this);">
             <td>${n}</td>
             <td>
@@ -100,6 +101,7 @@ function f_LoadValorizaciones() {
                 <i class="bi bi-hash"></i>${row.numero_correlativo}
               </span>
             </td>
+            <td class="fw-bold text-primary">${row.codigo_valorizacion_venta || '—'}</td>
             <td style="text-align:left;">${row.descripcion_planta}</td>
             <td>
               <small>${row.usuario_registro}</small><br>
@@ -115,13 +117,13 @@ function f_LoadValorizaciones() {
                     <i class="bi bi-pencil-square"></i> Editar
                   </a>
                   <a href="javascript:void(0)"
-                     onclick="event.stopPropagation(); f_AnularValorizacion(${row.id});"
-                     style="color:#c62828;">
-                    <i class="bi bi-x-circle"></i> Anular
+                     onclick="event.stopPropagation(); f_VerTrazabilidad(${row.id});"
+                     style="color:#7b1fa2;">
+                    <i class="bi bi-clock-history"></i> Cambios
                   </a>` : `
                   <span class="text-muted" style="font-size:11px;">Anulada</span>`}
               </div>
-            </td>
+            </td> 
           </tr>`;
       });
 
@@ -147,7 +149,9 @@ function f_SelectValorizacion(tr) {
   const correlativo = $(tr).data('correlativo');
   const planta      = $(tr).data('planta');
 
-  $('#lbl_titulo_detalle').html(`<b>N° ${correlativo}</b> — ${planta}`);
+  const codigo_val = $(tr).data('codigo-val');
+
+  $('#lbl_titulo_detalle').html(`<b>N° ${correlativo}</b> ${codigo_val ? `[${codigo_val}]` : ''} — ${planta}`);
   f_LoadDetalleValorizacion(idValorizacion_Selected);
 }
 
@@ -239,6 +243,7 @@ function f_AdminValorizacion(_modo, _pos, _id) {
     $('#lbl_ruc_planta').text('—');
     $('#file_evidencias').val('');
     $('#div_evidencias_lista').html('');
+    $('#txt_codigo_valorizacion').val('');
     _evidenciasExistentes = [];
   } else {
     // Editar
@@ -265,6 +270,7 @@ function f_CargarDatosEdicion(idValorizacion) {
         $('#cmb_planta_modal').val(data.cabecera.id_planta).prop('disabled', true);
         const sel = $('#cmb_planta_modal option:selected');
         $('#lbl_ruc_planta').text(sel.data('ruc') || '—');
+        $('#txt_codigo_valorizacion').val(data.cabecera.codigo_valorizacion_venta || '');
         
         // Procesar evidencias (JSON array)
         $('#div_evidencias_lista').html('');
@@ -420,11 +426,16 @@ function f_CargarDistribuciones(idPlanta) {
           const yaAgregadoOro   = _lotesEnModal.some(l => l.id_distribucion_detalle == v.id_distribucion_detalle && l.elemento_quimico == 1);
           const yaAgregadoPlata = _lotesEnModal.some(l => l.id_distribucion_detalle == v.id_distribucion_detalle && l.elemento_quimico == 2);
 
-          // Solo mostrar si al menos un elemento aún no fue agregado
-          if (yaAgregadoOro && yaAgregadoPlata) return;
+          // Verificar si queda algún elemento habilitado por agregar
+          let tienePendiente = false;
+          if (v.habilitado_oro == 1 && !yaAgregadoOro) tienePendiente = true;
+          if (v.habilitado_plata == 1 && !yaAgregadoPlata) tienePendiente = true;
+
+          // Si no tiene nada pendiente, saltar este lote
+          if (!tienePendiente) return;
 
           html += `<option value="${v.id_distribucion_detalle}"
-                     data-codigo-interno="${v.codigo_interno || ''}"
+                     data-codigo-interno="${ v.codigo_interno || ''}"
                      data-codigo-cliente="${v.codigo_cliente || ''}"
                      data-guia-transportista="${v.guia_transportista || ''}"
                      data-peso-humedo="${v.peso_humedo || 0}"
@@ -434,7 +445,7 @@ function f_CargarDistribuciones(idPlanta) {
                      data-ley-plata="${v.ley_plata_en_planta_destino || 0}"
                      data-habilitado-oro="${v.habilitado_oro}"
                      data-habilitado-plata="${v.habilitado_plata}">
-                     ${v.codigo_interno || v.codigo_cliente || 'ID:' + v.id_distribucion_detalle}
+                     ${v.codigo_cliente + " | " + v.codigo_interno + " | Partición: " + v.numero_parte}
                    </option>`;
         });
       } else {
@@ -470,11 +481,14 @@ function f_OnDistribucionChange() {
   $('#f_ley_plata').text(f_RedondearDecimales(sel.data('ley-plata'), 3));
 
   // Construir opciones de elemento disponibles
+  const yaAgregadoOro   = _lotesEnModal.some(l => l.id_distribucion_detalle == id && l.elemento_quimico == 1);
+  const yaAgregadoPlata = _lotesEnModal.some(l => l.id_distribucion_detalle == id && l.elemento_quimico == 2);
+
   let htmlElem = '<option value="">[Seleccione]</option>';
-  if (sel.data('habilitado-oro') == 1)  {
+  if (sel.data('habilitado-oro') == 1 && !yaAgregadoOro)  {
     htmlElem += '<option value="1" data-ley="' + sel.data('ley-oro') + '">🟡 Oro (Au)</option>';
   }
-  if (sel.data('habilitado-plata') == 1) {
+  if (sel.data('habilitado-plata') == 1 && !yaAgregadoPlata) {
     htmlElem += '<option value="2" data-ley="' + sel.data('ley-plata') + '">⚪ Plata (Ag)</option>';
   }
 
@@ -628,6 +642,7 @@ function f_GrabarLote() {
 
     _lotesEnModal.push(nuevaFila);
     $('#tbody_lotes_modal').append(f_BuildFilaModal(idx, nuevaFila, false));
+    f_CargarDistribuciones($('#cmb_planta_modal').val());
 
   } else {
     // Editar fila existente
@@ -697,6 +712,7 @@ function f_EliminarFilaModal(idx) {
   if (!confirm('¿Desea quitar este lote del detalle?')) return;
   $(`#ml_tr_${idx}`).remove();
   _lotesEnModal = _lotesEnModal.filter(l => l._idx !== idx);
+  f_CargarDistribuciones($('#cmb_planta_modal').val());
   f_GetTotalModal();
 }
 
@@ -736,8 +752,20 @@ function f_GrabarValorizacion() {
   const formData = new FormData();
   formData.append('accion', 'grabar_ValorizacionVenta');
   formData.append('modo_grabar', modo);
+  
+  if (modo === 'E') {
+    const motivo = prompt("Ingrese el motivo de la modificación (Para registro de trazabilidad):");
+    if (motivo === null) return; // canceló
+    if (motivo.trim() === '') {
+      alert("El motivo es obligatorio para registrar la modificación.");
+      return;
+    }
+    formData.append('motivo', motivo);
+  }
+
   formData.append('id_valorizacion', idVal);
   formData.append('id_planta', idPlanta);
+  formData.append('codigo_valorizacion_venta', $('#txt_codigo_valorizacion').val());
   formData.append('detalle', JSON.stringify(detalle));
   formData.append('evidencias_anteriores', JSON.stringify(_evidenciasExistentes));
 
@@ -787,19 +815,76 @@ function f_QuitarEvidencia(idx) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  ANULAR VALORIZACIÓN
+//  VER TRAZABILIDAD (CAMBIOS)
 // ══════════════════════════════════════════════════════════════
-function f_AnularValorizacion(idVal) {
-  if (!confirm('¿Está seguro de ANULAR esta valorización?\n\nEsta acción marcará el registro como anulado.')) return;
-
-  $.post(url_api,
-    { accion: 'anular_ValorizacionVenta', id_valorizacion: idVal },
-    function(data) {
-      if (data.estado === 1) f_LoadValorizaciones();
-      else alert('Error al anular: ' + (data.msg || 'Error desconocido'));
-    }, 'json').fail(function() {
-      alert('Error de conexión al anular.');
-    });
+function f_VerTrazabilidad(id_valorizacion) {
+  $('#modal_trazabilidad_cards').html('<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando...</div>');
+  f_OpenModal('modal_trazabilidad');
+  
+  $.post(url_api, { accion: 'get_TrazabilidadValorizacionVenta', id_valorizacion: id_valorizacion }, function(data) {
+    if(data.estado === 1) {
+      if(!data.registros || data.registros.length === 0) {
+        $('#modal_trazabilidad_cards').html('<div class="text-center text-muted py-4">No hay registros de cambios para esta valorización.</div>');
+        return;
+      }
+      let html = '';
+      data.registros.forEach(r => {
+        let arrCambios = [];
+        try { arrCambios = JSON.parse(r.cambios); } catch(e){}
+        let htmlCambios = '';
+        if(arrCambios && arrCambios.length > 0) {
+          arrCambios.forEach(c => {
+            htmlCambios += `<div style="margin-bottom:6px; background:#f8f9fa; padding:8px; border-radius:6px; border:1px solid #e9ecef;">
+              <div style="font-weight:600; color:#495057; font-size:12px; margin-bottom:4px;">${c.campo}</div>
+              <div style="display:flex; align-items:center; gap:8px; font-size:13px;">
+                <span class="text-muted text-decoration-line-through">${c.version_anterior}</span>
+                <i class="bi bi-arrow-right text-primary"></i>
+                <span style="font-weight:700; color:#212529;">${c.version_resultante}</span>
+                <span class="${c.cambio.toString().startsWith('+') ? 'text-success' : 'text-danger'}" style="font-weight:600; font-size:11px;">(${c.cambio})</span>
+              </div>
+            </div>`;
+          });
+        } else {
+          htmlCambios = `<div class="text-muted small">Sin cambios detectados en campos numéricos</div>`;
+        }
+        
+        const elemText = r.elemento_quimico == 1 ? '<span class="pill-oro">Au</span>' : '<span class="pill-plata">Ag</span>';
+        
+        html += `
+          <div class="vv-card p-3 mb-2" style="border-left: 4px solid var(--primary);">
+            <div class="d-flex justify-content-between align-items-start mb-2 pb-2" style="border-bottom:1px solid var(--border);">
+              <div>
+                <div style="font-size:12px; color:var(--muted);"><i class="bi bi-calendar-event me-1"></i>${r.fechahora_registro}</div>
+                <div style="font-weight:700; color:var(--primary);"><i class="bi bi-person-fill me-1"></i>${r.usuario_registro}</div>
+              </div>
+              <div class="text-end">
+                <div style="font-weight:700; font-size:14px; margin-bottom:2px;">${r.codigo_interno || 'N/A'}</div>
+                <div style="font-size:11px; color:var(--muted); margin-bottom:4px;"><i class="bi bi-person-badge"></i> ${r.codigo_cliente || 'N/A'}</div>
+                ${elemText}
+              </div>
+            </div>
+            <div class="mb-3">
+              <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:2px;">Motivo:</div>
+              <div style="background:#fff3cd; color:#856404; padding:6px 10px; border-radius:4px; font-size:12px; border:1px solid #ffeeba;">
+                ${r.motivo}
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:6px;">Detalle de Cambios:</div>
+              <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:8px;">
+                ${htmlCambios}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      $('#modal_trazabilidad_cards').html(html);
+    } else {
+      $('#modal_trazabilidad_cards').html(`<div class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle"></i> ${data.msg || 'Error al cargar datos.'}</div>`);
+    }
+  }, 'json').fail(function() {
+    $('#modal_trazabilidad_cards').html('<div class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle"></i> Error de conexión.</div>');
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -807,9 +892,15 @@ function f_AnularValorizacion(idVal) {
 // ══════════════════════════════════════════════════════════════
 function f_EliminarDetalleValorizacion(idDetalle) {
   if (!confirm('¿Eliminar esta línea del detalle?')) return;
+  const motivo = prompt('Ingrese el motivo de la eliminación para la trazabilidad:');
+  if (motivo === null) return; // Si cancela, sale de la función
+  if (motivo.trim() === '') {
+    alert("El motivo es obligatorio para registrar la eliminación en trazabilidad.");
+    return;
+  }
 
   $.post(url_api,
-    { accion: 'eliminar_DetalleValorizacionVenta', id_detalle: idDetalle },
+    { accion: 'eliminar_DetalleValorizacionVenta', id_detalle: idDetalle, motivo: motivo },
     function(data) {
       if (data.estado === 1) f_LoadDetalleValorizacion(idValorizacion_Selected);
       else alert('Error al eliminar: ' + (data.msg || 'Error desconocido'));

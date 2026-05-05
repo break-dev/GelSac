@@ -134,11 +134,12 @@ if (!isset($_SESSION["Id"])) {
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 700; flex-shrink: 0;
     }
-    .lc-lote   { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
-    .lc-interno { font-size: 12px; opacity: .75; }
+    .lc-interno   { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
+    .lc-lote { font-size: 12px; opacity: .75; }
     .lc-head-right { text-align: right; }
     .lc-proveedor { font-size: 13px; opacity: .85; }
     .lc-doc       { font-size: 11px; opacity: .6; }
+    .lc-tipo-row  { display: flex; align-items: center; margin-bottom: 2px; }
 
     /* Secciones */
     .lc-body {
@@ -207,6 +208,106 @@ if (!isset($_SESSION["Id"])) {
       grid-column: 1 / -1;
     }
     .empty-state i { font-size: 36px; display: block; margin-bottom: 10px; opacity: .4; }
+
+    /* ── Edición de datos planta ── */
+    .planta-edit-box {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 6px 30px 6px 8px; /* Padding derecho para evitar superposición con el botón */
+      transition: all .2s;
+      position: relative;
+      margin-top: 4px;
+    }
+    .planta-edit-box:hover {
+      background: rgba(37,71,106,.05);
+      border-color: var(--border);
+    }
+    .btn-edit-planta {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      padding: 1px 5px;
+      font-size: 11px;
+      border-radius: 4px;
+      display: none;
+      z-index: 5;
+    }
+    .planta-edit-box:hover .btn-edit-planta {
+      display: block;
+    }
+    /* ── Blending Card ── */
+    .lc-head-blend {
+      background: linear-gradient(135deg, #1a3a52 0%, #0d2233 100%);
+    }
+    .blend-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(239,184,16,.25);
+      border: 1px solid rgba(239,184,16,.5);
+      color: #EFB810;
+      border-radius: 12px;
+      padding: 1px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+    /* ── Badge Lote (cabecera card lote) ── */
+    .lote-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      color: #fff;
+      border-radius: 12px;
+      padding: 1px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+    /* ── Chips de lotes tomados en blending ── */
+    .blend-lote-grupo {
+      margin-bottom: 6px;
+    }
+    .blend-lote-prov {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,.5);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 3px;
+    }
+    .blend-lote-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .blend-lote-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.9);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: default;
+      transition: background .15s;
+    }
+    .blend-lote-chip:hover {
+      background: rgba(255,255,255,.18);
+    }
+    .blend-lote-peso {
+      font-size: 10px;
+      color: rgba(255,255,255,.55);
+      margin-left: 2px;
+    }
   </style>
 
   <script>
@@ -256,7 +357,17 @@ if (!isset($_SESSION["Id"])) {
         </select>
       </div>
 
+      <div class="filter-group" style="min-width:280px;">
+        <span class="filter-label"><i class="bi bi-search me-1"></i>Buscar por Código</span>
+        <input type="text" id="txt_buscar_codigo" class="filter-control"
+               placeholder="Cód. interno / lote / valoriz. / planta / blending…">
+      </div>
+
       <div style="display:flex; align-items:flex-end; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary px-3" onclick="f_LoadResumen()" title="Actualizar datos" 
+                style="height: 33px; font-size: 13px; border-radius: 7px; display: flex; align-items: center; gap: 5px;">
+          <i class="bi bi-arrow-clockwise"></i> Actualizar
+        </button>
         <div id="wt_resumen" class="loading-bar">
           <img src="<?php echo $img_waiting?>"> <span>Cargando...</span>
         </div>
@@ -281,10 +392,52 @@ if (!isset($_SESSION["Id"])) {
       </div>
     </div>
 
-  </div><!-- /col -->
+  </div>
 
 </div><!-- /row -->
 </div><!-- /container -->
+
+<!-- Modal Editar Datos Planta -->
+<div class="modal fade" id="modalEditPlanta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Datos Planta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="txt_edit_id_dist_det">
+        
+        <div class="mb-3">
+          <label class="form-label fw-bold small text-muted text-uppercase">Código en Planta</label>
+          <input type="text" id="txt_edit_codigo_planta" class="form-control" placeholder="Ingrese código">
+        </div>
+        
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small text-muted text-uppercase">Ley Au (oz/tc)</label>
+            <input type="number" step="0.001" id="txt_edit_ley_au" class="form-control" placeholder="0.000">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small text-muted text-uppercase">Ley Ag (oz/tc)</label>
+            <input type="number" step="0.001" id="txt_edit_ley_ag" class="form-control" placeholder="0.000">
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label fw-bold small text-muted text-uppercase">Ley H2O (%)</label>
+          <input type="number" step="0.01" id="txt_edit_ley_h2o" class="form-control" placeholder="0.00">
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary px-4" onclick="f_GrabarDatosPlanta()">
+          <i class="bi bi-save me-1"></i> Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"

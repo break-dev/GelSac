@@ -28828,7 +28828,7 @@ switch ($_POST["accion"]) {
 			I.dFechaIngreso,
 			I.dhoraingresoPlanta
 		";
-
+		saveLog(["query"=>$q_ingreso]);
 		if ($res_ingreso = mysqli_query($enlace, $q_ingreso)) {
 			if (mysqli_num_rows($res_ingreso) > 0) {
 				$estado = 1;
@@ -71454,10 +71454,10 @@ switch ($_POST["accion"]) {
 		$estado = 0;
 
 		$usuario_registro = $_SESSION["usu_usuario"]; // Ajusta según tu sistema
-
+		$id_sucursal = $_SESSION["id_sucursal"];
 		// Grabando datos
 		$q_save =
-			"INSERT INTO controlingresovehiculo (id_tipoingresounidad, placa, id_transportista, id_tipovehiculo, id_choferes, cNotas, is_unidadficticia, is_iniciovalidacion, iniciovalidacion_fechahoraregistro, iniciovalidacion_usuarioregistro, dFechaIngreso, dhoraingresoPlanta, usuario_registro) VALUES (";
+			"INSERT INTO controlingresovehiculo (id_tipoingresounidad, placa, id_transportista, id_tipovehiculo, id_choferes, cNotas, is_unidadficticia, is_iniciovalidacion, iniciovalidacion_fechahoraregistro, iniciovalidacion_usuarioregistro, dFechaIngreso, dhoraingresoPlanta,id_sucursal, usuario_registro) VALUES (";
 		$q_save .= "1, ";
 		$q_save .= "'000-000', ";
 		$q_save .= "254, ";
@@ -71470,8 +71470,10 @@ switch ($_POST["accion"]) {
 		$q_save .= "'" . $usuario_registro . "', ";
 		$q_save .= "'" . $g_date . "', ";
 		$q_save .= "'" . $g_time . "', ";
+		$q_save .= "'" . $id_sucursal . "', ";
 		$q_save .= "'" . $usuario_registro . "')";
-
+		
+		saveLog(["q"=> $q_save]);
 		if ($res_save = mysqli_query($enlace, $q_save)) {
 			$estado = 1;
 
@@ -74747,6 +74749,156 @@ switch ($_POST["accion"]) {
 									WHERE Id = $id_cliente_banco";
 
 		if ($res = mysqli_query($enlace, $q_query)) {
+			$estado = 1;
+		}
+
+		echo json_encode(["estado" => $estado]);
+		break;
+
+	case "grabar_PlantaBanco":
+		$res = ["estado" => 0];
+
+		$modo_grabar = $_POST["modo_grabar"];
+		$id_planta_banco = (isset($_POST["id_planta_banco"])) ? intval($_POST["id_planta_banco"]) : 0;
+		$id_planta = intval($_POST["id_planta"]);
+		$id_banco = intval($_POST["id_banco"]);
+		$nro_cuenta = mysqli_real_escape_string($enlace, $_POST["nro_cuenta"]);
+		$cci = mysqli_real_escape_string($enlace, $_POST["cci"]);
+		$id_moneda = intval($_POST["id_moneda"]);
+		$is_detraccion = intval($_POST["is_detraccion"]);
+
+		if ($is_detraccion == 1) {
+			if ($id_banco != 3) {
+				echo json_encode(["estado" => 3, "msg" => "El banco de la cuenta de detracción debe ser el Banco de la Nación."]);
+				return;
+			}
+			if ($id_moneda != 1) {
+				echo json_encode(["estado" => 4, "msg" => "La moneda de la cuenta de detracción debe estar en Soles."]);
+				return;
+			}
+
+			$q_det_exists = "SELECT COUNT(id) AS _EXISTS FROM cuenta_bancaria_planta WHERE estado <> 'X' AND id_planta = $id_planta AND es_para_detraccion = 1";
+			if ($modo_grabar != "N") {
+				$q_det_exists .= " AND id <> $id_planta_banco";
+			}
+			if ($res_det = mysqli_query($enlace, $q_det_exists)) {
+				$row_det = mysqli_fetch_array($res_det);
+				if ($row_det["_EXISTS"] > 0) {
+					echo json_encode(["estado" => 3, "msg" => "La planta ya cuenta con una cuenta bancaria de detracción. Solo se permite una."]);
+					return;
+				}
+			}
+		}
+
+		$q_exists = "SELECT COUNT(id) AS _EXISTS
+					 FROM cuenta_bancaria_planta
+					 WHERE estado <> 'X'
+					   AND id_entidad_bancaria = $id_banco
+					   AND numero_cuenta = '$nro_cuenta'";
+
+		if ($modo_grabar == "N") {
+			if ($res_exists = mysqli_query($enlace, $q_exists)) {
+				if (mysqli_num_rows($res_exists) > 0) {
+					while ($row_exists = mysqli_fetch_array($res_exists)) {
+						if ($row_exists["_EXISTS"] > 0) {
+							echo json_encode(["estado" => 2]);
+							return;
+						}
+					}
+				}
+			}
+
+			$q = "INSERT INTO cuenta_bancaria_planta (
+					id_planta, id_entidad_bancaria, numero_cuenta, cci,
+					id_moneda, es_para_detraccion, estado
+				  ) VALUES (
+					$id_planta, $id_banco, '$nro_cuenta', '$cci',
+					$id_moneda, $is_detraccion, 'A'
+				  )";
+		} else {
+			$q_exists .= " AND id <> " . $id_planta_banco;
+
+			if ($res_exists = mysqli_query($enlace, $q_exists)) {
+				if (mysqli_num_rows($res_exists) > 0) {
+					while ($row_exists = mysqli_fetch_array($res_exists)) {
+						if ($row_exists["_EXISTS"] > 0) {
+							echo json_encode(["estado" => 2]);
+							return;
+						}
+					}
+				}
+			}
+
+			$q = "UPDATE cuenta_bancaria_planta SET
+					id_entidad_bancaria = $id_banco,
+					numero_cuenta = '$nro_cuenta',
+					cci = '$cci',
+					id_moneda = $id_moneda,
+					es_para_detraccion = $is_detraccion
+				  WHERE id = $id_planta_banco";
+		}
+
+		if (mysqli_query($enlace, $q)) {
+			$res["estado"] = 1;
+			if ($modo_grabar == "N") {
+				$res["id_registro"] = mysqli_insert_id($enlace);
+			}
+		}
+
+		echo json_encode($res);
+		break;
+
+	case "get_listaplantasbancos":
+		$res = [];
+		$res["estado"] = 0;
+		$res["res"] = [];
+
+		$id_planta = intval($_POST["id_planta"]);
+
+		$q = "SELECT CB.id as Id,
+					 B.descripcion AS banco,
+					 CB.id_entidad_bancaria AS id_banco,
+					 CB.numero_cuenta as nro_cuenta,
+					 CB.cci,
+					 M.descripcion AS moneda,
+					 CB.id_moneda AS id_moneda,
+					 CB.es_para_detraccion as is_detraccion,
+					 CB.estado
+				FROM cuenta_bancaria_planta CB
+				LEFT JOIN tb_bancos B ON CB.id_entidad_bancaria = B.Id
+				LEFT JOIN tbconfig_monedas M ON CB.id_moneda = M.Id
+				WHERE CB.id_planta = $id_planta AND CB.estado <> 'X'
+				ORDER BY CB.id DESC";
+
+		if ($result = mysqli_query($enlace, $q)) {
+			while ($row = mysqli_fetch_assoc($result)) {
+				$res["res"][] = [
+					"Id" => $row["Id"],
+					"banco" => $row["banco"],
+					"id_banco" => $row["id_banco"],
+					"nro_cuenta" => $row["nro_cuenta"],
+					"cci" => $row["cci"],
+					"moneda" => $row["moneda"],
+					"id_moneda" => $row["id_moneda"],
+					"is_detraccion" => $row["is_detraccion"],
+					"estado" => $row["estado"]
+				];
+			}
+			$res["estado"] = 1;
+		}
+
+		echo json_encode($res);
+		break;
+
+	case "eliminar_PlantaBanco":
+		$estado = 0;
+		$id_planta_banco = intval($_POST["id_planta_banco"]);
+
+		$q_query = "UPDATE cuenta_bancaria_planta
+					SET estado = 'X'
+					WHERE id = $id_planta_banco";
+
+		if (mysqli_query($enlace, $q_query)) {
 			$estado = 1;
 		}
 
@@ -78189,6 +78341,7 @@ switch ($_POST["accion"]) {
 			dst.peso_en_planta_destino,
 			dst.ley_oro_en_planta_destino,
 			dst.ley_plata_en_planta_destino,
+			dst.ley_humedad_en_planta_destino,
 			dst.ticket_balanza,
 			dst.numero_ticket_balanza,
 			CASE
@@ -78251,6 +78404,7 @@ switch ($_POST["accion"]) {
 			$peso = floatval($det["peso"] ?? 0);
 			$ley_oro = floatval($det["ley_oro"] ?? 0);
 			$ley_plata = floatval($det["ley_plata"] ?? 0);
+			$ley_humedad = floatval($det["ley_humedad"] ?? 0);
 
 			if ($id > 0) {
 				$q_upd = "
@@ -78259,7 +78413,8 @@ switch ($_POST["accion"]) {
 					codigo_en_planta_destino = '$codigo',
 					peso_en_planta_destino = $peso,
 					ley_oro_en_planta_destino = $ley_oro,
-					ley_plata_en_planta_destino = $ley_plata
+					ley_plata_en_planta_destino = $ley_plata,
+					ley_humedad_en_planta_destino = $ley_humedad
 				WHERE id = $id
 				";
 
@@ -79573,6 +79728,7 @@ switch ($_POST["accion"]) {
 					dd.codigo_en_planta_destino,
 					dd.ley_oro_en_planta_destino,
 					dd.ley_plata_en_planta_destino,
+					dd.ley_humedad_en_planta_destino,
 					dd.ticket_balanza,
 					dd.numero_ticket_balanza,
 					dsd.is_blending,
@@ -79780,6 +79936,8 @@ switch ($_POST["accion"]) {
 
 		break;
 
+
+
 	default:
 		# code...
 		break;
@@ -79957,7 +80115,7 @@ switch ($_POST["accion"]) {
 			: null;
 
 		$filtro_planta = ($id_planta !== null)
-			? "AND vv.id_planta = $id_planta"
+			? "WHERE vv.id_planta = $id_planta"
 			: '';
 
 		$q = "
@@ -79965,6 +80123,7 @@ switch ($_POST["accion"]) {
             vv.id,
             vv.id_planta,
             vv.numero_correlativo,
+            vv.codigo_valorizacion_venta,
             vv.evidencias,
             vv.estado,
             vv.created_at,
@@ -79974,7 +80133,7 @@ switch ($_POST["accion"]) {
         FROM   valorizacion_venta vv
         INNER JOIN tbconfig_plantas  pln ON pln.id = vv.id_planta
         LEFT  JOIN tb_usuario u   ON u.Id   = vv.id_usuario_registro
-        WHERE  vv.estado != 'X'
+        
                $filtro_planta
         ORDER  BY vv.id DESC
     ";
@@ -80002,7 +80161,7 @@ switch ($_POST["accion"]) {
 
 		// ── Cabecera ──
 		$q_cab = "
-        SELECT vv.id, vv.id_planta, vv.evidencias, vv.estado, vv.numero_correlativo
+        SELECT vv.id, vv.id_planta, vv.evidencias, vv.estado, vv.numero_correlativo, vv.codigo_valorizacion_venta
         FROM   valorizacion_venta vv
         WHERE  vv.id = $id_valorizacion
         LIMIT  1
@@ -80030,12 +80189,12 @@ switch ($_POST["accion"]) {
             vd.precio_total,
  
             -- Datos de la distribución
-            dst.peso_en_planta_destino,
+            (dst.peso_en_planta_destino / 1000) AS peso_humedo,
             dst.codigo_en_planta_destino    AS codigo_cliente,
             dst.ley_oro_en_planta_destino   AS ley_oro,
             dst.ley_plata_en_planta_destino AS ley_plata,
             dst.ley_humedad_en_planta_destino,
-            (dst.peso_en_planta_destino * (1 - (dst.ley_humedad_en_planta_destino / 100)))
+            (dst.peso_en_planta_destino * (1 - (dst.ley_humedad_en_planta_destino / 100)) / 1000)
                                              AS peso_seco,
  
             -- Guía transportista
@@ -80102,6 +80261,7 @@ SELECT
     base.id_distribucion_detalle,  
     base.codigo_interno,
     base.codigo_cliente,
+	base.numero_parte,
     base.guia_remitente,
     base.guia_transportista,
     base.fecha_llegada_cliente,
@@ -80117,22 +80277,24 @@ FROM (
         dst.id AS id_distribucion_detalle,    
         CASE
             WHEN dsd.is_blending = 1 THEN (
-                SELECT CONCAT(bl.correlativo," - ",dst.numero_parte) FROM blending bl WHERE bl.id = dsd.id_mineral
+                SELECT bl.correlativo
+				FROM blending bl WHERE bl.id = dsd.id_mineral
             )
             WHEN dsd.is_blending = 0 THEN (
-                SELECT CONCAT(vcd.cod_gel," - ",dst.numero_parte)
+                SELECT vcd.cod_gel
                 FROM catalogolotes lot
                 INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
                 WHERE lot.id_CatalogoLotes = dsd.id_mineral
                 LIMIT 1
             )
         END AS codigo_interno,
+	    dst.numero_parte,
         dst.codigo_en_planta_destino AS codigo_cliente,
         CONCAT(gi.guia_remitente_serie, '-', gi.guia_remitente_numero) AS guia_remitente,
         CONCAT(gi.guia_transportista_serie, '-', gi.guia_transportista_numero) AS guia_transportista,
         ds.fecha_hora_llegada_planta_destino AS fecha_llegada_cliente,
-        dst.peso_en_planta_destino AS peso_humedo,
-        (dst.peso_en_planta_destino * (1 - (dst.ley_humedad_en_planta_destino / 100))) AS peso_seco,
+        (dst.peso_en_planta_destino/1000) AS peso_humedo,
+        ((dst.peso_en_planta_destino * (1 - (dst.ley_humedad_en_planta_destino / 100)))/1000) AS peso_seco,
         dst.ley_oro_en_planta_destino,
         dst.ley_plata_en_planta_destino,
         dst.ley_humedad_en_planta_destino,
@@ -80188,8 +80350,9 @@ FROM (
     LEFT JOIN valorizacion_venta_detalle v_plata 
         ON v_plata.id_distribucion_detalle = dst.id 
         AND v_plata.elemento_quimico = 2
+
     WHERE 
-        des.id_planta = $id_planta AND (dst.ley_oro_en_planta_destino IS NOT NULL OR dst.ley_plata_en_planta_destino IS NOT NULL) 
+        des.id_planta = $id_planta AND (dst.ley_oro_en_planta_destino IS NOT NULL OR dst.ley_plata_en_planta_destino IS NOT NULL)
 ) AS base
 WHERE 
     (base.id_valorizacion_oro IS NULL AND base.tiene_ley_oro = 1)
@@ -80258,6 +80421,7 @@ SQL;
 		$modo_grabar = $_POST["modo_grabar"];
 		$id_val = (int) $_POST["id_valorizacion"];
 		$id_planta = (int) mysqli_real_escape_string($enlace, $_POST["id_planta"]);
+		$codigo_valorizacion_venta = mysqli_real_escape_string($enlace, $_POST["codigo_valorizacion_venta"]);
 		$detalle = json_decode($_POST["detalle"], true) ?: [];
 		$id_usuario = $_SESSION["Id"];
 
@@ -80293,9 +80457,9 @@ SQL;
 
 			$q_cab = "
             INSERT INTO valorizacion_venta
-                (id_planta, id_usuario_registro, numero_correlativo, evidencias, estado, created_at)
+                (id_planta, id_usuario_registro, numero_correlativo, codigo_valorizacion_venta, evidencias, estado, created_at)
             VALUES
-                ($id_planta, $id_usuario, $numero_correlativo,
+                ($id_planta, $id_usuario, $numero_correlativo, '$codigo_valorizacion_venta',
                  '$evidencias_json', 'A', NOW())
         ";
 
@@ -80309,12 +80473,12 @@ SQL;
 		} else {
 			$q_cab = "
             UPDATE valorizacion_venta
-               SET evidencias = '$evidencias_json'
+               SET evidencias = '$evidencias_json',
+                   codigo_valorizacion_venta = '$codigo_valorizacion_venta'
              WHERE id = $id_val
         ";
 
 			if (mysqli_query($enlace, $q_cab)) {
-				mysqli_query($enlace, "DELETE FROM valorizacion_venta_detalle WHERE id_valorizacion_venta = $id_val");
 				$estado = 1;
 			} else {
 				$msg = mysqli_error($enlace);
@@ -80323,6 +80487,44 @@ SQL;
 
 		// ── Insertar líneas de detalle ──
 		if ($estado === 1 && count($detalle) > 0) {
+			$motivo = isset($_POST["motivo"]) ? mysqli_real_escape_string($enlace, $_POST["motivo"]) : 'Edición general';
+			$usuario_nombre = isset($_SESSION["usu_usuario"]) ? $_SESSION["usu_usuario"] : 'Sistema';
+
+			// Cargar detalles antiguos si es edición
+			$old_details = [];
+			if ($modo_grabar === 'E') {
+				$q_old = "
+                    SELECT vd.*, 
+                           CASE
+                               WHEN dsd.is_blending = 1 THEN (
+                                   SELECT bl.correlativo
+                                   FROM blending bl WHERE bl.id = dsd.id_mineral
+                               )
+                               WHEN dsd.is_blending = 0 THEN (
+                                   SELECT vcd.cod_gel
+                                   FROM catalogolotes lot
+                                   INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+                                   WHERE lot.id_CatalogoLotes = dsd.id_mineral
+                                   LIMIT 1
+                               )
+                           END AS codigo_interno,
+                           dst.codigo_en_planta_destino AS codigo_cliente
+                    FROM valorizacion_venta_detalle vd
+                    INNER JOIN distribucion_detalle dst ON vd.id_distribucion_detalle = dst.id
+                    INNER JOIN despacho_detalle dsd ON dsd.id = dst.id_despacho_detalle
+                    WHERE vd.id_valorizacion_venta = $id_val
+                ";
+				$r_old = mysqli_query($enlace, $q_old);
+				if ($r_old) {
+					while ($row = mysqli_fetch_assoc($r_old)) {
+						$key = $row['id_distribucion_detalle'] . '_' . $row['elemento_quimico'];
+						$old_details[$key] = $row;
+					}
+				}
+			}
+
+			$incoming_keys = [];
+
 			foreach ($detalle as $linea) {
 				$id_dist_det = (int) ($linea["id_distribucion_detalle"] ?? 0);
 				$id_cc = (int) ($linea["id_condicion_comercial"] ?? 0);
@@ -80336,27 +80538,157 @@ SQL;
 				$ptn = (float) ($linea["precio_por_tonelada"] ?? 0);
 				$total = (float) ($linea["precio_total"] ?? 0);
 
-				$q_det = "
-                INSERT INTO valorizacion_venta_detalle
-                    (id_valorizacion_venta, id_distribucion_detalle, id_condicion_comercial,
-                     elemento_quimico, recuperacion, inter, des_inter, maquila, consumo,
-                     factor, precio_por_tonelada, precio_total)
-                VALUES
-                    ($id_val, $id_dist_det, $id_cc,
-                     $elem_quimico, $recuperacion, $inter, $des_inter, $maquila, $consumo,
-                     $factor, $ptn, $total)
-            ";
+				$key = $id_dist_det . '_' . $elem_quimico;
+				$incoming_keys[] = $key;
 
-				if (!mysqli_query($enlace, $q_det)) {
-					$estado = 0;
-					$msg = 'Error en detalle: ' . mysqli_error($enlace);
-					break;
+				$cambios = [];
+				$id_detalle = 0;
+
+				if (isset($old_details[$key])) {
+					// Update
+					$id_detalle = $old_details[$key]['id'];
+					$old = $old_details[$key];
+
+					$campos_a_comparar = ['recuperacion', 'inter', 'des_inter', 'maquila', 'consumo', 'factor', 'precio_por_tonelada', 'precio_total'];
+					foreach ($campos_a_comparar as $campo) {
+						$old_val = (float) $old[$campo];
+						$new_val = (float) $linea[$campo];
+						if (abs($old_val - $new_val) > 0.0001) {
+							$diff = $new_val - $old_val;
+							$signo = $diff > 0 ? '+' : '';
+							$cambios[] = [
+								"campo" => $campo,
+								"cambio" => $signo . round($diff, 4),
+								"version_anterior" => round($old_val, 4),
+								"version_resultante" => round($new_val, 4)
+							];
+						}
+					}
+
+					$q_upd = "
+                        UPDATE valorizacion_venta_detalle
+                           SET id_condicion_comercial = $id_cc,
+                               recuperacion = $recuperacion, inter = $inter, des_inter = $des_inter,
+                               maquila = $maquila, consumo = $consumo, factor = $factor,
+                               precio_por_tonelada = $ptn, precio_total = $total
+                         WHERE id = $id_detalle
+                    ";
+					if (!mysqli_query($enlace, $q_upd)) {
+						$estado = 0;
+						$msg = mysqli_error($enlace);
+						break;
+					}
+
+				} else {
+					// Insert
+					$q_det = "
+                    INSERT INTO valorizacion_venta_detalle
+                        (id_valorizacion_venta, id_distribucion_detalle, id_condicion_comercial,
+                         elemento_quimico, recuperacion, inter, des_inter, maquila, consumo,
+                         factor, precio_por_tonelada, precio_total)
+                    VALUES
+                        ($id_val, $id_dist_det, $id_cc,
+                         $elem_quimico, $recuperacion, $inter, $des_inter, $maquila, $consumo,
+                         $factor, $ptn, $total)
+                    ";
+
+					if (!mysqli_query($enlace, $q_det)) {
+						$estado = 0;
+						$msg = 'Error en detalle: ' . mysqli_error($enlace);
+						break;
+					}
+					$id_detalle = mysqli_insert_id($enlace);
+
+					if ($modo_grabar === 'E') {
+						$cambios[] = [
+							"campo" => "Lote",
+							"cambio" => "+1",
+							"version_anterior" => "-",
+							"version_resultante" => "Agregado"
+						];
+					}
+				}
+
+				// Generar log de trazabilidad si hubo cambios y estamos editando
+				if ($modo_grabar === 'E' && count($cambios) > 0) {
+					$cod_int = isset($linea['codigo_interno']) ? $linea['codigo_interno'] : (isset($old['codigo_interno']) ? $old['codigo_interno'] : '');
+					$cod_cli = isset($linea['codigo_cliente']) ? $linea['codigo_cliente'] : (isset($old['codigo_cliente']) ? $old['codigo_cliente'] : '');
+					$cambios_json = mysqli_real_escape_string($enlace, json_encode($cambios));
+					$q_log = "INSERT INTO valorizacion_venta_detalle_log (id_valorizacion_venta, id_valorizacion_venta_detalle, codigo_interno, codigo_cliente, elemento_quimico, motivo, cambios, usuario_registro) VALUES ($id_val, $id_detalle, '$cod_int', '$cod_cli', $elem_quimico, '$motivo', '$cambios_json', '$usuario_nombre')";
+					mysqli_query($enlace, $q_log);
+				}
+			}
+
+			// Eliminar detalles que ya no vienen en la lista
+			if ($modo_grabar === 'E' && $estado === 1) {
+				foreach ($old_details as $k => $old) {
+					if (!in_array($k, $incoming_keys)) {
+						$id_borrar = $old['id'];
+
+						// Generar log para la eliminación
+						$cod_int = $old['codigo_interno'];
+						$cod_cli = $old['codigo_cliente'];
+						$elem_q = $old['elemento_quimico'];
+						$cambios_eliminacion = [
+							[
+								"campo" => "Lote",
+								"cambio" => "-1",
+								"version_anterior" => "Existente",
+								"version_resultante" => "Eliminado"
+							]
+						];
+						$cambios_json = mysqli_real_escape_string($enlace, json_encode($cambios_eliminacion));
+						$q_log = "INSERT INTO valorizacion_venta_detalle_log (id_valorizacion_venta, id_valorizacion_venta_detalle, codigo_interno, codigo_cliente, elemento_quimico, motivo, cambios, usuario_registro) VALUES ($id_val, $id_borrar, '$cod_int', '$cod_cli', $elem_q, '$motivo', '$cambios_json', '$usuario_nombre')";
+						mysqli_query($enlace, $q_log);
+
+						mysqli_query($enlace, "DELETE FROM valorizacion_venta_detalle WHERE id = $id_borrar");
+					}
 				}
 			}
 		}
 
 		ob_clean();
 		echo json_encode(["estado" => $estado, "id_valorizacion" => $id_val, "msg" => $msg]);
+		break;
+
+	// ─────────────────────────────────────────────────────────────
+// GET: Trazabilidad (Cambios)
+// ─────────────────────────────────────────────────────────────
+	case "get_TrazabilidadValorizacionVenta":
+
+		$id_val = (int) mysqli_real_escape_string($enlace, $_POST["id_valorizacion"]);
+		$estado = 0;
+		$registros = [];
+		$msg = "";
+
+		$q = "
+            SELECT l.fechahora_registro, l.usuario_registro, l.motivo, l.cambios, 
+                   COALESCE(l.elemento_quimico, vd.elemento_quimico) AS elemento_quimico,
+                   COALESCE(l.codigo_cliente, dst.codigo_en_planta_destino) AS codigo_cliente,
+                   COALESCE(l.codigo_interno, 
+                       CASE
+                           WHEN dsd.is_blending = 1 THEN (SELECT bl.correlativo FROM blending bl WHERE bl.id = dsd.id_mineral)
+                           WHEN dsd.is_blending = 0 THEN (SELECT vcd.cod_gel FROM catalogolotes lot INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1)
+                       END
+                   ) AS codigo_interno
+              FROM valorizacion_venta_detalle_log l
+             LEFT JOIN valorizacion_venta_detalle vd ON l.id_valorizacion_venta_detalle = vd.id
+             LEFT JOIN distribucion_detalle dst ON vd.id_distribucion_detalle = dst.id
+             LEFT JOIN despacho_detalle dsd ON dsd.id = dst.id_despacho_detalle
+             WHERE (l.id_valorizacion_venta = $id_val) OR (vd.id_valorizacion_venta = $id_val)
+             ORDER BY l.fechahora_registro DESC
+        ";
+
+		if ($res = mysqli_query($enlace, $q)) {
+			$estado = 1;
+			while ($row = mysqli_fetch_assoc($res)) {
+				$registros[] = $row;
+			}
+		} else {
+			$msg = mysqli_error($enlace);
+		}
+
+		echo json_encode(["estado" => $estado, "registros" => $registros, "msg" => $msg]);
 		break;
 
 	// ─────────────────────────────────────────────────────────────
@@ -80382,7 +80714,41 @@ SQL;
 	case "eliminar_DetalleValorizacionVenta":
 
 		$id_detalle = (int) mysqli_real_escape_string($enlace, $_POST["id_detalle"]);
+		$motivo = isset($_POST["motivo"]) ? mysqli_real_escape_string($enlace, $_POST["motivo"]) : 'Eliminado desde resumen';
+		$usuario_nombre = isset($_SESSION["usu_usuario"]) ? $_SESSION["usu_usuario"] : 'Sistema';
 		$estado = 0;
+
+		// Primero obtener info del detalle para el log
+		$q_info = "
+            SELECT vd.id_valorizacion_venta, vd.elemento_quimico, dst.codigo_en_planta_destino AS codigo_cliente,
+                   CASE
+                       WHEN dsd.is_blending = 1 THEN (SELECT bl.correlativo FROM blending bl WHERE bl.id = dsd.id_mineral)
+                       WHEN dsd.is_blending = 0 THEN (SELECT vcd.cod_gel FROM catalogolotes lot INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1)
+                   END AS codigo_interno
+            FROM valorizacion_venta_detalle vd
+            INNER JOIN distribucion_detalle dst ON vd.id_distribucion_detalle = dst.id
+            INNER JOIN despacho_detalle dsd ON dsd.id = dst.id_despacho_detalle
+            WHERE vd.id = $id_detalle
+        ";
+		$r_info = mysqli_query($enlace, $q_info);
+		if ($r_info && $row_info = mysqli_fetch_assoc($r_info)) {
+			$id_val = $row_info['id_valorizacion_venta'];
+			$cod_int = $row_info['codigo_interno'];
+			$cod_cli = $row_info['codigo_cliente'];
+			$elem_q = $row_info['elemento_quimico'];
+
+			$cambios_eliminacion = [
+				[
+					"campo" => "Lote",
+					"cambio" => "-1",
+					"version_anterior" => "Existente",
+					"version_resultante" => "Eliminado"
+				]
+			];
+			$cambios_json = mysqli_real_escape_string($enlace, json_encode($cambios_eliminacion));
+			$q_log = "INSERT INTO valorizacion_venta_detalle_log (id_valorizacion_venta, id_valorizacion_venta_detalle, codigo_interno, codigo_cliente, elemento_quimico, motivo, cambios, usuario_registro) VALUES ($id_val, $id_detalle, '$cod_int', '$cod_cli', $elem_q, '$motivo', '$cambios_json', '$usuario_nombre')";
+			mysqli_query($enlace, $q_log);
+		}
 
 		$q = "DELETE FROM valorizacion_venta_detalle WHERE id = $id_detalle";
 
@@ -80397,9 +80763,9 @@ SQL;
 // GET: Proveedores mineros (select del filtro)
 //   → versión limpia: solo JSON, sin HTML embebido
 // ─────────────────────────────────────────────────────────────
-case "get_ProveedoresMineros":
- 
-    $q = "
+	case "get_ProveedoresMineros":
+
+		$q = "
         SELECT Id,
                documento,
                razon_social
@@ -80408,163 +80774,1213 @@ case "get_ProveedoresMineros":
           AND  estado = 'A'
         ORDER  BY razon_social ASC
     ";
- 
-    $result    = mysqli_query($enlace, $q);
-    $registros = [];
-    $estado    = 0;
- 
-    if ($result && mysqli_num_rows($result) > 0) {
-        $estado = 1;
-        while ($row = mysqli_fetch_assoc($result)) {
-            $registros[] = $row;
-        }
-    }
- 
-    echo json_encode(["estado" => $estado, "registros" => $registros]);
-    break;
- 
-// ─────────────────────────────────────────────────────────────
+
+		$result = mysqli_query($enlace, $q);
+		$registros = [];
+		$estado = 0;
+
+		if ($result && mysqli_num_rows($result) > 0) {
+			$estado = 1;
+			while ($row = mysqli_fetch_assoc($result)) {
+				$registros[] = $row;
+			}
+		}
+
+		echo json_encode(["estado" => $estado, "registros" => $registros]);
+		break;
+
+	// ─────────────────────────────────────────────────────────────
 // GET: Resumen de Lotes
 //   Filtros opcionales: id_proveedor, id_planta
 // ─────────────────────────────────────────────────────────────
-case "get_ResumenLotes":
- 
-    $registros = [];
-    $estado    = 0;
- 
-    // Filtros opcionales
-    $id_proveedor = isset($_POST["id_proveedor"]) && $_POST["id_proveedor"] !== ''
-        ? (int) mysqli_real_escape_string($enlace, $_POST["id_proveedor"])
-        : null;
- 
-    $id_planta = isset($_POST["id_planta"]) && $_POST["id_planta"] !== ''
-        ? (int) mysqli_real_escape_string($enlace, $_POST["id_planta"])
-        : null;
- 
-    // Condiciones WHERE dinámicas
-    $where_proveedor = ($id_proveedor !== null) ? "AND prov.Id = $id_proveedor"   : '';
-    $where_planta    = ($id_planta    !== null) ? "AND pln.Id  = $id_planta"       : '';
- 
-    $q = "
+	case "get_ResumenLotes":
+
+		$registros = [];
+		$estado = 0;
+
+		// ── CONSULTA 1: LOTES INDIVIDUALES ──
+		$q = "
+        WITH CompraDetallePivot AS (
+            SELECT 
+                id_valorizacion,
+                cod_lote,
+                MAX(CASE WHEN id_elemento = 33 THEN ley_oztc ELSE NULL END) AS ley_oro_compra,
+                MAX(CASE WHEN id_elemento = 34 THEN ley_oztc ELSE NULL END) AS ley_plata_compra,
+                MAX(CASE WHEN id_elemento = 33 THEN total ELSE NULL END) AS total_oro_compra,
+                MAX(CASE WHEN id_elemento = 34 THEN total ELSE NULL END) AS total_plata_compra
+            FROM valorizacion_compramineral_detalle
+            GROUP BY id_valorizacion, cod_lote
+        )
         SELECT DISTINCT
- 
-            -- ── LOTE ──────────────────────────────────────────────
             lot.id_CatalogoLotes                                AS id_lote,
+            prov.Id                                             AS id_proveedor,
             prov.documento                                      AS proveedor_documento,
             prov.razon_social                                   AS proveedor,
             lot.ccod_Lote                                       AS lote_codigo,
             lot_in.codigo_gel                                   AS lote_codigo_interno,
-            lot.nPesoNetoBalanza                                AS lote_peso_neto,
- 
-            -- ── VALORIZACIÓN COMPRA ───────────────────────────────
-            val_cmp.correlativo as numero_correlativo_compra,
-            val_cmp_au.ley_oztc                                 AS ley_oro_compra,
-            val_cmp_ag.ley_oztc                                 AS ley_plata_compra,
-            val_cmp_au.total                                    AS total_oro_compra,
-            val_cmp_ag.total                                    AS total_plata_compra,
- 
-            -- ── DESPACHO ─────────────────────────────────────────
+            (lot.nPesoNetoBalanza / 1000)                       AS lote_peso_neto,
+            val_cmp.correlativo                                 AS numero_correlativo_compra,
+            val_cmp_det.ley_oro_compra,
+            val_cmp_det.ley_plata_compra,
+            val_cmp_det.total_oro_compra,
+            val_cmp_det.total_plata_compra,
+            pln.id                                              AS id_planta,
             pln.descripcion                                     AS planta_destino,
             desp.correlativo                                    AS despacho_codigo,
-            des_d.peso_tomado                                   AS peso_a_despachar,
- 
-            -- ── DISTRIBUCIÓN / TRANSPORTE ────────────────────────
+            (des_d.peso_tomado / 1000)                          AS peso_a_despachar,
             trans.razon_social                                  AS empresa_transporte_salida,
             uni_sal.cplaca                                      AS placa_unidad_salida,
-            CONCAT(guia_sal.guia_remitente_serie,    '-', guia_sal.guia_remitente_numero)
-                                                                AS guia_remitente_salida,
-            CONCAT(guia_sal.guia_transportista_serie,'-', guia_sal.guia_transportista_numero)
-                                                                AS guia_transportista_salida,
+            CONCAT(guia_sal.guia_remitente_serie, '-', guia_sal.guia_remitente_numero)         AS guia_remitente_salida,
+            CONCAT(guia_sal.guia_transportista_serie,'-', guia_sal.guia_transportista_numero) AS guia_transportista_salida,
             dis_d.codigo_en_planta_destino,
+            dis_d.numero_parte,
+            dis_d.id                                            AS id_distribucion_detalle,
             dis_d.ley_oro_en_planta_destino,
             dis_d.ley_plata_en_planta_destino,
-            
-            val_vnt_cab.numero_correlativo as numero_correlativo_venta,
- 
-            -- ── VALORIZACIÓN VENTA ───────────────────────────────
-            val_vnt.elemento_quimico,
-            val_vnt.precio_por_tonelada,
-            val_vnt.precio_total
-            
- 
-        FROM catalogolotes lot
- 
-        -- Datos internos del lote (código GEL, proveedor)
-        LEFT JOIN despachos_primertramo_validaciondatos lot_in
-               ON lot_in.lote_cod_lote = lot.ccod_Lote
- 
-        -- Proveedor del lote
-        LEFT JOIN tb_clientes prov
-               ON prov.Id = lot_in.lote_id_proveedorminero
- 
-        -- Valorización compra – Oro (elemento 33)
-        LEFT JOIN valorizacion_compramineral_detalle val_cmp_au
-               ON val_cmp_au.cod_gel    = lot_in.codigo_gel
-              AND val_cmp_au.id_elemento = 33
- 
-        -- Valorización compra – Plata (elemento 34)
-        LEFT JOIN valorizacion_compramineral_detalle val_cmp_ag
-               ON val_cmp_ag.cod_gel    = lot_in.codigo_gel
-              AND val_cmp_ag.id_elemento = 34
-        -- Valorizacion Compra Cabecera
- 		LEFT JOIN valorizacion_compramineral val_cmp
-               ON val_cmp.id = val_cmp_ag.id_valorizacion OR val_cmp.id =val_cmp_au.id_valorizacion
-             
-        -- Despacho del lote (excluye blending)
-        LEFT JOIN despacho_detalle des_d
-               ON des_d.id_mineral  = lot.id_CatalogoLotes
-              AND des_d.is_blending != 1
- 
-        LEFT JOIN despacho desp
-               ON desp.id = des_d.id_despacho
- 
-        LEFT JOIN tbconfig_plantas pln
-               ON pln.id = desp.id_planta
- 
-        -- Distribución asociada al detalle de despacho
-        LEFT JOIN distribucion_detalle dis_d
-               ON dis_d.id_despacho_detalle = des_d.id
- 
-        LEFT JOIN distribucion dist
-               ON dist.id = dis_d.id_distribucion
- 
-        -- Unidad (placa)
-        LEFT JOIN transporte uni_sal
-               ON uni_sal.id_transporte = dist.id_unidad
- 
-        -- Empresa de transporte
-        LEFT JOIN tb_clientes trans
-               ON trans.Id = dist.id_empresa_transporte
- 
-        -- Guía segundo tramo
-        LEFT JOIN guia_segundo_tramo guia_sal
-               ON guia_sal.id_distribucion = dist.id
- 
-        -- Valorización venta 
-        LEFT JOIN valorizacion_venta_detalle val_vnt
-               ON val_vnt.id_distribucion_detalle = dis_d.id
-		
-		 LEFT JOIN valorizacion_venta val_vnt_cab
-               ON val_vnt_cab.id = val_vnt.id_valorizacion_venta
- 
-        WHERE 1 = 1
-          $where_proveedor
-          $where_planta
- 
-        ORDER BY lot.ccod_Lote ASC, val_vnt.elemento_quimico ASC
-    ";
- 
-    $result = mysqli_query($enlace, $q);
- 
-    if ($result && mysqli_num_rows($result) > 0) {
-        $estado = 1;
-        while ($row = mysqli_fetch_assoc($result)) {
-            $registros[] = $row;
-        }
-    }
- 
-    echo json_encode(["estado" => $estado, "registros" => $registros]);
-    break;
+            dis_d.ley_humedad_en_planta_destino,
+            val_vnt_cab.numero_correlativo                      AS numero_correlativo_venta,
+            val_vnt_cab.codigo_valorizacion_venta,
+            val_vnt_det.elemento_quimico,
+            val_vnt_det.precio_por_tonelada,
+            val_vnt_det.precio_total
+        FROM valorizacion_compramineral val_cmp
+        INNER JOIN tb_clientes prov ON prov.Id = val_cmp.id_proveedor
+        INNER JOIN CompraDetallePivot val_cmp_det ON val_cmp_det.id_valorizacion = val_cmp.Id
+        INNER JOIN catalogolotes lot ON lot.ccod_Lote = val_cmp_det.cod_lote
+        LEFT JOIN despachos_primertramo_validaciondatos lot_in ON lot_in.lote_cod_lote = lot.ccod_Lote
+        LEFT JOIN despacho_detalle des_d ON des_d.id_mineral = lot.id_CatalogoLotes AND des_d.is_blending != 1
+        LEFT JOIN despacho desp ON desp.id = des_d.id_despacho
+        LEFT JOIN tbconfig_plantas pln ON pln.id = desp.id_planta
+        LEFT JOIN distribucion_detalle dis_d ON dis_d.id_despacho_detalle = des_d.id
+        LEFT JOIN distribucion dist ON dist.id = dis_d.id_distribucion
+        LEFT JOIN transporte uni_sal ON uni_sal.id_transporte = dist.id_unidad
+        LEFT JOIN tb_clientes trans ON trans.Id = dist.id_empresa_transporte
+        LEFT JOIN guia_segundo_tramo guia_sal ON guia_sal.id_distribucion = dist.id
+        LEFT JOIN valorizacion_venta_detalle val_vnt_det ON val_vnt_det.id_distribucion_detalle = dis_d.id
+        LEFT JOIN valorizacion_venta val_vnt_cab ON val_vnt_cab.id = val_vnt_det.id_valorizacion_venta
+        WHERE val_cmp.is_aprobado = 1
+        ORDER BY lot.ccod_Lote ASC;
+        ";
+
+		// ── CONSULTA 2: BLENDINGS ──
+		$q1 = "
+        SELECT DISTINCT
+            blend.id AS id_blending,
+            blend.correlativo AS codigo_blending,
+            blend.peso_inicial as peso_neto,
+            (
+                SELECT CONCAT('[', GROUP_CONCAT(
+                    JSON_OBJECT(
+                        'id_lote', lots.id_CatalogoLotes,
+                        'codigo_lote', lot_in.codigo_gel,
+                        'peso_tomado', (bldet.peso_tomado/1000),
+                        'id_proveedor', prov.Id,
+                        'proveedor', prov.razon_social
+                    )
+                ), ']')
+                FROM blending_detalle bldet
+                INNER JOIN catalogolotes lots ON lots.id_CatalogoLotes = bldet.id_lote
+                LEFT JOIN despachos_primertramo_validaciondatos lot_in ON lot_in.lote_cod_lote = lots.ccod_Lote
+                LEFT JOIN tb_clientes prov ON prov.Id = lot_in.lote_id_proveedorminero
+                WHERE bldet.id_blending = blend.id
+            ) as lotes_tomados,
+            ROUND(calc.ley_oro_blending, 2) AS ley_oro_blending,
+            ROUND(calc.ley_plata_blending, 2) AS ley_plata_blending,
+            ROUND(calc.humedad_promedio, 3) AS ley_humedad_blending,
+            pln.id                                              AS id_planta,
+            pln.descripcion                                     AS planta_destino,
+            desp.correlativo                                    AS despacho_codigo,
+            (des_d.peso_tomado / 1000)                          AS peso_a_despachar,
+            trans.razon_social                                  AS empresa_transporte_salida,
+            uni_sal.cplaca                                      AS placa_unidad_salida,
+            CONCAT(guia_sal.guia_remitente_serie, '-', guia_sal.guia_remitente_numero)         AS guia_remitente_salida,
+            CONCAT(guia_sal.guia_transportista_serie,'-', guia_sal.guia_transportista_numero) AS guia_transportista_salida,
+            dis_d.codigo_en_planta_destino,
+            dis_d.numero_parte,
+            dis_d.id                                            AS id_distribucion_detalle,
+            dis_d.ley_oro_en_planta_destino,
+            dis_d.ley_plata_en_planta_destino,
+            dis_d.ley_humedad_en_planta_destino,
+            val_vnt_cab.numero_correlativo                      AS numero_correlativo_venta,
+            val_vnt_cab.codigo_valorizacion_venta,
+            val_vnt_det.elemento_quimico,
+            val_vnt_det.precio_por_tonelada,
+            val_vnt_det.precio_total
+        FROM blending blend
+        LEFT JOIN (
+            SELECT
+                id_blending,
+                SUM(peso_seco * ley_oro) / NULLIF(SUM(peso_seco), 0) AS ley_oro_blending,
+                SUM(peso_seco * ley_plata) / NULLIF(SUM(peso_seco), 0) AS ley_plata_blending,
+                AVG(porc_h20) AS humedad_promedio
+            FROM (
+                SELECT
+                    bld.id_blending,
+                    ROUND(bld.peso_tomado / (1 + (vcd.porc_h20 / 100)), 2) AS peso_seco,
+                    vcd.porc_h20,
+                    (
+                        SELECT ROUND(COALESCE(AVG(anl.valor),0),2)
+                        FROM tb_leyes_analisis_valor anl
+                        WHERE anl.cod_lote = lot.ccod_Lote 
+                        AND anl.id_grupo = 3 AND anl.abv_elemento = 'newau' AND anl.is_select = 1
+                    ) AS ley_oro,
+                    (
+                        SELECT ROUND(COALESCE(AVG(anl.valor),0),2)
+                        FROM tb_leyes_analisis_valor anl
+                        WHERE anl.cod_lote = lot.ccod_Lote 
+                        AND anl.id_grupo = 3 AND anl.abv_elemento = 'newag' AND anl.is_select = 1
+                    ) AS ley_plata
+                FROM blending_detalle bld
+                INNER JOIN catalogolotes lot ON bld.id_lote = lot.id_CatalogoLotes
+                INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+            ) as sub_detalles
+            GROUP BY id_blending
+        ) calc ON calc.id_blending = blend.id
+        LEFT JOIN despacho_detalle des_d ON des_d.id_mineral = blend.id AND des_d.is_blending = 1
+        LEFT JOIN despacho desp ON desp.id = des_d.id_despacho
+        LEFT JOIN tbconfig_plantas pln ON pln.id = desp.id_planta
+        LEFT JOIN distribucion_detalle dis_d ON dis_d.id_despacho_detalle = des_d.id
+        LEFT JOIN distribucion dist ON dist.id = dis_d.id_distribucion
+        LEFT JOIN transporte uni_sal ON uni_sal.id_transporte = dist.id_unidad
+        LEFT JOIN tb_clientes trans ON trans.Id = dist.id_empresa_transporte
+        LEFT JOIN guia_segundo_tramo guia_sal ON guia_sal.id_distribucion = dist.id
+        LEFT JOIN valorizacion_venta_detalle val_vnt_det ON val_vnt_det.id_distribucion_detalle = dis_d.id
+        LEFT JOIN valorizacion_venta val_vnt_cab ON val_vnt_cab.id = val_vnt_det.id_valorizacion_venta
+        ORDER BY blend.correlativo ASC;
+        ";
+
+		// Ejecutar query de lotes
+		$lotes = [];
+		$blends = [];
+
+		$result = mysqli_query($enlace, $q);
+		if ($result && mysqli_num_rows($result) > 0) {
+			$estado = 1;
+			while ($row = mysqli_fetch_assoc($result)) {
+				$lotes[] = $row;
+			}
+		}
+
+		// Ejecutar query de blendings
+		$result1 = mysqli_query($enlace, $q1);
+		if ($result1 && mysqli_num_rows($result1) > 0) {
+			$estado = 1;
+			while ($row = mysqli_fetch_assoc($result1)) {
+				if (isset($row['lotes_tomados']) && $row['lotes_tomados'] !== null) {
+					$row['lotes_tomados'] = json_decode($row['lotes_tomados'], true) ?: [];
+				} else {
+					$row['lotes_tomados'] = [];
+				}
+				$blends[] = $row;
+			}
+		}
+
+		echo json_encode(["estado" => $estado, "lotes" => $lotes, "blends" => $blends]);
+		break;
+
+	case "update_DatosPlantaResumen":
+		$id_dist_det = (int) $_POST["id_dist_det"];
+		$codigo_planta = mysqli_real_escape_string($enlace, $_POST["codigo_planta"]);
+
+		$ley_au = ($_POST["ley_au"] !== '') ? (float) $_POST["ley_au"] : "NULL";
+		$ley_ag = ($_POST["ley_ag"] !== '') ? (float) $_POST["ley_ag"] : "NULL";
+		$ley_h2o = ($_POST["ley_h2o"] !== '') ? (float) $_POST["ley_h2o"] : "NULL";
+
+		$q = "UPDATE distribucion_detalle 
+          SET codigo_en_planta_destino = '$codigo_planta',
+              ley_oro_en_planta_destino = $ley_au,
+              ley_plata_en_planta_destino = $ley_ag,
+              ley_humedad_en_planta_destino = $ley_h2o
+          WHERE id = $id_dist_det";
+
+		if (mysqli_query($enlace, $q)) {
+			echo json_encode(["estado" => 1, "msg" => "Datos de planta actualizados correctamente"]);
+		} else {
+			echo json_encode(["estado" => 0, "msg" => "Error al actualizar: " . mysqli_error($enlace)]);
+		}
+		break;
+	// ─────────────────────────────────────────────────────────────
+	// ANTICIPOS PLANTAS
+	// ─────────────────────────────────────────────────────────────
+
+	case "getAnticiposPlantasData":
+		$response = [
+			"cantidad_anticipos" => 0,
+			"anticipos_con_saldo" => 0,
+			"anticipos_sin_saldo" => 0,
+			"plantas" => [],
+			"plantas_con_anticipos" => [],
+		];
+
+		// 1. Plantas aptas para Select2
+		$sql_plantas = "
+			SELECT pln.id AS id_planta, pln.ruc, pln.descripcion
+			FROM tbconfig_plantas pln
+			WHERE pln.estado = 'A'
+			ORDER BY pln.descripcion ASC
+		";
+		$res_plantas = mysqli_query($enlace, $sql_plantas);
+		while ($p = mysqli_fetch_assoc($res_plantas)) {
+			$response["plantas"][] = $p;
+		}
+
+		// 2. Transacciones mapeadas por id_anticipo_planta
+		$sql_trans = "
+			SELECT
+				tr.id AS id_transaccion,
+				tr.id_anticipo_planta,
+				tr.id_factura_venta,
+				fv.serie AS factura_serie,
+				fv.numero AS factura_numero,
+				tr.saldo_actual,
+				tr.monto_retirado,
+				tr.saldo_restante,
+				tr.estado,
+				DATE_FORMAT(tr.created_at, '%d/%m/%Y') AS fecha_registro
+			FROM anticipo_planta_transaccion tr
+			LEFT JOIN factura_venta fv ON fv.id = tr.id_factura_venta
+			WHERE tr.estado = 'A'
+			ORDER BY tr.created_at ASC
+		";
+		$res_trans = mysqli_query($enlace, $sql_trans);
+		$transacciones_map = [];
+		while ($t = mysqli_fetch_assoc($res_trans)) {
+			$transacciones_map[$t["id_anticipo_planta"]][] = $t;
+		}
+		mysqli_free_result($res_trans);
+
+		// 3. Todos los anticipos
+		$sql_ant = "
+			SELECT
+				ant.id AS id_anticipo,
+				ant.id_planta,
+				ant.serie_factura,
+				ant.numero_factura,
+				ant.evidencias,
+				ant.saldo_inicial,
+				ant.saldo_actual,
+				DATE_FORMAT(ant.created_at, '%d/%m/%Y') AS fecha_registro,
+				ant.estado
+			FROM anticipo_planta ant
+			WHERE ant.estado != 'X'
+		";
+		$res_ant = mysqli_query($enlace, $sql_ant);
+		$anticipos_raw = [];
+		while ($a = mysqli_fetch_assoc($res_ant)) {
+			$anticipos_raw[] = $a;
+		}
+		mysqli_free_result($res_ant);
+
+		// 4. Plantas con anticipos
+		$sql_pca = "
+			SELECT DISTINCT pln.id AS id_planta, pln.ruc, pln.descripcion
+			FROM tbconfig_plantas pln
+			INNER JOIN anticipo_planta ant ON ant.id_planta = pln.id
+		";
+		$res_pca = mysqli_query($enlace, $sql_pca);
+		$plantas_map = [];
+		while ($p = mysqli_fetch_assoc($res_pca)) {
+			$plantas_map[$p["id_planta"]] = [
+				"id_planta" => $p["id_planta"],
+				"ruc" => $p["ruc"],
+				"descripcion" => $p["descripcion"],
+				"cantidad_anticipos" => 0,
+				"anticipos_con_saldo" => 0,
+				"anticipos_sin_saldo" => 0,
+				"anticipos" => [],
+			];
+		}
+		mysqli_free_result($res_pca);
+
+		// 5. Mapear
+		foreach ($anticipos_raw as $ant) {
+			$id_planta = $ant["id_planta"];
+			$id_anticipo = $ant["id_anticipo"];
+			$ant["transacciones"] = $transacciones_map[$id_anticipo] ?? [];
+
+			if (isset($plantas_map[$id_planta])) {
+				$plantas_map[$id_planta]["anticipos"][] = $ant;
+				$plantas_map[$id_planta]["cantidad_anticipos"]++;
+				$response["cantidad_anticipos"]++;
+
+				if ($ant["estado"] === "A") {
+					$plantas_map[$id_planta]["anticipos_con_saldo"]++;
+					$response["anticipos_con_saldo"]++;
+				} else {
+					$plantas_map[$id_planta]["anticipos_sin_saldo"]++;
+					$response["anticipos_sin_saldo"]++;
+				}
+			}
+		}
+
+		$response["plantas_con_anticipos"] = array_values($plantas_map);
+		usort($response["plantas_con_anticipos"], fn($a, $b) => strcmp($a["descripcion"], $b["descripcion"]));
+
+		header("Content-Type: application/json");
+		echo json_encode(["estado" => 1, "data" => $response]);
+		break;
+
+	case "registrarAnticipoPlanta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$serie = trim($_POST["serie_factura"] ?? "");
+		$numero = trim($_POST["numero_factura"] ?? "");
+		$saldo_inicial = floatval($_POST["saldo_inicial"] ?? 0);
+
+		if (!$id_planta || empty($serie) || empty($numero) || $saldo_inicial <= 0) {
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "msg" => "Faltan datos requeridos."]);
+			exit();
+		}
+
+		// Procesar evidencias
+		$evidencias_final = [];
+		if (isset($_FILES['archivos'])) {
+			$folder = "anticipos_plantas_doc/";
+			if (!file_exists("../" . $folder)) {
+				mkdir("../" . $folder, 0777, true);
+			}
+			foreach ($_FILES['archivos']['name'] as $i => $name) {
+				if ($_FILES['archivos']['error'][$i] === 0) {
+					$ext = pathinfo($name, PATHINFO_EXTENSION);
+					$newName = date("Ymd_His") . "_" . uniqid() . "." . $ext;
+					$path = $folder . $newName;
+					if (move_uploaded_file($_FILES['archivos']['tmp_name'][$i], "../" . $path)) {
+						$evidencias_final[] = ["filename" => $name, "path" => $path];
+					}
+				}
+			}
+		}
+		$evidencias_json = mysqli_real_escape_string($enlace, json_encode($evidencias_final));
+
+		$serie_esc = mysqli_real_escape_string($enlace, $serie);
+		$numero_esc = mysqli_real_escape_string($enlace, $numero);
+
+		$sql_ins = "
+			INSERT INTO anticipo_planta (id_planta, serie_factura, numero_factura, evidencias, saldo_inicial, saldo_actual, estado)
+			VALUES ($id_planta, '$serie_esc', '$numero_esc', '$evidencias_json', $saldo_inicial, $saldo_inicial, 'A')
+		";
+
+		if (mysqli_query($enlace, $sql_ins)) {
+			$new_id = mysqli_insert_id($enlace);
+			$new_data = [
+				"id_anticipo" => (int) $new_id,
+				"id_planta" => (int) $id_planta,
+				"serie_factura" => $serie,
+				"numero_factura" => $numero,
+				"evidencias" => $evidencias_final,
+				"saldo_inicial" => number_format($saldo_inicial, 2, ".", ""),
+				"saldo_actual" => number_format($saldo_inicial, 2, ".", ""),
+				"fecha_registro" => date("d/m/Y"),
+				"estado" => "A",
+				"transacciones" => [],
+			];
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 1, "msg" => "Anticipo registrado.", "new_data" => $new_data]);
+		} else {
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "msg" => mysqli_error($enlace)]);
+		}
+		break;
+
+	case "anularAnticipoPlanta":
+		$id_anticipo = intval($_POST["id_anticipo"] ?? 0);
+		if (!$id_anticipo) {
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "msg" => "Anticipo inválido."]);
+			exit();
+		}
+
+		// Bloquear si tiene transacciones confirmadas
+		$q_chk = "SELECT COUNT(*) as c FROM anticipo_planta_transaccion WHERE id_anticipo_planta = $id_anticipo AND estado = 'A'";
+		$res_chk = mysqli_query($enlace, $q_chk);
+		$row_chk = mysqli_fetch_assoc($res_chk);
+		if ($row_chk['c'] > 0) {
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "msg" => "No se puede anular: tiene transacciones confirmadas."]);
+			exit();
+		}
+
+		mysqli_begin_transaction($enlace);
+		try {
+			// Cancelar transacciones pendientes
+			mysqli_query($enlace, "UPDATE anticipo_planta_transaccion SET estado = 'C' WHERE id_anticipo_planta = $id_anticipo AND estado = 'B'");
+
+			// Anular anticipo
+			mysqli_query($enlace, "UPDATE anticipo_planta SET estado = 'X' WHERE id = $id_anticipo");
+
+			mysqli_commit($enlace);
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 1, "msg" => "Anticipo anulado."]);
+		} catch (Exception $e) {
+			mysqli_rollback($enlace);
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+		}
+		break;
+
+	case "getTransaccionesAnticipoPlanta":
+		$id_anticipo = intval($_POST["id_anticipo"] ?? 0);
+		if (!$id_anticipo) {
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "data" => []]);
+			exit();
+		}
+
+		$q_tr = "
+			SELECT
+				tr.id,
+				tr.id_factura_venta,
+				fv.serie AS factura_serie,
+				fv.numero AS factura_numero,
+				tr.saldo_actual,
+				tr.monto_retirado,
+				tr.saldo_restante,
+				tr.estado,
+				DATE_FORMAT(tr.created_at, '%d/%m/%Y %H:%i') AS fecha_registro
+			FROM anticipo_planta_transaccion tr
+			LEFT JOIN factura_venta fv ON fv.id = tr.id_factura_venta
+			WHERE tr.id_anticipo_planta = $id_anticipo
+			ORDER BY tr.created_at ASC
+		";
+		$res_tr = mysqli_query($enlace, $q_tr);
+		$trans = [];
+		while ($row = mysqli_fetch_assoc($res_tr)) {
+			$trans[] = $row;
+		}
+		header("Content-Type: application/json");
+		echo json_encode(["estado" => 1, "data" => $trans]);
+		break;
+
+	// ══════════════════════════════════════════════════════════════
+	// MÓDULO: Comprobantes de Venta Mineral (factura_venta)
+	// ══════════════════════════════════════════════════════════════
+
+	// ─── GET: Tipo de cambio más reciente (USD→PEN) ───
+	case "fv_GetTipoCambio":
+		$fecha = isset($_POST["fecha"]) && $_POST["fecha"] !== '' ? $_POST["fecha"] : date('Y-m-d');
+		$q_tc = "
+			SELECT tc.id AS id_tipo_cambio, tc.tc_compra, tc.tc_venta
+			FROM tb_tipocambio tc
+			WHERE tc.estado <> 'X'
+			  AND tc.fecha = '$fecha'
+			  AND tc.id_moneda_base = 2
+			ORDER BY tc.fecha DESC, tc.id DESC
+			LIMIT 1
+		";
+		$r_tc = mysqli_query($enlace, $q_tc);
+		if ($r_tc && ($row_tc = mysqli_fetch_assoc($r_tc))) {
+			echo json_encode([
+				"estado" => 1,
+				"id_tipo_cambio" => $row_tc["id_tipo_cambio"],
+				"tc_compra" => $row_tc["tc_compra"],
+				"tc_venta" => $row_tc["tc_venta"],
+			]);
+		} else {
+			echo json_encode(["estado" => 0, "msg" => "Sin tipo de cambio para hoy."]);
+		}
+		break;
+
+	// ─── GET: Lista de facturas de venta ───
+	case "fv_ListaFacturasVenta":
+		mysqli_query($enlace, "SET SESSION group_concat_max_len = 1000000");
+		$q = "
+			SELECT
+				fv.id,
+				fv.id_planta,
+				fv.serie,
+				fv.numero,
+				fv.fecha_emision,
+				fv.tipo_cambio_venta,
+				fv.porcentaje_igv,
+				fv.porcentaje_detraccion,
+				fv.total_dolares,
+				fv.total_soles,
+				fv.monto_igv,
+				fv.avance_pago_anticipo,
+				fv.monto_detraccion,
+				fv.monto_neto,
+				fv.avance_pago_neto,
+				fv.avance_pago_detraccion,
+				fv.tipo_pago,
+				fv.estado,
+				fv.created_at,
+				pln.descripcion AS descripcion_planta,
+				u.usu_usuario   AS usuario_registro,
+				(
+					SELECT GROUP_CONCAT(
+						JSON_OBJECT(
+							'precio_total', vd.precio_total,
+							'elemento_quimico', vd.elemento_quimico,
+							'codigo_cliente', dst.codigo_en_planta_destino,
+							'numero_parte', dst.numero_parte,
+							'codigo_interno', (
+								CASE
+									WHEN dsd.is_blending = 1 THEN (
+										SELECT bl.correlativo FROM blending bl WHERE bl.id = dsd.id_mineral LIMIT 1
+									)
+									ELSE (
+										SELECT vcd.cod_gel
+										FROM catalogolotes lot
+										INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+										WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
+									)
+								END
+							)
+						)
+					)
+					FROM factura_venta_detalle fvd
+					INNER JOIN valorizacion_venta_detalle vd ON vd.id = fvd.id_valorizacion_venta_detalle
+					INNER JOIN distribucion_detalle dst ON dst.id = vd.id_distribucion_detalle
+					INNER JOIN despacho_detalle dsd ON dsd.id = dst.id_despacho_detalle
+					WHERE fvd.id_factura_venta = fv.id
+				) AS lotes_json
+			FROM factura_venta fv
+			INNER JOIN tbconfig_plantas pln ON pln.id = fv.id_planta
+			LEFT  JOIN tb_usuario u         ON u.Id   = fv.id_usuario_registro
+			WHERE 1=1
+		";
+
+		$anio = intval($_POST["anio"] ?? 0);
+		$mes = intval($_POST["mes"] ?? 0);
+
+		if ($anio > 0) {
+			$q .= " AND YEAR(fv.fecha_emision) = $anio ";
+		}
+		if ($mes > 0) {
+			$q .= " AND MONTH(fv.fecha_emision) = $mes ";
+		}
+
+		$q .= " ORDER BY fv.id DESC ";
+		$res = mysqli_query($enlace, $q);
+		$registros = [];
+		if ($res) {
+			while ($row = mysqli_fetch_assoc($res)) {
+				if (!empty($row['lotes_json'])) {
+					$row['lotes'] = json_decode('[' . $row['lotes_json'] . ']', true);
+				} else {
+					$row['lotes'] = [];
+				}
+				unset($row['lotes_json']);
+				$registros[] = $row;
+			}
+		}
+		echo json_encode(["estado" => count($registros) ? 1 : 0, "registros" => $registros]);
+		break;
+
+	case "fv_GetMediosPago":
+		$q = "SELECT Id, descripcion FROM tbconfig_mediospago WHERE estado='A' ORDER BY descripcion";
+		$res = mysqli_query($enlace, $q);
+		$rows = [];
+		if ($res) {
+			while ($row = mysqli_fetch_assoc($res)) $rows[] = $row;
+		}
+		echo json_encode(["estado" => count($rows) ? 1 : 0, "registros" => $rows]);
+		break;
+
+	// ─── GET: Lotes valorizados en venta con ley Au, por planta, sin factura aún ───
+	case "fv_GetLotesValorizadosVenta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$q = "
+			SELECT
+				vd.id,
+				vd.id_valorizacion_venta,
+				vd.elemento_quimico,
+				vd.precio_total,
+				vv.codigo_valorizacion_venta,
+				dst.numero_parte,
+				dst.codigo_en_planta_destino AS codigo_cliente,
+				CASE
+					WHEN dsd.is_blending = 1 THEN (
+						SELECT bl.correlativo FROM blending bl WHERE bl.id = dsd.id_mineral LIMIT 1
+					)
+					ELSE (
+						SELECT vcd.cod_gel
+						FROM catalogolotes lot
+						INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+						WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
+					)
+				END AS codigo_interno
+			FROM valorizacion_venta_detalle vd
+			INNER JOIN valorizacion_venta vv    ON vv.id  = vd.id_valorizacion_venta
+			INNER JOIN distribucion_detalle dst ON dst.id = vd.id_distribucion_detalle
+			INNER JOIN despacho_detalle dsd     ON dsd.id = dst.id_despacho_detalle
+			INNER JOIN despacho des             ON des.id = dsd.id_despacho
+			LEFT JOIN factura_venta_detalle fvd ON fvd.id_valorizacion_venta_detalle = vd.id
+			WHERE des.id_planta = $id_planta
+			  AND vv.estado = 'A'
+			  AND fvd.id_factura_venta IS NULL
+			ORDER BY vd.id DESC
+		";
+		$res = mysqli_query($enlace, $q);
+		$rows = [];
+		if ($res)
+			while ($row = mysqli_fetch_assoc($res))
+				$rows[] = $row;
+		echo json_encode(["estado" => count($rows) ? 1 : 0, "registros" => $rows]);
+		break;
+
+	// ─── GET: Anticipos de planta con saldo ───
+	case "fv_GetAnticiposPlanta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$q = "
+			SELECT
+				ap.id   AS id_anticipo,
+				CONCAT(ap.serie_factura, '-', ap.numero_factura) AS factura,
+				ap.saldo_inicial,
+				ap.saldo_actual,
+				DATE_FORMAT(ap.created_at, '%d/%m/%Y') AS fecha_registro
+			FROM anticipo_planta ap
+			WHERE ap.id_planta = $id_planta
+			  AND ap.estado = 'A'
+			  AND ap.saldo_actual > 0
+			ORDER BY ap.created_at ASC
+		";
+		$res = mysqli_query($enlace, $q);
+		$anticipos = [];
+		if ($res)
+			while ($row = mysqli_fetch_assoc($res))
+				$anticipos[] = $row;
+		echo json_encode(["estado" => 1, "anticipos" => $anticipos]);
+		break;
+
+	// ─── POST: Grabar Factura de Venta ───
+	case "fv_GrabarFacturaVenta":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$id_tc = intval($_POST["id_tipo_cambio"] ?? 0) ?: 'NULL';
+		$id_usuario = intval($_SESSION["Id"] ?? 0);
+		$fecha = mysqli_real_escape_string($enlace, $_POST["fecha_emision"] ?? '');
+		$serie = strtoupper(trim(mysqli_real_escape_string($enlace, $_POST["serie"] ?? '')));
+		$numero = strtoupper(trim(mysqli_real_escape_string($enlace, $_POST["numero"] ?? '')));
+		$pdet = floatval($_POST["porcentaje_detraccion"] ?? 12);
+		$tc_venta = floatval($_POST["tc_venta"] ?? 0);
+		$lotes = json_decode($_POST["lotes"] ?? '[]', true) ?: [];
+		$anticipos = json_decode($_POST["anticipos"] ?? '[]', true) ?: [];
+		$usa_anticipos = intval($_POST["usa_anticipos"] ?? 0);
+
+		if (!$id_planta || !$fecha || !$serie || !$numero || !$tc_venta || empty($lotes)) {
+			echo json_encode(["estado" => 0, "msg" => "Datos incompletos."]);
+			break;
+		}
+
+		// Total USD = suma de precio_total de los lotes seleccionados
+		$total_usd = array_sum(array_column($lotes, 'precio_total'));
+		$total_soles = round($total_usd * $tc_venta, 2);
+
+		$porcentaje_igv = 0.18;
+		$monto_igv = round($total_soles - ($total_soles / (1 + $porcentaje_igv)), 2);
+
+		// Tipo de pago según anticipos (se actualizará luego de procesar los anticipos)
+		$tipo_pago = 'B';
+
+		// Evidencias
+		$evidencias_final = [];
+		if (isset($_FILES['archivos'])) {
+			$folder = "factura_venta_docs/";
+			if (!file_exists("../" . $folder))
+				mkdir("../" . $folder, 0777, true);
+			foreach ($_FILES['archivos']['name'] as $i => $name) {
+				if ($_FILES['archivos']['error'][$i] === 0) {
+					$ext = pathinfo($name, PATHINFO_EXTENSION);
+					$newName = date("Ymd_His") . "_" . uniqid() . "." . $ext;
+					$path = $folder . $newName;
+					if (move_uploaded_file($_FILES['archivos']['tmp_name'][$i], "../" . $path)) {
+						$evidencias_final[] = ["filename" => $name, "path" => $path];
+					}
+				}
+			}
+		}
+		$evidencias_json = mysqli_real_escape_string($enlace, json_encode($evidencias_final));
+
+		mysqli_begin_transaction($enlace);
+		try {
+			// 1. Verificar duplicado serie+numero
+			$q_dup = "SELECT COUNT(*) AS c FROM factura_venta
+					  WHERE serie = '$serie' AND numero = '$numero' AND estado <> 'X'";
+			$r_dup = mysqli_query($enlace, $q_dup);
+			if (($dup = mysqli_fetch_assoc($r_dup)) && $dup['c'] > 0) {
+				throw new Exception("Ya existe un comprobante con esa serie y número.");
+			}
+
+			// 2. Insertar factura_venta
+			$q_ins = "INSERT INTO factura_venta
+				(id_planta, id_tipo_cambio, id_usuario_registro, serie, numero, fecha_emision, 
+				 tipo_cambio_venta, porcentaje_igv, porcentaje_detraccion, evidencias, 
+				 total_dolares, total_soles, monto_igv, tipo_pago, created_at, estado)
+				VALUES
+				($id_planta, $id_tc, $id_usuario, '$serie', '$numero', '$fecha',
+				 $tc_venta, $porcentaje_igv, $pdet, '$evidencias_json', 
+				 $total_usd, $total_soles, $monto_igv, '$tipo_pago', NOW(), 'E')";
+			if (!mysqli_query($enlace, $q_ins))
+				throw new Exception(mysqli_error($enlace));
+			$id_factura = mysqli_insert_id($enlace);
+
+			// 3. Insertar detalle (factura_venta_detalle)
+			foreach ($lotes as $l) {
+				$id_vvd = intval($l['id_valorizacion_venta_detalle']);
+				$q_det = "INSERT INTO factura_venta_detalle (id_factura_venta, id_valorizacion_venta_detalle)
+						   VALUES ($id_factura, $id_vvd)";
+				if (!mysqli_query($enlace, $q_det))
+					throw new Exception(mysqli_error($enlace));
+			}
+
+			// 4. Descontar anticipos si aplica
+			if ($usa_anticipos && count($anticipos) > 0) {
+				$restante_factura = $total_usd;
+				$total_pagado_con_anticipos = 0;
+
+				foreach ($anticipos as $a) {
+					if ($restante_factura <= 0.001)
+						break;
+
+					$id_ant = intval($a['id_anticipo_planta']);
+					$monto_uso = floatval($a['monto_uso'] ?? 0);
+
+					if ($monto_uso <= 0)
+						continue;
+
+					// Obtener saldo real actual desde la BD
+					$q_ant_real = "SELECT saldo_actual FROM anticipo_planta WHERE id = $id_ant FOR UPDATE";
+					$r_ant_real = mysqli_query($enlace, $q_ant_real);
+					if ($row_ant = mysqli_fetch_assoc($r_ant_real)) {
+						$saldo_real = floatval($row_ant['saldo_actual']);
+
+						// El monto a usar no puede ser mayor al saldo real NI al restante de la factura
+						$usar = min($monto_uso, $saldo_real, $restante_factura);
+						$nuevo_saldo = $saldo_real - $usar;
+
+						$total_pagado_con_anticipos += $usar;
+						$restante_factura -= $usar;
+
+						// Actualizar saldo del anticipo
+						$nuevo_estado_ant = $nuevo_saldo <= 0.001 ? 'B' : 'A';
+						$q_upd_ant = "UPDATE anticipo_planta 
+									  SET saldo_actual = $nuevo_saldo, 
+										  estado = '$nuevo_estado_ant' 
+									  WHERE id = $id_ant";
+						if (!mysqli_query($enlace, $q_upd_ant))
+							throw new Exception(mysqli_error($enlace));
+
+						// Registrar transacción
+						$q_tr = "INSERT INTO anticipo_planta_transaccion
+							(id_anticipo_planta, id_factura_venta, saldo_actual, monto_retirado, saldo_restante, estado, created_at)
+							VALUES ($id_ant, $id_factura, $saldo_real, $usar, $nuevo_saldo, 'A', NOW())";
+						if (!mysqli_query($enlace, $q_tr))
+							throw new Exception(mysqli_error($enlace));
+					}
+				}
+
+				// Actualizar montos, tipo de pago y estado
+				fv_UpdateFacturaStatus($enlace, $id_factura);
+			} else {
+				// Si no usa anticipos, igual inicializamos montos de detracción y neto
+				fv_UpdateFacturaStatus($enlace, $id_factura);
+			}
+
+			mysqli_commit($enlace);
+			echo json_encode(["estado" => 1, "id_factura" => $id_factura]);
+		} catch (Exception $e) {
+			mysqli_rollback($enlace);
+			echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+		}
+		break;
+
+	// ─── GET: Detalle de una factura de venta ───
+	case "fv_GetDetalleFactura":
+		$id_factura = intval($_POST["id_factura"] ?? 0);
+
+		$q_cab = "
+			SELECT fv.*, pln.descripcion AS descripcion_planta,
+				   tc.tc_venta, u.usu_usuario AS usuario_registro
+			FROM factura_venta fv
+			INNER JOIN tbconfig_plantas pln ON pln.id = fv.id_planta
+			LEFT  JOIN tb_tipocambio tc     ON tc.id  = fv.id_tipo_cambio
+			LEFT  JOIN tb_usuario u         ON u.Id   = fv.id_usuario_registro
+			WHERE fv.id = $id_factura
+			LIMIT 1
+		";
+		$r_cab = mysqli_query($enlace, $q_cab);
+		$factura = $r_cab ? mysqli_fetch_assoc($r_cab) : null;
+
+		if (!$factura) {
+			echo json_encode(["estado" => 0, "msg" => "Factura no encontrada."]);
+			break;
+		}
+
+		$q_lotes = "
+			SELECT vd.id, vd.elemento_quimico, vd.precio_total,
+				   dst.numero_parte, dst.codigo_en_planta_destino AS codigo_cliente,
+				   CASE
+					   WHEN dsd.is_blending = 1 THEN (
+						   SELECT bl.correlativo FROM blending bl WHERE bl.id = dsd.id_mineral LIMIT 1
+					   )
+					   ELSE (
+						   SELECT vcd.cod_gel
+						   FROM catalogolotes lot
+						   INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_lote = lot.ccod_Lote
+						   WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
+					   )
+				   END AS codigo_interno
+			FROM factura_venta_detalle fvd
+			INNER JOIN valorizacion_venta_detalle vd ON vd.id = fvd.id_valorizacion_venta_detalle
+			INNER JOIN distribucion_detalle dst ON dst.id = vd.id_distribucion_detalle
+			INNER JOIN despacho_detalle dsd     ON dsd.id = dst.id_despacho_detalle
+			WHERE fvd.id_factura_venta = $id_factura
+		";
+		$r_lotes = mysqli_query($enlace, $q_lotes);
+		$lotes = [];
+		if ($r_lotes)
+			while ($row = mysqli_fetch_assoc($r_lotes))
+				$lotes[] = $row;
+
+		echo json_encode(["estado" => 1, "factura" => $factura, "lotes" => $lotes]);
+		break;
+
+	// ─── POST: Anular Factura de Venta ───
+	case "fv_AnularFacturaVenta":
+		$id_factura = intval($_POST["id_factura"] ?? 0);
+
+		// No anular si tiene pagos confirmados
+		$q_chk = "SELECT COUNT(*) AS c FROM pago_factura_venta
+				  WHERE id_factura_venta = $id_factura AND estado = 'A'";
+		$r_chk = mysqli_query($enlace, $q_chk);
+		$chk = mysqli_fetch_assoc($r_chk);
+		if ($chk['c'] > 0) {
+			echo json_encode(["estado" => 0, "msg" => "No se puede anular: tiene pagos registrados."]);
+			break;
+		}
+
+		mysqli_begin_transaction($enlace);
+		try {
+			// Revertir saldos de anticipos usados
+			$q_trans = "SELECT id_anticipo_planta, monto_retirado FROM anticipo_planta_transaccion
+						WHERE id_factura_venta = $id_factura AND estado = 'A'";
+			$r_trans = mysqli_query($enlace, $q_trans);
+			while ($t = mysqli_fetch_assoc($r_trans)) {
+				$id_ant = intval($t['id_anticipo_planta']);
+				$monto = floatval($t['monto_retirado']);
+				mysqli_query($enlace, "UPDATE anticipo_planta SET saldo_actual = saldo_actual + $monto, estado = 'A' WHERE id = $id_ant");
+				mysqli_query($enlace, "UPDATE anticipo_planta_transaccion SET estado = 'X' WHERE id_anticipo_planta = $id_ant AND id_factura_venta = $id_factura");
+			}
+
+			// Anular factura
+			if (!mysqli_query($enlace, "UPDATE factura_venta SET estado = 'X' WHERE id = $id_factura")) {
+				throw new Exception(mysqli_error($enlace));
+			}
+
+			mysqli_commit($enlace);
+			echo json_encode(["estado" => 1]);
+		} catch (Exception $e) {
+			mysqli_rollback($enlace);
+			echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+		}
+		break;
+
+	// ─── GET: Lista de pagos de una factura ───
+	case "fv_GetListaPagos":
+		$id_factura = intval($_POST["id_factura"] ?? 0);
+		$q = "
+			SELECT pf.*,
+				   mp.descripcion AS medio_pago,
+				   b1.cod_banco   AS banco_planta,
+				   cp.numero_cuenta AS cuenta_planta,
+				   b2.cod_banco   AS banco_empresa,
+				   bc.num_cuenta  AS cuenta_empresa,
+				   u.usu_usuario  AS usuario_registro
+			FROM pago_factura_venta pf
+			LEFT JOIN tbconfig_mediospago mp ON mp.Id = pf.id_medio_pago
+			LEFT JOIN cuenta_bancaria_planta cp ON cp.id = pf.id_cuenta_bancaria_planta
+			LEFT JOIN tb_bancos b1 ON b1.Id = cp.id_entidad_bancaria
+			LEFT JOIN tb_bancos_cuentas bc ON bc.id = pf.id_cuenta_bancaria_empresa
+			LEFT JOIN tb_bancos b2 ON b2.Id = bc.id_banco
+			LEFT JOIN tb_usuario u ON u.Id = pf.id_usuario_registro
+			WHERE pf.id_factura_venta = $id_factura AND pf.estado = 'A'
+			ORDER BY pf.fecha_hora_pago DESC, pf.id DESC
+		";
+		$res = mysqli_query($enlace, $q);
+		$pagos = [];
+		if ($res)
+			while ($row = mysqli_fetch_assoc($res))
+				$pagos[] = $row;
+		echo json_encode(["estado" => 1, "pagos" => $pagos]);
+		break;
+
+	// ─── GET: Cuentas bancarias de la empresa (GEL) ───
+	case "fv_GetCuentasEmpresa":
+		$q = "
+			SELECT bc.id, bc.num_cuenta, b.cod_banco AS banco, b.descripcion AS nombre_banco, m.descripcion AS moneda, bc.is_detraccion
+			FROM tb_bancos_cuentas bc
+			INNER JOIN tb_bancos b ON b.Id = bc.id_banco
+			INNER JOIN tbconfig_monedas m ON m.Id = bc.id_moneda
+			WHERE bc.estado = 'A'
+			ORDER BY b.descripcion ASC
+		";
+		$res = mysqli_query($enlace, $q);
+		$cuentas = [];
+		if ($res)
+			while ($row = mysqli_fetch_assoc($res))
+				$cuentas[] = $row;
+		echo json_encode(["estado" => 1, "cuentas" => $cuentas]);
+		break;
+
+	// ─── POST: Grabar Pago de Factura ───
+	case "fv_GrabarPagoFactura":
+		$id_factura = intval($_POST["id_factura_venta"] ?? 0);
+		$fecha = mysqli_real_escape_string($enlace, $_POST["fecha"] ?? '');
+		$id_medio = intval($_POST["id_medio_pago"] ?? 0);
+		$is_det = intval($_POST["is_detraccion"] ?? 0);
+		$id_ct_planta = intval($_POST["id_cuenta_planta"] ?? 0);
+		$id_ct_empresa = intval($_POST["id_cuenta_empresa"] ?? 0);
+		$monto = floatval($_POST["monto_pagado"] ?? 0);
+		$tc = floatval($_POST["cambio_dolares"] ?? 1);
+		$num_op = mysqli_real_escape_string($enlace, $_POST["num_operacion"] ?? '');
+		$obs = mysqli_real_escape_string($enlace, $_POST["observacion"] ?? '');
+		$id_usuario = intval($_SESSION["Id"] ?? 0);
+
+		if (!$id_factura || !$monto) {
+			echo json_encode(["estado" => 0, "msg" => "Datos incompletos."]);
+			break;
+		}
+
+		// El monto ingresado puede estar en Soles si tc > 1. 
+		// Convertimos a dólares para el registro de pago (monto_pagado en la tabla es USD)
+		$monto_usd = $tc > 0 ? ($monto / $tc) : $monto;
+
+		$evidencias_final = [];
+		if (isset($_FILES['archivo'])) {
+			$folder = "factura_venta_pagos_docs/";
+			if (!file_exists("../" . $folder))
+				mkdir("../" . $folder, 0777, true);
+			$name = $_FILES['archivo']['name'];
+			$ext = pathinfo($name, PATHINFO_EXTENSION);
+			$newName = date("Ymd_His") . "_" . uniqid() . "." . $ext;
+			$path = $folder . $newName;
+			if (move_uploaded_file($_FILES['archivo']['tmp_name'], "../" . $path)) {
+				$evidencias_final[] = ["filename" => $name, "path" => $path];
+			}
+		}
+		$evidencias_json = mysqli_real_escape_string($enlace, json_encode($evidencias_final));
+
+		mysqli_begin_transaction($enlace);
+		try {
+			$q_ins = "INSERT INTO pago_factura_venta
+				(id_factura_venta, id_medio_pago, id_cuenta_bancaria_empresa, id_cuenta_bancaria_planta,
+				 id_usuario_registro, cambio_dolares, monto_pagado, es_para_detraccion,
+				 fecha_hora_pago, observacion, evidencias, created_at, estado)
+				VALUES
+				($id_factura, $id_medio, $id_ct_empresa, $id_ct_planta,
+				 $id_usuario, $tc, $monto, $is_det,
+				 '$fecha', '$obs', '$evidencias_json', NOW(), 'A')";
+			if (!mysqli_query($enlace, $q_ins))
+				throw new Exception(mysqli_error($enlace));
+
+			fv_UpdateFacturaStatus($enlace, $id_factura);
+
+			mysqli_commit($enlace);
+			echo json_encode(["estado" => 1]);
+		} catch (Exception $e) {
+			mysqli_rollback($enlace);
+			echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+		}
+		break;
+
+	// ─── POST: Eliminar Pago de Factura ───
+	case "fv_EliminarPagoFactura":
+		$id_pago = intval($_POST["id_pago"] ?? 0);
+
+		$q_p = "SELECT id_factura_venta FROM pago_factura_venta WHERE id = $id_pago";
+		$r_p = mysqli_query($enlace, $q_p);
+		$p = mysqli_fetch_assoc($r_p);
+		if (!$p) {
+			echo json_encode(["estado" => 0, "msg" => "Pago no encontrado."]);
+			break;
+		}
+		$id_factura = $p['id_factura_venta'];
+
+		mysqli_begin_transaction($enlace);
+		try {
+			mysqli_query($enlace, "UPDATE pago_factura_venta SET estado = 'X' WHERE id = $id_pago");
+			fv_UpdateFacturaStatus($enlace, $id_factura);
+			mysqli_commit($enlace);
+			echo json_encode(["estado" => 1]);
+		} catch (Exception $e) {
+			mysqli_rollback($enlace);
+			echo json_encode(["estado" => 0, "msg" => $e->getMessage()]);
+		}
+		break;
+
+	case "fv_ListarEvidencias":
+		$tipo = $_POST["tipo"] ?? ''; // 'F' factura, 'P' pago, 'A' anticipo planta
+		$id = intval($_POST["id"] ?? 0);
+
+		$tabla = 'factura_venta';
+		if ($tipo == 'P') $tabla = 'pago_factura_venta';
+		if ($tipo == 'A') $tabla = 'anticipo_planta';
+
+		$q = "SELECT evidencias FROM $tabla WHERE id = $id";
+		$res = mysqli_query($enlace, $q);
+		$evidencias = [];
+		if ($res && $row = mysqli_fetch_assoc($res)) {
+			$evidencias = json_decode($row['evidencias'] ?: '[]', true);
+		}
+		echo json_encode(["estado" => 1, "evidencias" => $evidencias]);
+		break;
+
+	case "fv_SubirEvidencia":
+		$tipo = $_POST["tipo"] ?? '';
+		$id = intval($_POST["id"] ?? 0);
+
+		if (!isset($_FILES['archivo']) || !$id) {
+			echo json_encode(["estado" => 0, "msg" => "Faltan datos."]);
+			break;
+		}
+
+		$folder = "factura_venta_docs/";
+		if ($tipo == 'P') $folder = "factura_venta_pagos_docs/";
+		if ($tipo == 'A') $folder = "anticipos_plantas_docs/";
+
+		if (!file_exists("../" . $folder)) mkdir("../" . $folder, 0777, true);
+
+		$name = $_FILES['archivo']['name'];
+		$ext = pathinfo($name, PATHINFO_EXTENSION);
+		$newName = date("Ymd_His") . "_" . uniqid() . "." . $ext;
+		$path = $folder . $newName;
+
+		if (move_uploaded_file($_FILES['archivo']['tmp_name'], "../" . $path)) {
+			$tabla = 'factura_venta';
+			if ($tipo == 'P') $tabla = 'pago_factura_venta';
+			if ($tipo == 'A') $tabla = 'anticipo_planta';
+			
+			// Obtener actuales
+			$q_cur = "SELECT evidencias FROM $tabla WHERE id = $id";
+			$res_cur = mysqli_query($enlace, $q_cur);
+			$evs = [];
+			if ($res_cur && $row = mysqli_fetch_assoc($res_cur)) {
+				$evs = json_decode($row['evidencias'] ?: '[]', true);
+			}
+			
+			$evs[] = ["filename" => $name, "path" => $path];
+			$evs_json = mysqli_real_escape_string($enlace, json_encode($evs));
+			
+			$q_upd = "UPDATE $tabla SET evidencias = '$evs_json' WHERE id = $id";
+			if (mysqli_query($enlace, $q_upd)) {
+				echo json_encode(["estado" => 1]);
+			} else {
+				echo json_encode(["estado" => 0, "msg" => "Error al actualizar BD."]);
+			}
+		} else {
+			echo json_encode(["estado" => 0, "msg" => "Error al subir archivo."]);
+		}
+		break;
+
+	case "fv_EliminarEvidencia":
+		$tipo = $_POST["tipo"] ?? '';
+		$id = intval($_POST["id"] ?? 0);
+		$index = intval($_POST["index"] ?? -1);
+
+		if ($id <= 0 || $index < 0) {
+			echo json_encode(["estado" => 0, "msg" => "Datos inválidos."]);
+			break;
+		}
+
+		$tabla = 'factura_venta';
+		if ($tipo == 'P') $tabla = 'pago_factura_venta';
+		if ($tipo == 'A') $tabla = 'anticipo_planta';
+
+		$q_cur = "SELECT evidencias FROM $tabla WHERE id = $id";
+		$res_cur = mysqli_query($enlace, $q_cur);
+		if ($res_cur && $row = mysqli_fetch_assoc($res_cur)) {
+			$evs = json_decode($row['evidencias'] ?: '[]', true);
+			if (isset($evs[$index])) {
+				$file_to_delete = "../" . $evs[$index]['path'];
+				if (file_exists($file_to_delete)) unlink($file_to_delete);
+				
+				array_splice($evs, $index, 1);
+				$evs_json = mysqli_real_escape_string($enlace, json_encode($evs));
+				$q_upd = "UPDATE $tabla SET evidencias = '$evs_json' WHERE id = $id";
+				mysqli_query($enlace, $q_upd);
+				echo json_encode(["estado" => 1]);
+			} else {
+				echo json_encode(["estado" => 0, "msg" => "Índice no encontrado."]);
+			}
+		} else {
+			echo json_encode(["estado" => 0, "msg" => "Registro no encontrado."]);
+		}
+		break;
+}
+
+// ─── HELPER: Actualizar montos pagados y estado de factura ───
+function fv_UpdateFacturaStatus($enlace, $id_factura)
+{
+	// 1. Obtener datos de la factura
+	$q_f = "SELECT total_dolares, tipo_cambio_venta, porcentaje_detraccion, porcentaje_igv FROM factura_venta WHERE id = $id_factura";
+	$r_f = mysqli_query($enlace, $q_f);
+	$f = mysqli_fetch_assoc($r_f);
+	$total_factura = floatval($f['total_dolares'] ?? 0);
+	$tc_venta = floatval($f['tipo_cambio_venta'] ?? 0);
+	$p_det = floatval($f['porcentaje_detraccion'] ?? 0) / 100;
+	$p_igv = floatval($f['porcentaje_igv'] ?? 0.18); // Si es 0.18
+
+	// Cálculos básicos
+	$total_soles = $total_factura * $tc_venta;
+	// El usuario pide: total_soles / 1.18 * 0.18 (asumiendo que total_soles ya incluye IGV)
+	$monto_igv = ($total_soles / 1.18) * 0.18;
+
+	// 2. Suma de anticipos usados (avance_pago_anticipo)
+	$q_a = "SELECT SUM(monto_retirado) AS total FROM anticipo_planta_transaccion WHERE id_factura_venta = $id_factura AND estado = 'A'";
+	$r_a = mysqli_query($enlace, $q_a);
+	$avance_pago_anticipo = ($row = mysqli_fetch_assoc($r_a)) ? floatval($row['total']) : 0;
+
+	// 3. Cálculos de Detracción y Neto
+	$monto_detraccion = ($total_factura - $avance_pago_anticipo) * $p_det;
+	$monto_neto = ($total_factura - $avance_pago_anticipo - $monto_detraccion);
+
+	// 4. Suma de pagos realizados (transferencias)
+	$q_p = "SELECT 
+				SUM(CASE WHEN es_para_detraccion = 0 THEN monto_pagado ELSE 0 END) AS pago_neto,
+				SUM(CASE WHEN es_para_detraccion = 1 THEN (monto_pagado / NULLIF(cambio_dolares, 0)) ELSE 0 END) AS pago_detraccion
+			FROM pago_factura_venta 
+			WHERE id_factura_venta = $id_factura AND estado = 'A'";
+	$r_p = mysqli_query($enlace, $q_p);
+	$pagos = mysqli_fetch_assoc($r_p);
+	$avance_pago_neto = floatval($pagos['pago_neto'] ?? 0);
+	$avance_pago_detraccion = floatval($pagos['pago_detraccion'] ?? 0);
+
+	$pagado_total = $avance_pago_anticipo + $avance_pago_neto + $avance_pago_detraccion;
+
+	// 5. Determinar nuevo estado y tipo_pago
+	$nuevo_estado = 'P';
+	if ($pagado_total >= ($total_factura - 0.01)) {
+		if ($avance_pago_anticipo > 0 && ($avance_pago_neto + $avance_pago_detraccion) > 0)
+			$nuevo_estado = 'A';
+		elseif (($avance_pago_neto + $avance_pago_detraccion) > 0)
+			$nuevo_estado = 'B';
+		else
+			$nuevo_estado = 'C';
+	} elseif ($pagado_total <= 0.01) {
+		$nuevo_estado = 'E';
+	}
+
+	$tipo_pago_val = 'B';
+	if ($avance_pago_anticipo > 0) {
+		if ($avance_pago_anticipo >= ($total_factura - 0.01)) {
+			$tipo_pago_val = 'C';
+		} else {
+			$tipo_pago_val = 'A';
+		}
+	}
+
+	$q_upd = "UPDATE factura_venta SET 
+				total_soles = $total_soles,
+				monto_igv = $monto_igv,
+				avance_pago_anticipo = $avance_pago_anticipo,
+				monto_detraccion = $monto_detraccion,
+				monto_neto = $monto_neto,
+				avance_pago_neto = $avance_pago_neto,
+				avance_pago_detraccion = $avance_pago_detraccion,
+				tipo_pago = '$tipo_pago_val',
+				estado = '$nuevo_estado' 
+			  WHERE id = $id_factura";
+	mysqli_query($enlace, $q_upd);
 }
 
 

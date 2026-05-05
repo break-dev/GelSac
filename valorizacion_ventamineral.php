@@ -387,10 +387,11 @@ if (!isset($_SESSION["Id"])) {
                 <tr>
                   <th style="width:32px;">#</th>
                   <th>N° Valor.</th>
+                  <th>Cód. Valorización</th>
                   <th>Planta</th>
                   <th>Registrado</th>
                   <th>Estado</th>
-                  <th style="display: none">Acción</th>
+                  <th >Acción</th>
                 </tr>
               </thead>
               <tbody id="tbl_valorizaciones"></tbody>
@@ -463,12 +464,16 @@ if (!isset($_SESSION["Id"])) {
 
           <!-- Fila superior: Planta -->
           <div class="row g-3 mb-3">
-            <div class="col-md-5">
+            <div class="col-md-3">
               <label class="form-label-vv">Planta Destino <span class="text-danger">*</span></label>
               <select id="cmb_planta_modal" class="form-control form-control-vv"
                 onchange="f_OnPlantaModalChange();">
                 <option value="">[Seleccione una planta]</option>
               </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label-vv">Cód. Valorización</label>
+              <input type="text" id="txt_codigo_valorizacion" class="form-control form-control-vv" placeholder="VNT-XXXX" maxlength="20">
             </div>
             <div class="col-md-4">
               <label class="form-label-vv">RUC Planta</label>
@@ -614,7 +619,7 @@ if (!isset($_SESSION["Id"])) {
                     <div class="field-readonly" id="f_guia_transportista">—</div>
                   </div>
                   <div class="col-6">
-                    <label class="form-label-vv">Peso Húmedo (TM)</label>
+                    <label class="form-label-vv">Peso Húmedo (TN)</label>
                     <div class="field-readonly" id="f_peso_humedo">—</div>
                   </div>
                   <div class="col-4">
@@ -622,7 +627,7 @@ if (!isset($_SESSION["Id"])) {
                     <div class="field-readonly" id="f_humedad">—</div>
                   </div>
                   <div class="col-4">
-                    <label class="form-label-vv">Peso Seco (TM)</label>
+                    <label class="form-label-vv">Peso Seco (TN)</label>
                     <div class="field-readonly" id="f_peso_seco">—</div>
                   </div>
                   <div class="col-4">
@@ -710,6 +715,26 @@ if (!isset($_SESSION["Id"])) {
           </button>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       MODAL: TRAZABILIDAD (CAMBIOS)
+  ══════════════════════════════════════════════ -->
+  <div class="modal fade" id="modal_trazabilidad" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius:10px; overflow:hidden;">
+        <div class="modal-header modal-header-vv">
+          <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Trazabilidad de Cambios</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="padding:16px 20px;">
+          <div id="modal_trazabilidad_cards" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+        <div class="modal-footer" style="background:#f4f6f9;">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>

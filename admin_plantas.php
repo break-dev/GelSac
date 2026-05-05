@@ -329,6 +329,156 @@ if (!isset($_SESSION["Id"])) {
 		</div>
 	</div>
 
+    <!--Ventana Modal planta banco-->
+    <div class="modal fade" id="modal_addplantabanco" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_addplantabancoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-6" id="modal_addplantabancoLabel"></h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 20px; margin-top: -15px; width: 100%;">
+              <button class="btn btn-primary" type="button" onclick="f_AdminBanco('x');" style="color: #ffffff; width: 100%; font-size: 14px;">
+                <b> + Nueva Cuenta Bancaria</b>
+              </button>
+            </div>
+            <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 20px; margin-top: -15px; overflow-x: scroll; width: 100%;">
+              <table class="table table-bordered table-striped table-hover">
+                <thead>
+                  <tr style="font-size: 12px;">
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; border-top-left-radius: 15px;">
+                      N°
+                    </th>
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 80px;">
+                      Banco
+                    </th>
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                      Cuenta
+                    </th>
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                      CCI
+                    </th>
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                      Moneda
+                    </th>
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                      ¿Es Detracción?
+                    </th>
+                    <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;  border-top-right-radius: 15px;">
+                      Accion
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="tbl_detalle_planta_banco">
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <input id="hd_plantabanco_documento" type="hidden">
+          <input id="hd_plantabanco_id_planta" type="hidden">
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!--Ventana Modal Cuentas Bancarias-->
+    <div class="modal fade" id="modal_addbanco" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_addbancoLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-6" id="modal_addbancoLabel"></h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row" style="padding: 5px;">
+              <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                Banco:
+              </div>
+              <div class="col-md-8 col-sm-8 col-xs-8">
+                <select id="planta_banco_id_banco" class="form-select" style="text-align: left;">
+                  <option selected value="">Elija una opción...</option>
+                  <?php
+                  $q_banco = "SELECT Id, descripcion FROM tb_bancos WHERE estado = 'A'";
+                  if ($res_banco = mysqli_query($enlace, $q_banco)){
+                    if (mysqli_num_rows($res_banco) > 0) {
+                      while($row_banco = mysqli_fetch_array($res_banco)){
+                        ?>
+                        <option value="<?php echo $row_banco["Id"]; ?>"><?php echo $row_banco["descripcion"]; ?></option>
+                        <?php
+                      }
+                    }
+                  }
+                  ?>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="padding: 5px;">
+              <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                Número de cuenta:
+              </div>
+              <div class="col-md-8 col-sm-8 col-xs-8">
+                <input id="planta_banco_num_cuenta" type="text" class="form-control col-md-12 col-xs-12" style="text-align: center;" >
+              </div>
+            </div>
+
+            <div class="row" style="padding: 5px;">
+              <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                CCI:
+              </div>
+              <div class="col-md-8 col-sm-8 col-xs-8">
+                <input id="planta_banco_cci" type="text" class="form-control col-md-12 col-xs-12" style="text-align: center;" >
+              </div>
+            </div>
+
+            <div class="row" style="padding: 5px;">
+              <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                Moneda:
+              </div>
+              <div class="col-md-8 col-sm-8 col-xs-8">
+                <select id="planta_banco_id_moneda" class="form-select" style="text-align: left;">
+                  <option selected value="">Elija una opción...</option>
+                  <?php
+                  $q_moneda = "SELECT Id, descripcion FROM tbconfig_monedas WHERE estado = 'A'";
+                  if ($res_moneda = mysqli_query($enlace, $q_moneda)){
+                    if (mysqli_num_rows($res_moneda) > 0) {
+                      while($row_moneda = mysqli_fetch_array($res_moneda)){
+                        ?>
+                        <option value="<?php echo $row_moneda["Id"]; ?>"><?php echo $row_moneda["descripcion"]; ?></option>
+                        <?php
+                      }
+                    }
+                  }
+                  ?>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="padding: 5px;">
+              <div class="col-md-4 col-sm-4 col-xs-4" style="padding: 5px;">
+                Cuenta Detracción:
+              </div>
+              <div class="col-md-8 col-sm-8 col-xs-8" style="padding-top: 6px;">
+                <input type="checkbox" id="planta_banco_is_detraccion">
+              </div>
+            </div>
+          </div>
+
+          <input id="hd_idplantabanco" type="hidden">
+          <input id="hd_modograbarbanco" type="hidden">
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-primary" onclick="f_GrabarBanco();">Grabar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 	<!-- Referenciando a JQuery -->
 	<script src="https://code.jquery.com/jquery-3.6.0.min.js"
 		integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
@@ -444,6 +594,12 @@ if (!isset($_SESSION["Id"])) {
 
 							_html += '      <a class="success" href="javascript: f_AdminProveedores(' + val.Id + ", '" + val.descripcion + "'" + ')"><i class="bi bi-people"></i>';
 							_html += '          <font style="color: #2c3e50;"> Proveedores</font>';
+							_html += '      </a>';
+
+							_html += '<br>';
+
+							_html += '      <a class="success" href="javascript: f_AdminPlantaBanco(' + d + ', ' + val.Id + ", '" + val.ruc + "', '" + f_CleanInjection(val.descripcion) + "'" + ')"><i class="bi bi-plus-circle"></i>';
+							_html += '          <font>Ctas. Banco</font>';
 							_html += '      </a>';
 
 							_html += '  </td>';
@@ -757,6 +913,142 @@ if (!isset($_SESSION["Id"])) {
 		});
 	</script>
 
+	<!-- Funciones de Cuentas Bancarias -->
+	<script type="text/javascript">
+		function f_AdminPlantaBanco(_item, _id_planta, _documento, _razon_social){
+			$("#hd_plantabanco_documento").val(_documento);
+			$("#hd_plantabanco_id_planta").val(_id_planta);
+			var titulo = 'Planta:<br>"<b>'+_documento + ' - ' + _razon_social.substring(0, 30) + '...</b>"';
+			$("#modal_addplantabancoLabel").html(titulo);
+			f_OpenModal('modal_addplantabanco');
+			f_LoadPlantaBancoResultados(_id_planta);
+		}
+
+		function f_AdminBanco(_modo, _id_planta_banco, _id_banco, _nro_cuenta, _cci, _id_moneda, _is_detraccion){
+			var titulo = (_modo == 'M') ? 'Editar Cuenta Bancaria' : 'Nueva Cuenta Bancaria';
+			var tipo = (_modo == 'M') ? 'E' : 'N';
+			$("#modal_addbancoLabel").html(titulo);
+			$("#hd_modograbarbanco").val(tipo);
+			f_OpenModal('modal_addbanco');
+
+			if (tipo == 'E') {
+				$("#hd_idplantabanco").val(_id_planta_banco);
+				$("#planta_banco_id_banco").val(_id_banco);
+				$("#planta_banco_num_cuenta").val(_nro_cuenta);
+				$("#planta_banco_cci").val(_cci);
+				$("#planta_banco_id_moneda").val(_id_moneda);
+				$("#planta_banco_is_detraccion").prop("checked", _is_detraccion == "1");
+			} else {
+				$("#hd_idplantabanco").val('');
+				$("#planta_banco_id_banco").val('');
+				$("#planta_banco_num_cuenta").val('');
+				$("#planta_banco_cci").val('');
+				$("#planta_banco_id_moneda").val('');
+				$("#planta_banco_is_detraccion").prop("checked", false);
+			}
+		}
+
+		function f_GrabarBanco(){
+			var _modo = $("#hd_modograbarbanco").val();
+			var _id_planta_banco = $("#hd_idplantabanco").val();
+			var _id_planta = $("#hd_plantabanco_id_planta").val();
+			var _id_banco = $("#planta_banco_id_banco").val();
+			var _nro_cuenta = $("#planta_banco_num_cuenta").val();
+			var _cci = $("#planta_banco_cci").val();
+			var _id_moneda = $("#planta_banco_id_moneda").val();
+			var _is_detraccion = $("#planta_banco_is_detraccion").is(":checked") ? 1 : 0;
+
+			if (_id_banco == "") {
+				alert("Debe seleccionar el banco.");
+				return;
+			}
+			if (_nro_cuenta.trim() == "") {
+				alert("Debe ingresar el número de cuenta.");
+				return;
+			}
+			if (_id_moneda == "") {
+				alert("Debe seleccionar la moneda.");
+				return;
+			}
+
+			if (_is_detraccion == 1) {
+				if (_id_banco != 3) {
+					alert("La cuenta de detracción debe ser del Banco de la Nación.");
+					return;
+				}
+				if (_id_moneda != 1) {
+					alert("La cuenta de detracción debe estar en Soles.");
+					return;
+				}
+			}
+
+			$.post("apis/backend.php", {
+				accion: "grabar_PlantaBanco",
+				modo_grabar: _modo,
+				id_planta_banco: _id_planta_banco,
+				id_planta: _id_planta,
+				id_banco: _id_banco,
+				nro_cuenta: _nro_cuenta,
+				cci: _cci,
+				id_moneda: _id_moneda,
+				is_detraccion: _is_detraccion
+			}, function(data){
+				if (data.estado == 1){
+					f_cerrarModal("modal_addbanco");
+					f_LoadPlantaBancoResultados(_id_planta); 
+				} else if (data.estado == 2) {
+					alert("La cuenta bancaria ya se encuentra registrada para esta planta.");
+				} else if (data.estado == 3 || data.estado == 4) {
+					alert(data.msg);
+				} else {
+					alert("Ocurrió un error al grabar la cuenta bancaria.");
+				}
+			}, "json");
+		}
+
+		function f_LoadPlantaBancoResultados(_id_planta){
+			var _html = '';
+			var d = 1;
+			$("#tbl_detalle_planta_banco").html('');
+
+			$.post("apis/backend.php", { accion: "get_listaplantasbancos", id_planta: _id_planta }, function(data){
+				if(data.estado == 1){
+					$.each(data.res, function(key, val){
+						_html += '<tr style="cursor: pointer; font-size: 14px;">';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right;">' + d + '</td>';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">' + val.banco + '</td>';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">' + val.nro_cuenta + '</td>';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">' + val.cci + '</td>';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">' + val.moneda + '</td>';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">' + (val.is_detraccion == "1" ? 'Sí' : 'No') + '</td>';
+						_html += '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: left;">';
+						_html += '    <a href="javascript: f_AdminBanco(' + "'M', " + val.Id + ", " + val.id_banco + ", '" + f_CleanInjection(val.nro_cuenta) + "', '" + f_CleanInjection(val.cci) + "', " + val.id_moneda + ", " + val.is_detraccion + ');" class="success"><i class="bi bi-pencil-square"></i><font style="color: #337ab7;"> Editar</font></a><br>';
+						_html += '    <a href="javascript: f_EliminarPlantaBanco(' + val.Id + ', ' + _id_planta + ');" class="success"><i class="bi bi-file-x"></i><font style="color: #F20505;"> Eliminar</font></a>';
+						_html += '  </td>';
+						_html += '</tr>';
+						d++;
+					});
+				}
+				$("#tbl_detalle_planta_banco").html(_html);
+			}, "json");
+		}
+
+		function f_EliminarPlantaBanco(_id_planta_banco, _id_planta){
+			if (confirm("¿Está seguro de eliminar la cuenta bancaria seleccionada?\\n\\nSi continúa, perderá la información permanentemente. ¿Desea continuar?")) {
+				$.post("apis/backend.php", {
+					accion: "eliminar_PlantaBanco",
+					id_planta_banco: _id_planta_banco
+				}, function(data){
+					if (data.estado == 1) {
+						f_LoadPlantaBancoResultados(_id_planta);
+					} else {
+						alert("Ocurrió un error al momento de eliminar la cuenta bancaria.");
+					}
+				}, "json");
+			}
+		}
+	</script>
+
 	<!-- Funciones de Menús -->
 	<script type="text/javascript">
 		function f_SetDimension() {
@@ -767,6 +1059,13 @@ if (!isset($_SESSION["Id"])) {
 
 		$(document).ready(function () {
 			$("#filtro_anho, #filtro_mes").select2();
+
+			$(document).on("change", "#planta_banco_is_detraccion", function() {
+				if ($(this).is(":checked")) {
+					$("#planta_banco_id_banco").val(3);
+					$("#planta_banco_id_moneda").val(1);
+				}
+			});
 
 			$("#select2-filtro_anho-container").css('background-color', '#0d2b68');
 			$("#select2-filtro_anho-container").css('color', '#ffffff');
