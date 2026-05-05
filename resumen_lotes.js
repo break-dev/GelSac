@@ -286,7 +286,7 @@ function f_RenderCards(lotes, blends) {
               <div class="lc-interno">
                 <span class="blend-badge me-2"><i class="bi bi-layers-fill"></i> Blending</span>
                 ${r.codigo_blending || '—'}
-                ${r.numero_parte ? `<span class="ms-1" style="font-size:14px;font-weight:400;color:rgba(255,255,255,.9);"> - partición (${r.numero_parte})</span>` : ''}
+                ${r.numero_parte ? `<span class="ms-1" style="font-size:14px;font-weight:400;color:rgba(255,255,255,.9);"> -- Part. #${r.numero_parte}</span>` : ''}
               </div>
               
             </div>
