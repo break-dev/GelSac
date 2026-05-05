@@ -161,7 +161,7 @@ function f_RenderCards(lotes, blends) {
             <div>
             <div class="lc-interno">
               ${r.lote_codigo_interno || ''}
-              ${(r.codigo_en_planta_destino && r.numero_parte) ?
+              ${(r.numero_parte) ?
         `<span class="ms-1" style="font-size:14px;font-weight:400;color:rgba(255,255,255,.65);">
                   (${r.codigo_en_planta_destino} - partición (${r.numero_parte}))
                 </span>` : ''}
