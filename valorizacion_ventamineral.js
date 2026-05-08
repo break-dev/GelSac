@@ -122,6 +122,11 @@ function f_LoadValorizaciones() {
                     <i class="bi bi-clock-history"></i> Cambios
                   </a>` : `
                   <span class="text-muted" style="font-size:11px;">Anulada</span>`}
+                <a href="javascript:void(0)"
+                   onclick="event.stopPropagation(); f_AbrirModalArchivosVV(${row.id}, '${row.numero_correlativo}');"
+                   style="color:#2e7d32;">
+                  <i class="bi bi-folder2-open"></i> Ver archivos
+                </a>
               </div>
             </td> 
           </tr>`;
@@ -963,4 +968,90 @@ function f_LimpiarCamposLote() {
   $('#txt_factor').val('1.1023');
   $('#hd_id_distribucion_detalle, #hd_elemento_quimico, #hd_id_condicion_comercial').val('');
   $('#div_sin_cc').hide();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GESTIÓN DE ARCHIVOS / EVIDENCIAS (Modal)
+// ══════════════════════════════════════════════════════════════
+let _idVVArchivos = 0; // id_valorizacion activo en el modal
+
+function f_AbrirModalArchivosVV(idVal, correlativo) {
+  _idVVArchivos = idVal;
+  $('#lbl_archivos_vv_titulo').text('N° ' + correlativo);
+  $('#file_nuevo_vv').val('');
+  f_CargarListaArchivosVV();
+  f_OpenModal('modal_archivos_vv');
+}
+
+function f_CargarListaArchivosVV() {
+  $('#div_lista_archivos_vv').html('<p class="text-muted text-center small">Cargando...</p>');
+
+  $.post(url_api, { accion: 'fv_ListarEvidencias', tipo: 'V', id: _idVVArchivos }, function(data) {
+    const evs = data.evidencias || [];
+
+    if (!evs.length) {
+      $('#div_lista_archivos_vv').html('<p class="text-muted text-center small"><i class="bi bi-inbox me-1"></i>Sin archivos adjuntos.</p>');
+      return;
+    }
+
+    let html = '';
+    evs.forEach((ev, idx) => {
+      html += `<div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:#f8f9fa; border-radius:6px; border:1px solid #dee2e6;">
+        <a href="../${ev.path}" target="_blank" style="font-size:13px; text-decoration:none; color:#0277bd;">
+          <i class="bi bi-file-earmark me-1"></i>${ev.filename}
+        </a>
+        <button class="btn btn-danger btn-sm py-0 px-2" onclick="f_EliminarArchivoVV(${idx});" title="Eliminar">
+          <i class="bi bi-trash3-fill"></i>
+        </button>
+      </div>`;
+    });
+    $('#div_lista_archivos_vv').html(html);
+  }, 'json').fail(function() {
+    $('#div_lista_archivos_vv').html('<p class="text-danger text-center small">Error al cargar archivos.</p>');
+  });
+}
+
+function f_SubirArchivoVV() {
+  const file = $('#file_nuevo_vv')[0].files[0];
+  if (!file) { alert('Seleccione un archivo.'); return; }
+
+  const fd = new FormData();
+  fd.append('accion', 'fv_SubirEvidencia');
+  fd.append('tipo', 'V');
+  fd.append('id', _idVVArchivos);
+  fd.append('archivo', file);
+
+  $('#wt_subir_vv').show();
+
+  $.ajax({
+    url: url_api, type: 'POST', data: fd,
+    contentType: false, processData: false, dataType: 'json',
+    success: function(data) {
+      $('#wt_subir_vv').hide();
+      if (data.estado === 1) {
+        $('#file_nuevo_vv').val('');
+        f_CargarListaArchivosVV();
+      } else {
+        alert('Error al subir: ' + (data.msg || 'Error desconocido'));
+      }
+    },
+    error: function() {
+      $('#wt_subir_vv').hide();
+      alert('Error de conexión.');
+    }
+  });
+}
+
+function f_EliminarArchivoVV(idx) {
+  if (!confirm('¿Eliminar este archivo?')) return;
+
+  $.post(url_api, { accion: 'fv_EliminarEvidencia', tipo: 'V', id: _idVVArchivos, index: idx }, function(data) {
+    if (data.estado === 1) {
+      f_CargarListaArchivosVV();
+    } else {
+      alert('Error al eliminar: ' + (data.msg || 'Error desconocido'));
+    }
+  }, 'json').fail(function() {
+    alert('Error de conexión.');
+  });
 }

@@ -720,8 +720,52 @@ if (!isset($_SESSION["Id"])) {
   </div>
 
   <!-- ══════════════════════════════════════════════
-       MODAL: TRAZABILIDAD (CAMBIOS)
+       MODAL: VER / SUBIR / ELIMINAR ARCHIVOS
   ══════════════════════════════════════════════ -->
+  <div class="modal fade" id="modal_archivos_vv" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius:10px; overflow:hidden;">
+
+        <div class="modal-header modal-header-vv">
+          <h5 class="modal-title">
+            <i class="bi bi-folder2-open me-2"></i>
+            Archivos — <span id="lbl_archivos_vv_titulo"></span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body" style="padding:16px 20px;">
+
+          <!-- Subir nuevo archivo -->
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <input type="file" id="file_nuevo_vv" class="form-control form-control-sm" style="max-width:360px;">
+            <button class="btn btn-primary btn-sm" onclick="f_SubirArchivoVV();">
+              <i class="bi bi-upload me-1"></i>Subir
+            </button>
+            <div id="wt_subir_vv" style="display:none;">
+              <span class="spinner-border spinner-border-sm text-primary"></span>
+            </div>
+          </div>
+
+          <hr style="margin:10px 0 14px;">
+
+          <!-- Lista de archivos -->
+          <div id="div_lista_archivos_vv">
+            <p class="text-muted text-center small">Cargando...</p>
+          </div>
+
+        </div>
+
+        <div class="modal-footer" style="background:#f4f6f9;">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TRAZABILIDAD (CAMBIOS) -->
+
   <div class="modal fade" id="modal_trazabilidad" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content" style="border-radius:10px; overflow:hidden;">

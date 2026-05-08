@@ -76323,6 +76323,7 @@ switch ($_POST["accion"]) {
 			"data" => $data
 		]);
 		break;
+
 	case "getReporteAnticiposTransacciones":
 		$id_proveedor = intval($_POST["id_proveedor"] ?? 0);
 		$fecha_desde = $_POST["fecha_desde"] ?? null;
@@ -81009,6 +81010,9 @@ SQL;
 		echo json_encode(["estado" => 1, "data" => $trans]);
 		break;
 
+
+	
+
 	// ══════════════════════════════════════════════════════════════
 	// MÓDULO: Comprobantes de Venta Mineral (factura_venta)
 	// ══════════════════════════════════════════════════════════════
@@ -81576,6 +81580,8 @@ SQL;
 			$tabla = 'pago_factura_venta';
 		if ($tipo == 'A')
 			$tabla = 'anticipo_planta';
+		if ($tipo == 'V')
+			$tabla = 'valorizacion_venta';
 
 		$q = "SELECT evidencias FROM $tabla WHERE id = $id";
 		$res = mysqli_query($enlace, $q);
@@ -81600,6 +81606,8 @@ SQL;
 			$folder = "factura_venta_pagos_docs/";
 		if ($tipo == 'A')
 			$folder = "anticipos_plantas_docs/";
+		if ($tipo == 'V')
+			$folder = "valorizacionesventa_docs/";
 
 		if (!file_exists("../" . $folder))
 			mkdir("../" . $folder, 0777, true);
@@ -81615,6 +81623,8 @@ SQL;
 				$tabla = 'pago_factura_venta';
 			if ($tipo == 'A')
 				$tabla = 'anticipo_planta';
+			if ($tipo == 'V')
+				$tabla = 'valorizacion_venta';
 
 			// Obtener actuales
 			$q_cur = "SELECT evidencias FROM $tabla WHERE id = $id";
@@ -81653,6 +81663,8 @@ SQL;
 			$tabla = 'pago_factura_venta';
 		if ($tipo == 'A')
 			$tabla = 'anticipo_planta';
+		if ($tipo == 'V')
+			$tabla = 'valorizacion_venta';
 
 		$q_cur = "SELECT evidencias FROM $tabla WHERE id = $id";
 		$res_cur = mysqli_query($enlace, $q_cur);
@@ -81675,6 +81687,233 @@ SQL;
 			echo json_encode(["estado" => 0, "msg" => "Registro no encontrado."]);
 		}
 		break;
+
+// ────────────────────────────────────────────────────────────
+// CASE 1 — Reporte principal (JSON para la tabla)
+// ────────────────────────────────────────────────────────────
+case "getReporteAnticiposPlantaTransacciones":
+    $id_planta   = intval($_POST["id_planta"]   ?? 0);
+    $fecha_desde = $_POST["fecha_desde"] ?? null;
+    $fecha_hasta = $_POST["fecha_hasta"] ?? null;
+ 
+    if ($id_planta == 0) {
+        header("Content-Type: application/json");
+        echo json_encode(["estado" => 0, "msg" => "ID de planta inválido."]);
+        exit();
+    }
+ 
+    $data_final = getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta);
+ 
+    header("Content-Type: application/json");
+    echo json_encode(["estado" => 1, "data" => $data_final]);
+    break;
+ 
+// ────────────────────────────────────────────────────────────
+// CASE 3 — Exportar Excel respetando TODOS los filtros activos
+// ────────────────────────────────────────────────────────────
+case "exportExcelAnticiposPlantaTransacciones":
+    error_reporting(0);
+    ini_set('display_errors', 0);
+    while (ob_get_level()) ob_end_clean();
+ 
+    $id_planta       = intval($_POST["id_planta"]      ?? 0);
+    $fecha_desde     = $_POST["fecha_desde"]    ?? null;
+    $fecha_hasta     = $_POST["fecha_hasta"]    ?? null;
+    // Filtros cliente que llegan desde el JS
+    $filter_anticipo = strtolower(trim($_POST["filter_anticipo"] ?? ''));
+    $filter_venta    = strtolower(trim($_POST["filter_venta"]    ?? ''));
+    $filter_estado   = trim($_POST["filter_estado"] ?? '');
+ 
+    if ($id_planta == 0) {
+        die("Error: Planta no seleccionada.");
+    }
+ 
+    // 1. Obtener todos los datos del backend (ya filtrados por fecha y planta)
+    $data_raw = getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta);
+ 
+    // 2. Aplicar filtros cliente-side (igual que el JS) para que el Excel
+    //    refleje exactamente lo que ve el usuario en pantalla.
+    $data_final = [];
+    foreach ($data_raw as $group) {
+        $ant = $group['anticipo_info'];
+ 
+        // Filtro factura anticipo
+        if ($filter_anticipo !== '' && stripos($ant['factura'], $filter_anticipo) === false) continue;
+ 
+        $matching_trs = array_filter($group['transacciones'], function ($tr) use ($filter_venta, $filter_estado) {
+            if ($filter_venta  !== '' && stripos($tr['factura_venta'], $filter_venta) === false) return false;
+            if ($filter_estado !== '' && $tr['estado'] !== $filter_estado) return false;
+            return true;
+        });
+ 
+        if (count($matching_trs) > 0) {
+            $data_final[] = [
+                'anticipo_info'  => $ant,
+                'transacciones'  => array_values($matching_trs),
+            ];
+        }
+    }
+ 
+    // 3. Nombre de planta
+    $res_planta    = mysqli_query($enlace, "SELECT descripcion FROM tbconfig_plantas WHERE id = $id_planta LIMIT 1");
+    $row_planta    = $res_planta ? mysqli_fetch_assoc($res_planta) : null;
+    $nombre_planta = $row_planta ? $row_planta['descripcion'] : 'PLANTA';
+ 
+    // 4. Crear Excel con PhpSpreadsheet
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet       = $spreadsheet->getActiveSheet();
+    $sheet->setTitle("Transacciones");
+ 
+    // ── Estilos base ──
+    $styleHeaderBase = [
+        'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+        'alignment' => [
+            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+        ],
+        'borders'   => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
+    ];
+ 
+    $mkStyle = function ($argb) use ($styleHeaderBase) {
+        return array_merge($styleHeaderBase, [
+            'fill' => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['argb' => $argb],
+            ],
+        ]);
+    };
+ 
+    $stylePrimary   = $mkStyle('FF2C3E50');
+    $styleSecondary = $mkStyle('FF3498DB');
+    $styleSuccess   = $mkStyle('FF27AE60');
+    $styleWarning   = $mkStyle('FFF39C12');
+    $styleInfo      = $mkStyle('FF17A2B8');
+    $styleDanger    = $mkStyle('FFE74C3C');
+ 
+    $styleCellBorder = [
+        'borders' => ['allBorders' => [
+            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            'color'       => ['argb' => 'FFCCCCCC'],
+        ]],
+    ];
+ 
+    $styleAnticipoRow = [
+        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE9ECEF']],
+        'font' => ['bold' => true],
+    ];
+ 
+    // ── Fila 1: Título Planta ──
+    $sheet->mergeCells('A1:O1');
+    $sheet->setCellValue('A1', $nombre_planta);
+    $sheet->getStyle('A1')->applyFromArray([
+        'font'      => ['bold' => true, 'size' => 14],
+        'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        'borders'   => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
+    ]);
+ 
+    // ── Fila 2: Grupos ──
+    $sheet->mergeCells('A2:C2'); $sheet->setCellValue('A2', 'Factura por anticipo'); $sheet->getStyle('A2:C2')->applyFromArray($stylePrimary);
+    $sheet->mergeCells('D2:F2'); $sheet->setCellValue('D2', 'Acción de anticipo');   $sheet->getStyle('D2:F2')->applyFromArray($styleSuccess);
+    $sheet->mergeCells('G2:J2'); $sheet->setCellValue('G2', 'Factura de venta');     $sheet->getStyle('G2:J2')->applyFromArray($styleSecondary);
+    $sheet->setCellValue('K2', 'SALDO');       $sheet->getStyle('K2')->applyFromArray($styleWarning);
+    $sheet->setCellValue('L2', 'DSCT DETRACC'); $sheet->getStyle('L2')->applyFromArray($styleInfo);
+    $sheet->setCellValue('M2', 'SALDO DEUDA'); $sheet->getStyle('M2')->applyFromArray($styleDanger);
+    $sheet->mergeCells('N2:N3'); $sheet->setCellValue('N2', 'ESTADO');         $sheet->getStyle('N2:N3')->applyFromArray($stylePrimary);
+    $sheet->mergeCells('O2:O3'); $sheet->setCellValue('O2', 'VALORIZACIONES'); $sheet->getStyle('O2:O3')->applyFromArray($stylePrimary);
+ 
+    // ── Fila 3: Subtítulos ──
+    $subHeaders = [
+        'A3' => ['Factura Número',               $stylePrimary],
+        'B3' => ['Fecha',                         $stylePrimary],
+        'C3' => ['Importe USD $',                 $stylePrimary],
+        'D3' => ['Aplicado al 100%',              $styleSuccess],
+        'E3' => ['Aplicado parcialmente',         $styleSuccess],
+        'F3' => ['LOTE',                          $styleSuccess],
+        'G3' => ['N° Factura Venta',              $styleSecondary],
+        'H3' => ['Fecha',                         $styleSecondary],
+        'I3' => ['Importe Factura USD $',         $styleSecondary],
+        'J3' => ['Importe Amortiza Adelanto USD $', $styleSecondary],
+        'K3' => ['Saldo Factura Amortiza',        $styleWarning],
+        'L3' => ['Saldo Neto Factura',            $styleInfo],
+        'M3' => ['Importe USD $',                 $styleDanger],
+    ];
+    foreach ($subHeaders as $cell => [$val, $sty]) {
+        $sheet->setCellValue($cell, $val);
+        $sheet->getStyle($cell)->applyFromArray($sty);
+    }
+ 
+    // ── Anchos ──
+    $colWidths = ['A'=>15,'B'=>12,'C'=>18,'D'=>14,'E'=>20,'F'=>18,
+                  'G'=>18,'H'=>12,'I'=>20,'J'=>22,'K'=>20,'L'=>20,
+                  'M'=>15,'N'=>22,'O'=>22];
+    foreach ($colWidths as $col => $w) {
+        $sheet->getColumnDimension($col)->setWidth($w);
+    }
+ 
+    // Congelar encabezados
+    $sheet->freezePane('A4');
+ 
+    $usdFmt = '"US$ "#,##0.00';
+    $row    = 4;
+ 
+    foreach ($data_final as $group) {
+        $ant = $group['anticipo_info'];
+ 
+        // Fila cabecera anticipo
+        $sheet->setCellValue('A' . $row, $ant['factura']);
+        $sheet->setCellValue('B' . $row, $ant['fecha']);
+        $sheet->setCellValue('C' . $row, $ant['importe_inicial']);
+        $sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+        $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleAnticipoRow);
+        $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
+        $row++;
+ 
+        foreach ($group['transacciones'] as $tr) {
+            $sheet->setCellValue('D' . $row, $tr['porcentaje_aplicado']);
+            $sheet->setCellValue('E' . $row, $tr['monto_retirado']);
+            $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+            $sheet->setCellValue('F' . $row, $tr['lotes']);
+            $sheet->setCellValue('G' . $row, $tr['factura_venta']);
+            $sheet->setCellValue('H' . $row, $tr['fecha_emision']);
+            $sheet->setCellValue('I' . $row, $tr['total_dolares']);
+            $sheet->getStyle('I' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+ 
+            // Importe amortiza = monto_retirado, fondo amarillo
+            $sheet->setCellValue('J' . $row, $tr['monto_retirado']);
+            $sheet->getStyle('J' . $row)->applyFromArray([
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFFFF00']],
+            ]);
+            $sheet->getStyle('J' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+ 
+            $sheet->setCellValue('K' . $row, $tr['saldo_factura_amortiza']);
+            $sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+            $sheet->setCellValue('L' . $row, $tr['saldo_neto_factura']);
+            $sheet->getStyle('L' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+            $sheet->setCellValue('M' . $row, $tr['saldo_restante']);
+            $sheet->getStyle('M' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+            $sheet->setCellValue('N' . $row, $tr['estado_label']);
+            $sheet->setCellValue('O' . $row, $tr['valorizaciones']);
+ 
+            $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
+            $row++;
+        }
+    }
+ 
+    // ── Descargar ──
+    $filename = 'Anticipos_Planta_' . date('Ymd_His') . '.xlsx';
+    while (ob_get_level()) ob_end_clean();
+ 
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+    header('Cache-Control: cache, must-revalidate');
+    header('Pragma: public');
+ 
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    break;
 }
 
 // ─── HELPER: Actualizar montos pagados y estado de factura ───
@@ -81765,8 +82004,6 @@ function f_LogDistribucion($enlace, $id_distribucion, $estado, $descripcion)
 
 	mysqli_query($enlace, $q_log);
 }
-
-
 
 function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
 {
@@ -82018,5 +82255,156 @@ function getNuevoNumeroCorrelativoValorizacionVenta($enlace)
 	$row = mysqli_fetch_assoc($res);
 
 	return $row['nuevo_numero'] ?? 1;
+}
+
+// ============================================================
+//  FUNCIÓN — Pegar FUERA del switch, en el mismo archivo
+// ============================================================
+ 
+/**
+ * Obtiene el reporte de anticipos planta con sus transacciones.
+ * Parámetros de fecha filtran sobre fecha_emision de factura_venta.
+ */
+function getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta)
+{
+    // 1. Obtener anticipos de la planta
+    $q_anticipos = "
+        SELECT
+            ant.id,
+            CONCAT(ant.serie_factura, '-', ant.numero_factura) AS factura,
+            ant.created_at  AS fecha_registro,
+            ant.saldo_inicial,
+            ant.estado
+        FROM anticipo_planta ant
+        WHERE ant.id_planta = $id_planta
+          AND ant.estado <> 'X'
+        ORDER BY ant.created_at DESC
+    ";
+ 
+    $res_anticipos = mysqli_query($enlace, $q_anticipos);
+    $data_final    = [];
+ 
+    while ($ant = mysqli_fetch_assoc($res_anticipos)) {
+        $anticipo_id     = (int) $ant['id'];
+        $saldo_inicial   = floatval($ant['saldo_inicial']);
+ 
+        // 2. Transacciones de este anticipo — los cálculos se resuelven en el SQL
+        $q_trans = "
+            SELECT
+                trn.id                               AS id_transaccion,
+                trn.monto_retirado,
+                trn.saldo_restante,
+ 
+                CONCAT(fact.serie, '-', fact.numero) AS factura_venta,
+                fact.fecha_emision,
+                fact.total_dolares,
+                fact.estado,
+ 
+                /* Aplicado % */
+                (trn.monto_retirado / $saldo_inicial) * 100 AS porcentaje_aplicado,
+ 
+                /* Saldo factura amortiza = (total - amortizado) * 1.18 */
+                (fact.total_dolares - trn.monto_retirado) * 1.18 AS saldo_factura_amortiza,
+ 
+                /* Saldo neto = saldo_factura - (saldo_factura * %detraccion) */
+                (
+                    ((fact.total_dolares - trn.monto_retirado) * 1.18)
+                    - (((fact.total_dolares - trn.monto_retirado) * 1.18) * (fact.porcentaje_detraccion / 100))
+                ) AS saldo_neto_factura,
+ 
+                /* Lotes */
+                (
+                    SELECT GROUP_CONCAT(
+                               DISTINCT IFNULL(dd.codigo_en_planta_destino, '-')
+                               SEPARATOR ', '
+                           )
+                    FROM  factura_venta_detalle  fvd
+                    INNER JOIN valorizacion_venta_detalle vd ON vd.id = fvd.id_valorizacion_venta_detalle
+                    INNER JOIN distribucion_detalle       dd ON dd.id = vd.id_distribucion_detalle
+                    WHERE fvd.id_factura_venta = fact.id
+                ) AS lotes,
+ 
+                /* Valorizaciones de venta */
+                (
+                    SELECT GROUP_CONCAT(
+                               DISTINCT IFNULL(vv.codigo_valorizacion_venta, '-')
+                               SEPARATOR ', '
+                           )
+                    FROM  factura_venta_detalle  fvd
+                    INNER JOIN valorizacion_venta_detalle vd ON vd.id = fvd.id_valorizacion_venta_detalle
+                    INNER JOIN valorizacion_venta         vv ON vv.id = vd.id_valorizacion_venta
+                    WHERE fvd.id_factura_venta = fact.id
+                ) AS valorizaciones
+ 
+            FROM anticipo_planta_transaccion trn
+            INNER JOIN factura_venta fact ON fact.id = trn.id_factura_venta
+            WHERE trn.id_anticipo_planta = $anticipo_id
+              AND fact.estado <> 'X'
+            ORDER BY trn.created_at ASC
+        ";
+ 
+        $res_trans         = mysqli_query($enlace, $q_trans);
+        $transacciones     = [];
+        $anticipoMatchDate = false;
+ 
+        while ($tr = mysqli_fetch_assoc($res_trans)) {
+            $fecha_emision = $tr['fecha_emision']; // YYYY-MM-DD
+ 
+            // Filtro de fechas (client-side sobre el resultado del query)
+            $matches = true;
+            if ($fecha_desde && (!$fecha_emision || $fecha_emision < $fecha_desde)) $matches = false;
+            if ($fecha_hasta && (!$fecha_emision || $fecha_emision > $fecha_hasta))  $matches = false;
+            if ($matches) $anticipoMatchDate = true;
+ 
+            // Mapeo de estado de la factura de venta
+            $estado_label = 'En espera';
+            switch ($tr['estado']) {
+                case 'A': $estado_label = 'Pagado - Mixto';         break;
+                case 'B': $estado_label = 'Pagado - Banco';         break;
+                case 'C': $estado_label = 'Pagado - Anticipos';     break;
+                case 'P': $estado_label = 'En proceso de pago';     break;
+                case 'E': $estado_label = 'En espera';              break;
+                case 'X': $estado_label = 'Anulada';                break;
+            }
+ 
+            $transacciones[] = [
+                'id_transaccion'         => $tr['id_transaccion'],
+                'factura_venta'          => $tr['factura_venta'],
+                'fecha_emision'          => $fecha_emision ?: '-',
+                'total_dolares'          => round(floatval($tr['total_dolares']), 2),
+                'porcentaje_aplicado'    => number_format(floatval($tr['porcentaje_aplicado']), 2) . '%',
+                'monto_retirado'         => round(floatval($tr['monto_retirado']), 2),
+                'lotes'                  => $tr['lotes'] ?: '-',
+                'saldo_factura_amortiza' => round(floatval($tr['saldo_factura_amortiza']), 2),
+                'saldo_neto_factura'     => round(floatval($tr['saldo_neto_factura']), 2),
+                'saldo_restante'         => round(floatval($tr['saldo_restante']), 2),
+                'estado'                 => $tr['estado'],        // clave raw para filtros JS
+                'estado_label'           => $estado_label,        // texto legible para Excel
+                'valorizaciones'         => $tr['valorizaciones'] ?: '-',
+            ];
+        }
+ 
+        // Decidir si incluir el grupo
+        $include = false;
+        if (!$fecha_desde && !$fecha_hasta) {
+            if (count($transacciones) > 0 || $ant['estado'] === 'B') $include = true;
+        } else {
+            if ($anticipoMatchDate) $include = true;
+        }
+ 
+        if ($include) {
+            $data_final[] = [
+                'anticipo_info' => [
+                    'id'             => $anticipo_id,
+                    'factura'        => $ant['factura'],
+                    'fecha'          => $ant['fecha_registro'],
+                    'importe_inicial'=> round($saldo_inicial, 2),
+                ],
+                'transacciones' => $transacciones,
+            ];
+        }
+    }
+ 
+    return $data_final;
 }
 ?>
