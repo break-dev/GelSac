@@ -997,7 +997,7 @@ function f_CargarListaArchivosVV() {
     let html = '';
     evs.forEach((ev, idx) => {
       html += `<div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:#f8f9fa; border-radius:6px; border:1px solid #dee2e6;">
-        <a href="../${ev.path}" target="_blank" style="font-size:13px; text-decoration:none; color:#0277bd;">
+        <a href=" ${ev.path} " target="_blank" style="font-size:13px; text-decoration:none; color:#0277bd;">
           <i class="bi bi-file-earmark me-1"></i>${ev.filename}
         </a>
         <button class="btn btn-danger btn-sm py-0 px-2" onclick="f_EliminarArchivoVV(${idx});" title="Eliminar">

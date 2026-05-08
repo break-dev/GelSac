@@ -80188,7 +80188,7 @@ SQL;
 		$evidencias_final = json_decode($_POST["evidencias_anteriores"], true) ?: [];
 
 		if (isset($_FILES['archivos'])) {
-			$folder = "valorizacionesventa_docs/";
+			$folder = "valorizaciones_venta_docs/";
 
 			if (!file_exists("../" . $folder)) {
 				mkdir("../" . $folder, 0777, true);
@@ -81607,7 +81607,7 @@ SQL;
 		if ($tipo == 'A')
 			$folder = "anticipos_plantas_docs/";
 		if ($tipo == 'V')
-			$folder = "valorizacionesventa_docs/";
+			$folder = "valorizaciones_venta_docs/";
 
 		if (!file_exists("../" . $folder))
 			mkdir("../" . $folder, 0777, true);

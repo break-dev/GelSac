@@ -178,7 +178,7 @@ bc
 images/qr
 **/logs
 **/tmp_files
-**/valorizacionesventa_docs
+**/valorizaciones_venta_docs
 **/anticipos_plantas_docs
 **/factura_venta_docs
 **/factura_venta_pagos_docs
