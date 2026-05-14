@@ -81528,11 +81528,11 @@ SQL;
 			$q_ins = "INSERT INTO pago_factura_venta
 				(id_factura_venta, id_medio_pago, id_cuenta_bancaria_empresa, id_cuenta_bancaria_planta,
 				 id_usuario_registro, cambio_dolares, monto_pagado, es_para_detraccion,
-				 fecha_hora_pago, observacion, evidencias, created_at, estado)
+				 fecha_hora_pago, nro_operacion, observacion, evidencias, created_at, estado)
 				VALUES
 				($id_factura, $id_medio, $id_ct_empresa, $id_ct_planta,
 				 $id_usuario, $tc, $monto, $is_det,
-				 '$fecha', '$obs', '$evidencias_json', NOW(), 'A')";
+				 '$fecha', '$num_op', '$obs', '$evidencias_json', NOW(), 'A')";
 			if (!mysqli_query($enlace, $q_ins))
 				throw new Exception(mysqli_error($enlace));
 

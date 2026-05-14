@@ -1006,14 +1006,21 @@ $r_plantas = mysqli_query($enlace, $q_plantas);
                         </div>
                     </div>
 
-                    <div class="row align-items-center mb-4">
+                    <div class="row align-items-center mb-3">
                         <div class="col-md-2 text-muted" style="font-size: 14px;">Medio Pago:</div>
                         <div class="col-md-4">
                             <select id="rp_medio_pago" class="form-select form-select-sm">
                                 <option value="">Cargando...</option>
                             </select>
                         </div>
-                        <div class="col-md-2 text-end text-muted" style="font-size: 14px;">Evidencia:</div>
+                        <div class="col-md-2 text-end text-muted" style="font-size: 14px;">Nro. Operación:</div>
+                        <div class="col-md-4">
+                            <input type="text" id="rp_nro_operacion" class="form-control form-control-sm" placeholder="Ej: 123456">
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-4">
+                        <div class="col-md-2 text-muted" style="font-size: 14px;">Evidencia:</div>
                         <div class="col-md-4">
                             <input type="file" id="rp_evidencia" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png">
                         </div>

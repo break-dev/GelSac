@@ -691,6 +691,7 @@ function f_LoadPagos() {
                         '<div>' +
                             '<span class="badge bg-' + (es_det ? 'success' : 'primary') + ' me-2">' + (es_det ? 'Detracción' : 'Neto') + '</span>' +
                             '<b>#' + (i + 1) + '</b> - ' + (p.medio_pago || 'Pago') +
+                            (p.nro_operacion ? ' <small class="text-muted ms-2">(Op: ' + p.nro_operacion + ')</small>' : '') +
                         '</div>' +
                         '<div class="text-end" style="font-size:11px;">' +
                             '<span class="text-muted me-3"><i class="bi bi-clock me-1"></i>Reg: ' + p.created_at + ' (' + (p.usuario_registro || '') + ')</span>' +
@@ -769,6 +770,7 @@ function f_AbrirModalRegistroPago() {
     $('#rp_observacion').val('');
     $('#rp_tipocambio').val(_factura_actual.tipo_cambio_venta || 1);
     $('#rp_monto_usd').val('0.00');
+    $('#rp_nro_operacion').val('');
     $('#rp_por_pagar').html('<span class="text-muted" style="font-size:12px;">Calculando...</span>');
 
     // Saldo
@@ -943,6 +945,7 @@ function f_GrabarPago() {
     var isDet = $('#rp_is_detraccion').is(':checked') ? 1 : 0;
     var ctPlanta = $('#rp_cuenta_planta').val();
     var ctEmpresa = $('#rp_cuenta_empresa').val();
+    var nroOp = $('#rp_nro_operacion').val();
     var monto = $('#rp_monto').val();
     var tc = $('#rp_tipocambio').val();
     var obs = $('#rp_observacion').val();
@@ -960,6 +963,7 @@ function f_GrabarPago() {
     formData.append('is_detraccion', isDet);
     formData.append('id_cuenta_planta', ctPlanta);
     formData.append('id_cuenta_empresa', ctEmpresa);
+    formData.append('num_operacion', nroOp);
     formData.append('monto_pagado', monto);
     formData.append('cambio_dolares', tc);
     formData.append('observacion', obs);
