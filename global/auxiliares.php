@@ -8,7 +8,7 @@ if (!isset($_SESSION["nom_usuario"]) || !isset($_SESSION["des_sucursal"]) || !is
 $navbar_maintop = '<nav class="navbar" style="background-color: #ba9842; box-shadow: 0px 0px 10px #BDBFAE; padding: 2px;">
 											  <div class="container-fluid" style="background-color: #25476a;">
 											    <div class="col-md-2">
-											    	<img src="' . $img_logo . '" style="width: 120px; padding: 5px;">
+											    	<img src="' . $img_logo . '" style="width: 70px; padding: 5px;">
 													<a role="button" data-bs-toggle="modal" data-bs-target="#menuModal"><i class="bi bi-list" style="color: white; font-size: 30px"></i></a>
 											    </div>
 											    

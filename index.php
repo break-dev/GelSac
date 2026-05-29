@@ -38,7 +38,7 @@
 					<div class="card col-md-6 col-lg-4 py-3" style="margin-top: 30px; border: solid; border-width: 1px; border-color: #ba9842; border-radius: 7px; background-color: #fff;">
 	            <div class="card-body" style="text-align: center; font-size: 14px;">
 	            	<div class="d-flex justify-content-center" style="width: 100%; border: solid; border-width: 1px; background-color: #fff; border-color: transparent; border-radius: 7px;">
-                	<img src="<?php echo $img_logo; ?>" style="width: 200px;">
+                	<img src="<?php echo $img_fondo; ?>" style="width: 300px;">
                 </div>
 
                 <div class="form-group row" style="text-align: left;">

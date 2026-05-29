@@ -7,9 +7,10 @@
 
 	// Variables
 		$nom_app = 'ERP Operaciones';
-		$nom_empresa = 'GEL S.A.C.';
+		$nom_empresa = 'BEIJING S.A.C.';
 		$favicon = $url_images.'favicon.png';
-		$img_logo = $url_images.'logo.png';
+		$img_logo = $url_images.'fondo_beijing_sf_sl.png';
+		$img_fondo = $url_images.'fondo_beijing_sf_lt.png';
 		$img_logo2 = $url_images.'logo2.png';
 		$img_waiting = $url_images.'waiting.gif';
 		$img_fondohall = $url_images.'fondo_hall.png';
