@@ -62,7 +62,7 @@ const MODULOS = [
       {
         num: 5,
         titulo: 'Editar y agregar lotes a una guía del primer tramo',
-        archivo: 'centro-ayuda-assets/c. primer tramo - gestion guias/5- editar y agregar lotes a una guia del primer tramo.mp4',
+        archivo: 'centro-ayuda-assets/c. primer tramo - gestion guias/5- editar y agregar lotes a una guia del prim.mp4',
       },
     ],
   },
@@ -101,7 +101,7 @@ const MODULOS = [
       {
         num: 8,
         titulo: 'Registro de valorización de compra con anticipo',
-        archivo: 'centro-ayuda-assets/f. valorizacion de compra/8- registro de valorizacion de compra con anticipo.mp4',
+        archivo: 'centro-ayuda-assets/f. valorizacion de compra/8- registro de valorizacion de compra con anticipos.mp4',
       },
       {
         num: 9,
@@ -124,22 +124,22 @@ const MODULOS = [
       {
         num: 11,
         titulo: 'Registro de comprobante para la valorización de compra',
-        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/11- registro de comprobante para la valorizacion de compra.mp4',
+        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/11- registro de comprobante para la valorizacion d.mp4',
       },
       {
         num: 12,
         titulo: 'Aprobación de comprobantes para contabilidad',
-        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/12- aprobacacion de comprobantes para contabilidad.mp4',
+        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/12- aprobacacion de comprobantes para contabi.mp4',
       },
       {
         num: 14,
         titulo: 'Registro de pagos del comprobante de compra',
-        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/14- registro de pagos del comprobante de compra.mp4',
+        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/14- registro de pagos del comprobante de compra .mp4',
       },
       {
         num: 15,
         titulo: 'Registro de pago de detracción de comprobante de compra',
-        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/15- registro de pago de detraccion de comprobante de compra.mp4',
+        archivo: 'centro-ayuda-assets/g. contabilidad - compra mineral/15- registro de pago de detraccion de comprobante .mp4',
       },
     ],
   },
@@ -152,7 +152,7 @@ const MODULOS = [
       {
         num: 13,
         titulo: 'Aprobación de comprobantes del primer tramo',
-        archivo: 'centro-ayuda-assets/h. primer tramo - aprobacion de comprobantes/13- aprobacion de comprobantes del primer tramo.mp4',
+        archivo: 'centro-ayuda-assets/h. primer tramo - aprobacion de comprobantes/13- aprobacion de comprobantes para los otros checks .mp4',
       },
     ],
   },
@@ -370,10 +370,11 @@ function buildVideoCard({ modulo, video }) {
   card.className = 'ca-video-card';
   card.setAttribute('data-idx', globalIdx);
 
+  const poster = video.archivo.replace('.mp4', '.jpg');
+
   card.innerHTML = `
     <div class="ca-card-thumb">
-      <video class="ca-card-video-preview" src="${video.archivo}#t=2"
-             preload="metadata" muted playsinline></video>
+      <video class="ca-card-video-preview" poster="${poster}" preload="none" muted playsinline></video>
       <div class="ca-card-play-overlay">
         <div class="ca-card-play-btn">
           <i class="bi bi-play-fill"></i>
