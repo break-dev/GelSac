@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Centro de Ayuda Beijing ERP — Videos tutoriales de los módulos principales del sistema.">
+  <title>Centro de Ayuda | Beijing ERP Operaciones</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <!-- Estilos propios -->
+  <link rel="stylesheet" href="centro-ayuda.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       HEADER / HERO
+       ═══════════════════════════════════════════════════════ -->
+  <header class="ca-header">
+    <div class="ca-header-inner">
+
+      <!-- Top bar -->
+      <div class="ca-topbar">
+        <a class="ca-brand" href="#" title="Beijing ERP Operaciones">
+          <img src="images/fondo_beijing_sf_sl.png" alt="Logo Beijing" class="ca-brand-logo">
+          <div class="ca-brand-text">
+            <span class="ca-brand-name">ERP Operaciones</span>
+            <span class="ca-brand-sub">BEIJING S.A.C.</span>
+          </div>
+        </a>
+
+        <a class="ca-back-btn" href="javascript:window.close()" title="Cerrar ventana">
+          <i class="bi bi-x-lg"></i>
+          <span>Cerrar</span>
+        </a>
+      </div>
+
+      <!-- Hero content -->
+      <div class="ca-hero">
+        <div class="ca-hero-badge">
+          <i class="bi bi-headset"></i>
+          Centro de Ayuda
+        </div>
+
+        <h1 class="ca-hero-title">
+          Aprende a usar<br>
+          <span>Beijing ERP</span> paso a paso
+        </h1>
+
+        <p class="ca-hero-subtitle">
+          Encuentra videos tutoriales de cada módulo del sistema.
+          Filtra por módulo o busca el proceso que necesitas.
+        </p>
+
+        <!-- Search -->
+        <div class="ca-search-wrapper">
+          <i class="bi bi-search ca-search-icon"></i>
+          <input
+            id="ca-search-input"
+            type="search"
+            class="ca-search-input"
+            placeholder="Buscar por módulo o proceso…"
+            autocomplete="off"
+            aria-label="Buscar videos"
+          >
+          <button id="ca-search-clear" class="ca-search-clear" aria-label="Limpiar búsqueda">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="ca-stats">
+      <div class="ca-stat">
+        <i class="bi bi-play-circle-fill"></i>
+        <span class="ca-stat-num" id="stat-videos">0</span>
+        <span>videos tutoriales</span>
+      </div>
+      <div class="ca-stat">
+        <i class="bi bi-collection-fill"></i>
+        <span class="ca-stat-num" id="stat-modulos">0</span>
+        <span>módulos del sistema</span>
+      </div>
+      <div class="ca-stat">
+        <i class="bi bi-clock-fill"></i>
+        <span>Disponibles 24/7</span>
+      </div>
+    </div>
+
+    <!-- Wave -->
+    <div class="ca-wave">
+      <svg viewBox="0 0 1440 48" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <path d="M0,32 C360,0 1080,64 1440,32 L1440,48 L0,48 Z" fill="#f4f7fb"/>
+      </svg>
+    </div>
+  </header>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN LAYOUT
+       ═══════════════════════════════════════════════════════ -->
+  <main class="ca-main">
+
+    <!-- Sidebar -->
+    <aside class="ca-sidebar" aria-label="Filtros por módulo">
+      <div class="ca-sidebar-card">
+        <div class="ca-sidebar-header">
+          <i class="bi bi-funnel-fill"></i>
+          <span class="ca-sidebar-title">Módulos</span>
+        </div>
+        <ul class="ca-filter-list" id="ca-filter-list" role="list"></ul>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <section class="ca-content" aria-label="Videos tutoriales">
+
+      <!-- Section header -->
+      <div class="ca-section-header">
+        <h2 class="ca-section-title">
+          <i class="bi bi-collection-play-fill"></i>
+          <span id="ca-section-title-text">Todos los módulos</span>
+        </h2>
+        <span class="ca-section-count" id="ca-section-count">0 videos</span>
+      </div>
+
+      <!-- No results -->
+      <div class="ca-no-results" id="ca-no-results">
+        <i class="bi bi-search"></i>
+        <p>No se encontraron videos para tu búsqueda.<br>
+           <strong>Intenta con otros términos.</strong></p>
+      </div>
+
+      <!-- Video cards container -->
+      <div id="ca-content"></div>
+
+    </section>
+  </main>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODAL PLAYER
+       ═══════════════════════════════════════════════════════ -->
+  <div id="ca-modal-overlay" class="ca-modal-overlay" role="dialog" aria-modal="true" aria-label="Reproductor de video">
+    <div class="ca-modal-box">
+
+      <!-- Header -->
+      <div class="ca-modal-header">
+        <div class="ca-modal-header-info">
+          <div class="ca-modal-tag" id="ca-modal-tag">Módulo</div>
+          <div class="ca-modal-title" id="ca-modal-title">Título del video</div>
+        </div>
+        <button id="ca-modal-close" class="ca-modal-close" aria-label="Cerrar reproductor">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <!-- Video -->
+      <div class="ca-modal-video-wrapper">
+        <video
+          id="ca-modal-video"
+          class="ca-modal-video"
+          controls
+          controlsList="nodownload"
+          playsinline
+        ></video>
+      </div>
+
+      <!-- Footer -->
+      <div class="ca-modal-footer">
+        <div class="ca-modal-nav">
+          <button id="ca-modal-prev" class="ca-modal-nav-btn" aria-label="Video anterior">
+            <i class="bi bi-chevron-left"></i> Anterior
+          </button>
+          <button id="ca-modal-next" class="ca-modal-nav-btn" aria-label="Siguiente video">
+            Siguiente <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+        <span class="ca-modal-progress" id="ca-modal-progress">1 de 25</span>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════════ -->
+  <footer class="ca-footer">
+    <p>
+      <strong>Beijing ERP Operaciones</strong> &mdash; BEIJING S.A.C. &copy; 2025
+      &nbsp;|&nbsp; Centro de Ayuda
+    </p>
+  </footer>
+
+
+  <!-- Scripts -->
+  <script src="centro-ayuda.js"></script>
+
+</body>
+</html>
