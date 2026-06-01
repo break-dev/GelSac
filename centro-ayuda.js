@@ -241,6 +241,55 @@ const MODULOS = [
       },
     ],
   },
+  {
+    id: 'n',
+    letra: 'N',
+    nombre: 'Anticipos de Plantas/Clientes',
+    icono: 'bi-cash-stack',
+    videos: [
+      {
+        num: 26,
+        titulo: 'Registro de anticipos de clientes',
+        archivo: 'centro-ayuda-assets/n. anticipos de plantas o clientes/26. registro de anticipos de clientes.mp4',
+      },
+    ],
+  },
+  {
+    id: 'o',
+    letra: 'O',
+    nombre: 'Valorización de Venta',
+    icono: 'bi-graph-up',
+    videos: [
+      {
+        num: 27,
+        titulo: 'Registro de valorización de venta',
+        archivo: 'centro-ayuda-assets/o. valorizacion de venta/27. registro de valorizacion de venta.mp4',
+      },
+    ],
+  },
+  {
+    id: 'p',
+    letra: 'P',
+    nombre: 'Comprobantes de Venta de Mineral',
+    icono: 'bi-receipt',
+    videos: [
+      {
+        num: 28,
+        titulo: 'Registro de comprobante de venta',
+        archivo: 'centro-ayuda-assets/p. comprobantes de venta de mineral/28. registro de comprobante de venta.mp4',
+      },
+      {
+        num: 29,
+        titulo: 'Registro de pagos',
+        archivo: 'centro-ayuda-assets/p. comprobantes de venta de mineral/29. registro de pagos.mp4',
+      },
+      {
+        num: 30,
+        titulo: 'Registro de pago de detracción',
+        archivo: 'centro-ayuda-assets/p. comprobantes de venta de mineral/30. registro de pago de detraccion .mp4',
+      },
+    ],
+  },
 ];
 
 // ─── Estado de la aplicación ─────────────────────────────────────────────────
