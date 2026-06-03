@@ -334,9 +334,8 @@ function f_OnPlantaChange() {
                 'data-cod-interno="' + (v.codigo_interno || '') + '" ' +
                 'data-particion="' + (v.numero_parte || '') + '" ' +
                 'data-elem="' + v.elemento_quimico + '" ' +
-                'data-id-valorizacion="' + v.id_valorizacion_venta + '" ' +
-                'style="cursor:pointer;" onclick="f_ToggleLote(this);">' +
-                '<td><input type="checkbox" class="form-check-input chk-lote" data-id="' + v.id + '" value="' + v.id + '"></td>' +
+                'data-id-valorizacion="' + v.id_valorizacion_venta + '">' +
+                '<td><input type="checkbox" class="form-check-input chk-lote chk-lote-lg" data-id="' + v.id + '" value="' + v.id + '" onchange="f_ToggleLote(this);"></td>' +
                 '<td style="font-size:11px;color:#6c757d;">' + (v.codigo_valorizacion_venta || '') + '</td>' +
                 '<td>' + (v.codigo_cliente || '') + '</td>' +
                 '<td>' + (v.codigo_interno || '') + '</td>' +
@@ -360,11 +359,9 @@ function f_OnPlantaChange() {
 // ---------------------------------------------------------------------------------------------------------------------------------------
 //  Toggle fila lote
 // ---------------------------------------------------------------------------------------------------------------------------------------
-function f_ToggleLote(tr) {
-    var chk = $(tr).find('.chk-lote');
-    var nuevoEstado = !chk.prop('checked');
-    chk.prop('checked', nuevoEstado);
-    $(tr).toggleClass('table-primary', nuevoEstado);
+function f_ToggleLote(chk) {
+    var nuevoEstado = $(chk).prop('checked');
+    $(chk).closest('tr').toggleClass('table-primary', nuevoEstado);
     f_RecalcResumen();
 }
 

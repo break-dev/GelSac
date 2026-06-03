@@ -403,6 +403,13 @@ function f_AdminLote(_modo, _idx) {
     $('#hd_elemento_quimico').val(_datos.elemento_quimico);
     $('#hd_id_condicion_comercial').val(_datos.id_condicion_comercial || 0);
 
+    // Si es Oro (1) y no tiene condición comercial, mostrar advertencia. Para Plata (2) se oculta siempre.
+    if (_datos.elemento_quimico == 1 && (!_datos.id_condicion_comercial || _datos.id_condicion_comercial == 0)) {
+      $('#div_sin_cc').show();
+    } else {
+      $('#div_sin_cc').hide();
+    }
+
     f_CalcularTotales();
   }
 
@@ -520,7 +527,7 @@ function f_OnElementoChange() {
     f_ObtenerCondicionesComerciales(idPlanta, ley);
   } else {
     // Plata: No hay condiciones automáticas definidas (solo Au), resetear y pedir datos
-    $('#div_sin_cc').show();
+    $('#div_sin_cc').hide(); // Ocultar advertencia ya que Plata no requiere condición comercial
     $('#txt_recuperacion').val('');
     $('#txt_des_inter').val('');
     $('#txt_maquila').val('');
@@ -539,6 +546,10 @@ function f_ObtenerCondicionesComerciales(idPlanta, ley) {
   $.post(url_api,
     { accion: 'get_CondicionesComerciales_Venta', id_planta: idPlanta, ley: ley },
     function(data) {
+      // Verificar que el elemento sigue siendo Oro (Au=1) cuando llegó la respuesta
+      const elemActual = $('#hd_elemento_quimico').val() || $('#cmb_elemento').val();
+      if (elemActual != 1) return; // El usuario cambió a Ag mientras esperaba respuesta, no hacer nada
+
       if (data.estado === 1) {
         $('#txt_recuperacion').val(data.recuperacion || '');
         $('#txt_maquila').val(data.maquila || '');
@@ -621,6 +632,12 @@ function f_GrabarLote() {
   const codCliente = $('#f_codigo_cliente').text();
   const grt        = $('#f_guia_transportista').text();
   const idCC       = $('#hd_id_condicion_comercial').val() || 0;
+
+  // Validación: Solo Oro (Au) requiere obligatoriamente una condición comercial. Plata (Ag) no cuenta con una y se permite sin ella.
+  if (elemQuimico == 1 && idCC == 0) {
+    alert('El lote seleccionado no cuenta con una condición comercial válida para Oro (Au).');
+    return;
+  }
 
   const elemText = (elemQuimico == 1) ? '<span class="pill-oro">Au</span>' : '<span class="pill-plata">Ag</span>';
 

@@ -3329,49 +3329,55 @@ function saveLog($datos)
 }
 
 function f_Guia_GenerarCodigoGel(
-    $enlace,
-    array  $arr_lote_ids,
-    string $guia_remitente,
-    string $guia_fechahoraemision,
-    string $planta_fechallegada,
-    string $g_fecha,
-    string $g_anho
+	$enlace,
+	array $arr_lote_ids,
+	string $guia_remitente,
+	string $guia_fechahoraemision,
+	string $planta_fechallegada,
+	string $g_fecha,
+	string $g_anho
 ): int {
-    if (empty($arr_lote_ids)) return 0;
+	if (empty($arr_lote_ids))
+		return 0;
 
-    $lote_ids_str          = implode(", ", array_map("intval", $arr_lote_ids));
-    $guia_remitente_esc    = mysqli_real_escape_string($enlace, $guia_remitente);
-    $guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
+	$lote_ids_str = implode(", ", array_map("intval", $arr_lote_ids));
+	$guia_remitente_esc = mysqli_real_escape_string($enlace, $guia_remitente);
+	$guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
 
-    // ----------------------------------------------------------
-    // Lotes SIN código GEL dentro de los seleccionados
-    // ----------------------------------------------------------
-    $lotes_sin_gel = [];
-    if ($rs = mysqli_query($enlace, "
+	// ----------------------------------------------------------
+	// Lotes SIN código GEL dentro de los seleccionados
+	// ----------------------------------------------------------
+	$lotes_sin_gel = [];
+	if (
+		$rs = mysqli_query($enlace, "
         SELECT V.Id AS id_validaciondatos,
                V.lote_pesoinicial_fechahoraregistro AS fecha_llegada,
                V.guias_posicion
         FROM   despachos_primertramo_validaciondatos V
         WHERE  V.Id IN ($lote_ids_str)
           AND  V.codigo_gel IS NULL
-        ORDER  BY V.guias_posicion ASC, V.Id ASC")) {
-        while ($row = mysqli_fetch_assoc($rs)) $lotes_sin_gel[] = $row;
-        mysqli_free_result($rs);
-    }
+        ORDER  BY V.guias_posicion ASC, V.Id ASC")
+	) {
+		while ($row = mysqli_fetch_assoc($rs))
+			$lotes_sin_gel[] = $row;
+		mysqli_free_result($rs);
+	}
 
-    if (empty($lotes_sin_gel)) return 1;
+	if (empty($lotes_sin_gel))
+		return 1;
 
-    // ----------------------------------------------------------
-    // Último código BJ de ESTA GUÍA
-    // Ordenamos por correlativo DESC y luego por codigo_gel DESC
-    // pero separamos: primero el mayor correlativo, luego dentro
-    // de ese correlativo el que tenga letra más alta (o ninguna)
-    // ----------------------------------------------------------
-    $ultimo_codigo_guia      = null;
-    $ultimo_correlativo_guia = 0;
+	// ----------------------------------------------------------
+	// Último código BJ de ESTA GUÍA
+	// Ordenamos por correlativo DESC y luego por codigo_gel DESC
+	// pero separamos: primero el mayor correlativo, luego dentro
+	// de ese correlativo el que tenga letra más alta (o ninguna)
+	// ----------------------------------------------------------
+	$ultimo_codigo_guia = null;
+	$ultimo_correlativo_guia = 0;
 
-    // Paso 1: ¿cuál es el mayor correlativo de esta guía?
-    if ($rs = mysqli_query($enlace, "
+	// Paso 1: ¿cuál es el mayor correlativo de esta guía?
+	if (
+		$rs = mysqli_query($enlace, "
         SELECT MAX(C.correlativo) AS max_corr
         FROM   despachos_primertramo_validaciondatos V
         INNER  JOIN correlativo_codigosgel C
@@ -3380,26 +3386,28 @@ function f_Guia_GenerarCodigoGel(
                 AND C.cod_anho = '$g_anho'
         WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
           AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
-          AND  V.codigo_gel IS NOT NULL")) {
-        if ($row = mysqli_fetch_assoc($rs)) {
-            $ultimo_correlativo_guia = intval($row["max_corr"]);
-        }
-        mysqli_free_result($rs);
-    }
+          AND  V.codigo_gel IS NOT NULL")
+	) {
+		if ($row = mysqli_fetch_assoc($rs)) {
+			$ultimo_correlativo_guia = intval($row["max_corr"]);
+		}
+		mysqli_free_result($rs);
+	}
 
-    if ($ultimo_correlativo_guia === 0) {
-        // Guía nueva → correlativos nuevos sin letra
-        return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
-    }
+	if ($ultimo_correlativo_guia === 0) {
+		// Guía nueva → correlativos nuevos sin letra
+		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
+	}
 
-    // Paso 2: dentro de ese correlativo, ¿hay alguno con letra?
-    // Si hay letras, traer la última letra asignada (ORDER BY codigo_gel DESC)
-    // Si no hay letras, traer el código sin letra
-    $ultimo_codigo_guia      = null;
-    $tiene_letra             = false;
-    $ultima_letra_idx        = 0;
+	// Paso 2: dentro de ese correlativo, ¿hay alguno con letra?
+	// Si hay letras, traer la última letra asignada (ORDER BY codigo_gel DESC)
+	// Si no hay letras, traer el código sin letra
+	$ultimo_codigo_guia = null;
+	$tiene_letra = false;
+	$ultima_letra_idx = 0;
 
-    if ($rs = mysqli_query($enlace, "
+	if (
+		$rs = mysqli_query($enlace, "
         SELECT C.codigo_gel
         FROM   despachos_primertramo_validaciondatos V
         INNER  JOIN correlativo_codigosgel C
@@ -3410,174 +3418,188 @@ function f_Guia_GenerarCodigoGel(
           AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
           AND  V.codigo_gel IS NOT NULL
           AND  C.correlativo = $ultimo_correlativo_guia
-        ORDER  BY V.codigo_gel DESC")) {
+        ORDER  BY V.codigo_gel DESC")
+	) {
 
-        // Recorremos todos y nos quedamos con el de mayor letra
-        $max_letra_idx = 0;
-        $codigo_sin_letra = null;
+		// Recorremos todos y nos quedamos con el de mayor letra
+		$max_letra_idx = 0;
+		$codigo_sin_letra = null;
 
-        while ($row = mysqli_fetch_assoc($rs)) {
-            $cod = $row["codigo_gel"];
-            if (preg_match('/([A-Z]+)$/', $cod, $m)) {
-                $idx = _letraAIndice($m[1]);
-                if ($idx > $max_letra_idx) {
-                    $max_letra_idx   = $idx;
-                    $ultimo_codigo_guia = $cod;
-                    $tiene_letra     = true;
-                    $ultima_letra_idx = $idx;
-                }
-            } else {
-                $codigo_sin_letra = $cod;
-            }
-        }
+		while ($row = mysqli_fetch_assoc($rs)) {
+			$cod = $row["codigo_gel"];
+			if (preg_match('/([A-Z]+)$/', $cod, $m)) {
+				$idx = _letraAIndice($m[1]);
+				if ($idx > $max_letra_idx) {
+					$max_letra_idx = $idx;
+					$ultimo_codigo_guia = $cod;
+					$tiene_letra = true;
+					$ultima_letra_idx = $idx;
+				}
+			} else {
+				$codigo_sin_letra = $cod;
+			}
+		}
 
-        if (!$tiene_letra) {
-            $ultimo_codigo_guia = $codigo_sin_letra;
-        }
+		if (!$tiene_letra) {
+			$ultimo_codigo_guia = $codigo_sin_letra;
+		}
 
-        mysqli_free_result($rs);
-    }
+		mysqli_free_result($rs);
+	}
 
-    // ----------------------------------------------------------
-    // CASO B1: Último código TIENE letra → continuar secuencia
-    //          BJ-26-0009A → B   |   BJ-26-0009B → C
-    // ----------------------------------------------------------
-    if ($tiene_letra) {
-        return _asignarCodigosConLetra(
-            $enlace, $lotes_sin_gel,
-            $ultimo_correlativo_guia,
-            $ultima_letra_idx + 1,   // siguiente letra
-            $g_fecha, $g_anho
-        );
-    }
+	// ----------------------------------------------------------
+	// CASO B1: Último código TIENE letra → continuar secuencia
+	//          BJ-26-0009A → B   |   BJ-26-0009B → C
+	// ----------------------------------------------------------
+	if ($tiene_letra) {
+		return _asignarCodigosConLetra(
+			$enlace,
+			$lotes_sin_gel,
+			$ultimo_correlativo_guia,
+			$ultima_letra_idx + 1,   // siguiente letra
+			$g_fecha,
+			$g_anho
+		);
+	}
 
-    // ----------------------------------------------------------
-    // CASO B2: Último código SIN letra
-    //          ¿es el último correlativo global del año?
-    // ----------------------------------------------------------
-    $max_corr_global = 0;
-    if ($rs = mysqli_query($enlace, "
+	// ----------------------------------------------------------
+	// CASO B2: Último código SIN letra
+	//          ¿es el último correlativo global del año?
+	// ----------------------------------------------------------
+	$max_corr_global = 0;
+	if (
+		$rs = mysqli_query($enlace, "
         SELECT MAX(correlativo) AS max_corr
         FROM   correlativo_codigosgel
-        WHERE  cod_anho = '$g_anho' AND estado = 'A'")) {
-        if ($row = mysqli_fetch_assoc($rs)) $max_corr_global = intval($row["max_corr"]);
-        mysqli_free_result($rs);
-    }
+        WHERE  cod_anho = '$g_anho' AND estado = 'A'")
+	) {
+		if ($row = mysqli_fetch_assoc($rs))
+			$max_corr_global = intval($row["max_corr"]);
+		mysqli_free_result($rs);
+	}
 
-    if ($ultimo_correlativo_guia >= $max_corr_global) {
-        // B2a: ES la última guía → nuevos correlativos sin letra
-        //      BJ-26-0009 → BJ-26-0010, BJ-26-0011 ...
-        return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
-    } else {
-        // B2b: NO es la última → letras desde A
-        //      BJ-26-0008 → BJ-26-0008A, BJ-26-0008B ...
-        return _asignarCodigosConLetra(
-            $enlace, $lotes_sin_gel,
-            $ultimo_correlativo_guia, 1,
-            $g_fecha, $g_anho
-        );
-    }
+	if ($ultimo_correlativo_guia >= $max_corr_global) {
+		// B2a: ES la última guía → nuevos correlativos sin letra
+		//      BJ-26-0009 → BJ-26-0010, BJ-26-0011 ...
+		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
+	} else {
+		// B2b: NO es la última → letras desde A
+		//      BJ-26-0008 → BJ-26-0008A, BJ-26-0008B ...
+		return _asignarCodigosConLetra(
+			$enlace,
+			$lotes_sin_gel,
+			$ultimo_correlativo_guia,
+			1,
+			$g_fecha,
+			$g_anho
+		);
+	}
 }
 
 function _asignarCodigosNuevos(
-    $enlace,
-    array  $lotes,
-    string $g_fecha,
-    string $g_anho
+	$enlace,
+	array $lotes,
+	string $g_fecha,
+	string $g_anho
 ): int {
-    $usuario = $_SESSION["usu_usuario"];
+	$usuario = $_SESSION["usu_usuario"];
 
-    $siguiente = 1;
-    if ($rs = mysqli_query($enlace, "
+	$siguiente = 1;
+	if (
+		$rs = mysqli_query($enlace, "
         SELECT IFNULL(MAX(correlativo), 0) AS max_corr
         FROM   correlativo_codigosgel
-        WHERE  cod_anho = '$g_anho' AND estado = 'A'")) {
-        if ($row = mysqli_fetch_assoc($rs)) $siguiente = intval($row["max_corr"]) + 1;
-        mysqli_free_result($rs);
-    }
+        WHERE  cod_anho = '$g_anho' AND estado = 'A'")
+	) {
+		if ($row = mysqli_fetch_assoc($rs))
+			$siguiente = intval($row["max_corr"]) + 1;
+		mysqli_free_result($rs);
+	}
 
-    foreach ($lotes as $lote) {
-        $id     = intval($lote["id_validaciondatos"]);
-        $fec    = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
-        $codigo = sprintf("BJ-%02d-%04d", date("y"), $siguiente);
+	foreach ($lotes as $lote) {
+		$id = intval($lote["id_validaciondatos"]);
+		$fec = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
+		$codigo = sprintf("BJ-%02d-%04d", date("y"), $siguiente);
 
-        mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
+		mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
                                 WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
 
-        mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos
+		mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos
                                 SET    codigo_gel                   = '$codigo',
                                        codigo_gel_fechahoraregistro = '$g_fecha',
                                        codigo_gel_usuarioregistro   = '$usuario'
                                 WHERE  Id = $id");
 
-        mysqli_query($enlace, "INSERT INTO correlativo_codigosgel
+		mysqli_query($enlace, "INSERT INTO correlativo_codigosgel
                                    (cod_anho, fecha_llegadaplanta, correlativo, codigo_gel,
                                     id_validaciondatos, fechahora_registro, usuario_registro)
                                VALUES
                                    ($g_anho, '$fec', $siguiente, '$codigo',
                                     $id, '$g_fecha', '$usuario')");
 
-        $siguiente++;
-    }
+		$siguiente++;
+	}
 
-    return 1;
+	return 1;
 }
 
 function _asignarCodigosConLetra(
-    $enlace,
-    array  $lotes,
-    int    $correlativo_base,
-    int    $idx_letra_inicio,
-    string $g_fecha,
-    string $g_anho
+	$enlace,
+	array $lotes,
+	int $correlativo_base,
+	int $idx_letra_inicio,
+	string $g_fecha,
+	string $g_anho
 ): int {
-    $usuario = $_SESSION["usu_usuario"];
-    $idx     = $idx_letra_inicio;
+	$usuario = $_SESSION["usu_usuario"];
+	$idx = $idx_letra_inicio;
 
-    foreach ($lotes as $lote) {
-        $id     = intval($lote["id_validaciondatos"]);
-        $fec    = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
-        $sufijo = _indiceALetra($idx);
-        $codigo = sprintf("BJ-%02d-%04d%s", date("y"), $correlativo_base, $sufijo);
+	foreach ($lotes as $lote) {
+		$id = intval($lote["id_validaciondatos"]);
+		$fec = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
+		$sufijo = _indiceALetra($idx);
+		$codigo = sprintf("BJ-%02d-%04d%s", date("y"), $correlativo_base, $sufijo);
 
-        mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
+		mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
                                 WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
 
-        mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos
+		mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos
                                 SET    codigo_gel                   = '$codigo',
                                        codigo_gel_fechahoraregistro = '$g_fecha',
                                        codigo_gel_usuarioregistro   = '$usuario'
                                 WHERE  Id = $id");
 
-        mysqli_query($enlace, "INSERT INTO correlativo_codigosgel
+		mysqli_query($enlace, "INSERT INTO correlativo_codigosgel
                                    (cod_anho, fecha_llegadaplanta, correlativo, codigo_gel,
                                     id_validaciondatos, fechahora_registro, usuario_registro)
                                VALUES
                                    ($g_anho, '$fec', $correlativo_base, '$codigo',
                                     $id, '$g_fecha', '$usuario')");
 
-        $idx++;
-    }
+		$idx++;
+	}
 
-    return 1;
+	return 1;
 }
 
-function _letraAIndice(string $letra): int {
-    $v = 0;
-    for ($i = 0; $i < strlen($letra); $i++) {
-        $v = $v * 26 + (ord($letra[$i]) - 64);
-    }
-    return $v;
+function _letraAIndice(string $letra): int
+{
+	$v = 0;
+	for ($i = 0; $i < strlen($letra); $i++) {
+		$v = $v * 26 + (ord($letra[$i]) - 64);
+	}
+	return $v;
 }
 
-function _indiceALetra(int $n): string {
-    $s = "";
-    while ($n > 0) {
-        $m = ($n - 1) % 26;
-        $s = chr(65 + $m) . $s;
-        $n = intval(($n - $m - 1) / 26);
-    }
-    return $s;
+function _indiceALetra(int $n): string
+{
+	$s = "";
+	while ($n > 0) {
+		$m = ($n - 1) % 26;
+		$s = chr(65 + $m) . $s;
+		$n = intval(($n - $m - 1) / 26);
+	}
+	return $s;
 }
 
 // Función para obtener la fecha de llegada del lote
@@ -26835,351 +26857,473 @@ switch ($_POST["accion"]) {
 		$q_ingreso .=
 			" ORDER BY I.dFechaIngreso DESC, I.dhoraingresoPlanta DESC";
 
+		$datos_finales = [];
 		if ($res_ingreso = mysqli_query($enlace, $q_ingreso)) {
-			if (mysqli_num_rows($res_ingreso) > 0) {
-				$estado = 1;
+			while ($row_ingreso = mysqli_fetch_array($res_ingreso)) {
+				$row_ingreso["es_historico"] = false;
+				$datos_finales[] = $row_ingreso;
+			}
+		}
 
-				while ($row_ingreso = mysqli_fetch_array($res_ingreso)) {
-					$total_acompanantes = $row_ingreso["TOTAL_ACOMPANANTES"];
-					$total_acompanantes =
-						$total_acompanantes == 0 ? 1 : $total_acompanantes;
+		// Obtener RUC de transportista si se filtró por transportista
+		$transportista_ruc_filter = "";
+		if (strlen($filtro_transportista) > 0) {
+			$q_t = "SELECT documento FROM tb_clientes WHERE Id = " . intval($filtro_transportista);
+			if ($res_t = mysqli_query($enlace, $q_t)) {
+				if ($row_t = mysqli_fetch_assoc($res_t)) {
+					$transportista_ruc_filter = trim($row_t["documento"]);
+				}
+			}
+		}
 
-					$html .= '<tr style="font-size: 14px;">';
+		// Cargar datos del JSON de recepción de unidades
+		$json_path = __DIR__ . "/repo_old/recepcion_unidades.json";
+		if (file_exists($json_path)) {
+			$json_content = file_get_contents($json_path);
+			$historical_data = json_decode($json_content, true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $reg) {
+					// 1. Filtro de Fecha
+					$ingreso_date = isset($reg["fecha_hora_ingreso"]) ? substr($reg["fecha_hora_ingreso"], 0, 10) : "";
+					if ($ingreso_date < $fecha_inicio || $ingreso_date > $fecha_fin) {
+						continue;
+					}
 
-					if (
-						$id_registro !=
-						$row_ingreso["id_controlIngresoVehiculo"]
-					) {
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .= "    " . $d;
-						$html .= "  </td>";
+					// 2. Filtro de Condición
+					$mapped_condicion_id = 0;
+					$condicion_str = isset($reg["condicion"]) ? $reg["condicion"] : "";
+					if (stripos($condicion_str, "recepcion") !== false || stripos($condicion_str, "recepción") !== false) {
+						$mapped_condicion_id = 1;
+					} elseif (stripos($condicion_str, "despacho") !== false) {
+						$mapped_condicion_id = 2;
+					}
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .=
-							"    " .
-							$row_ingreso["FECHAHORA_REGISTRO"] .
-							"<br><i>" .
-							$row_ingreso["usuario_registro"] .
-							"</i>";
-						$html .= "  </td>";
+					if (strlen($filtro_condicioningreso) > 0) {
+						if ($mapped_condicion_id != intval($filtro_condicioningreso)) {
+							continue;
+						}
+					}
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .= "    " . $row_ingreso["CLIENTE_CONDICION"];
-						$html .= "  </td>";
+					// 3. Filtro de Transportista
+					if (strlen($filtro_transportista) > 0) {
+						$ruc_json = isset($reg["transportista_ruc"]) ? trim($reg["transportista_ruc"]) : "";
+						if ($ruc_json !== $transportista_ruc_filter) {
+							continue;
+						}
+					}
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
+					// 4. Filtro de Placa
+					if (strlen($filtro_placa) > 0) {
+						$placa1 = isset($reg["placa1"]) ? $reg["placa1"] : "";
+						$placa2 = isset($reg["placa2"]) ? $reg["placa2"] : "";
+						if (stripos($placa1, $filtro_placa) === false && stripos($placa2, $filtro_placa) === false) {
+							continue;
+						}
+					}
+
+					// Si pasó todos los filtros, agregamos
+					$row = [
+						"id_controlIngresoVehiculo" => "hist_" . uniqid(),
+						"FECHAHORA_REGISTRO" => isset($reg["fecha_hora_ingreso"]) ? $reg["fecha_hora_ingreso"] : "",
+						"id_tipoingresounidad" => $mapped_condicion_id,
+						"CLIENTE_CONDICION" => $condicion_str,
+						"placa" => isset($reg["placa1"]) ? $reg["placa1"] : "",
+						"placa2" => isset($reg["placa2"]) ? $reg["placa2"] : "",
+						"id_transportista" => 0,
+						"documento" => isset($reg["transportista_ruc"]) ? $reg["transportista_ruc"] : "",
+						"TRANSPORTISTA" => isset($reg["transportista_razon_social"]) ? $reg["transportista_razon_social"] : "",
+						"id_tipovehiculo" => 0,
+						"TIPO_VEHICULO" => isset($reg["tipo_vehiculo"]) ? $reg["tipo_vehiculo"] : "",
+						"id_choferes" => 0,
+						"dni_licencia" => isset($reg["conductor_licencia"]) ? $reg["conductor_licencia"] : "",
+						"CONDUCTOR" => isset($reg["conductor_nombres"]) ? $reg["conductor_nombres"] : "",
+						"id_tipocarga" => 0,
+						"TIPO_CARGA" => isset($reg["tipo_carga"]) ? $reg["tipo_carga"] : "",
+						"id_zonaorigen" => 0,
+						"ZONA_ORIGEN" => "",
+						"cNotas" => isset($reg["observacion_ingreso"]) ? $reg["observacion_ingreso"] : "",
+						"tiene_vehiculoparticular" => 0,
+						"fechahora_salida" => isset($reg["fecha_hora_salida"]) ? $reg["fecha_hora_salida"] : "",
+						"usuario_salida" => "Histórico",
+						"id_estadosalidaunidad" => 0,
+						"ESTADO_SALIDA" => isset($reg["estado_salida"]) ? $reg["estado_salida"] : "",
+						"observacion_salida" => isset($reg["observacion_salida"]) ? $reg["observacion_salida"] : "",
+						"usuario_registro" => "Histórico",
+						"id_distribucion" => 0,
+						"TOTAL_ACOMPANANTES" => 0,
+						"TOTAL_IMAGENES" => 0,
+						"es_historico" => true
+					];
+
+					$datos_finales[] = $row;
+				}
+			}
+		}
+
+		if (count($datos_finales) > 0) {
+			$estado = 1;
+
+			// Ordenar por FECHAHORA_REGISTRO DESC
+			usort($datos_finales, function ($a, $b) {
+				$fecha_a = isset($a["FECHAHORA_REGISTRO"]) ? $a["FECHAHORA_REGISTRO"] : "";
+				$fecha_b = isset($b["FECHAHORA_REGISTRO"]) ? $b["FECHAHORA_REGISTRO"] : "";
+				return strcmp($fecha_b, $fecha_a);
+			});
+
+			foreach ($datos_finales as $row_ingreso) {
+				$total_acompanantes = $row_ingreso["TOTAL_ACOMPANANTES"];
+				$total_acompanantes =
+					$total_acompanantes == 0 ? 1 : $total_acompanantes;
+
+				$html .= '<tr style="font-size: 14px;">';
+
+				if (
+					$id_registro !=
+					$row_ingreso["id_controlIngresoVehiculo"]
+				) {
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .= "    " . $d;
+					$html .= "  </td>";
+
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .=
+						"    " .
+						$row_ingreso["FECHAHORA_REGISTRO"] .
+						"<br>";
+					if (!empty($row_ingreso["es_historico"])) {
+						$html .= '    <span class="badge bg-secondary p-1" style="font-size: 11px; margin-top: 4px;"><i class="bi bi-clock-history"></i> Histórico</span>';
+					} else {
+						$html .= "<i>" . $row_ingreso["usuario_registro"] . "</i>";
+					}
+					$html .= "  </td>";
+
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .= "    " . $row_ingreso["CLIENTE_CONDICION"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
+					if (!empty($row_ingreso["es_historico"])) {
+						$html .= '    <span style="padding: 8px; border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; text-align: center; background-color: #E6E9ED; color: #495057; font-size: 13px;" title="Placa Histórica (Solo lectura)">' . $row_ingreso["placa"] . '</span>';
+					} else {
 						$html .=
 							'    <label style="padding: 8px; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; text-align: center; background-color: #f8da62; cursor: pointer;" onclick="f_ShowInformacion(' .
 							$row_ingreso["id_controlIngresoVehiculo"] .
 							')">';
 						$html .= "      " . $row_ingreso["placa"];
 						$html .= "    </label>";
-						$html .= "  </td>";
+					}
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .= "    " . $row_ingreso["placa2"];
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .= "    " . $row_ingreso["placa2"];
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .=
-							"    " .
-							(strlen(trim($row_ingreso["documento"])) == 0
-								? "---"
-								: trim($row_ingreso["documento"]));
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .=
+						"    " .
+						(strlen(trim($row_ingreso["documento"])) == 0
+							? "---"
+							: trim($row_ingreso["documento"]));
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .=
-							"    " .
-							(strlen(trim($row_ingreso["TRANSPORTISTA"])) == 0
-								? "---"
-								: trim($row_ingreso["TRANSPORTISTA"]));
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .=
+						"    " .
+						(strlen(trim($row_ingreso["TRANSPORTISTA"])) == 0
+							? "---"
+							: trim($row_ingreso["TRANSPORTISTA"]));
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .=
-							"    " .
-							(strlen(trim($row_ingreso["TIPO_VEHICULO"])) == 0
-								? "---"
-								: trim($row_ingreso["TIPO_VEHICULO"]));
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .=
+						"    " .
+						(strlen(trim($row_ingreso["TIPO_VEHICULO"])) == 0
+							? "---"
+							: trim($row_ingreso["TIPO_VEHICULO"]));
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .= "    " . $row_ingreso["dni_licencia"];
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .= "    " . $row_ingreso["dni_licencia"];
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .= "    " . $row_ingreso["CONDUCTOR"];
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .= "    " . $row_ingreso["CONDUCTOR"];
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-						$html .=
-							"    " .
-							(strlen(trim($row_ingreso["TIPO_CARGA"])) == 0
-								? "---"
-								: trim($row_ingreso["TIPO_CARGA"]));
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .=
+						"    " .
+						(strlen(trim($row_ingreso["TIPO_CARGA"])) == 0
+							? "---"
+							: trim($row_ingreso["TIPO_CARGA"]));
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle;">';
-						$html .= "    " . $row_ingreso["cNotas"];
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle;">';
+					$html .= "    " . $row_ingreso["cNotas"];
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;" hidden>';
-						$html .=
-							"    " .
-							($row_ingreso["tiene_vehiculoparticular"] == 1
-								? "SÍ"
-								: "");
-						$html .= "  </td>";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;" hidden>';
+					$html .=
+						"    " .
+						($row_ingreso["tiene_vehiculoparticular"] == 1
+							? "SÍ"
+							: "");
+					$html .= "  </td>";
 
-						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" id="td_salida_1_' .
-							$row_ingreso["id_controlIngresoVehiculo"] .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" id="td_salida_1_' .
+						$row_ingreso["id_controlIngresoVehiculo"] .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
 
-						if (strlen($row_ingreso["fechahora_salida"]) == 0) {
-							$id_distribucion_val = empty($row_ingreso["id_distribucion"]) ? 0 : $row_ingreso["id_distribucion"];
-							$html .=
-								'    <button class="btn btn-danger" type="button" onclick="f_RegistroSalida(' .
-								$row_ingreso["id_controlIngresoVehiculo"] . ', ' . $id_distribucion_val .
-								');" style="color: #ffffff; font-size: 12px; margin-top: -5px;">';
-							$html .= "      <b>Registrar Salida</b>";
-							$html .= "    </button>";
+					if (!empty($row_ingreso["es_historico"])) {
+						// Histórico: mostrar fecha de salida si existe, de lo contrario guiones
+						if (strlen($row_ingreso["fechahora_salida"]) > 0) {
+							$html .= "      " . $row_ingreso["fechahora_salida"];
 						} else {
-							$html .=
-								"      " .
-								$row_ingreso["fechahora_salida"] .
-								"<br>";
-							$html .=
-								"      <i>" .
-								$row_ingreso["usuario_salida"] .
-								"</i>";
+							$html .= "    -";
 						}
-
-						$html .= "  </td>";
-
+					} elseif (strlen($row_ingreso["fechahora_salida"]) == 0) {
+						$id_distribucion_val = empty($row_ingreso["id_distribucion"]) ? 0 : $row_ingreso["id_distribucion"];
 						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" id="td_salida_2_' .
-							$row_ingreso["id_controlIngresoVehiculo"] .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-
-						if (strlen($row_ingreso["fechahora_salida"]) > 0) {
-							$html .= "    " . $row_ingreso["ESTADO_SALIDA"];
-						}
-
-						$html .= "  </td>";
-
+							'    <button class="btn btn-danger" type="button" onclick="f_RegistroSalida(' .
+							$row_ingreso["id_controlIngresoVehiculo"] . ', ' . $id_distribucion_val .
+							');" style="color: #ffffff; font-size: 12px; margin-top: -5px;">';
+						$html .= "      <b>Registrar Salida</b>";
+						$html .= "    </button>";
+					} else {
 						$html .=
-							'  <td rowspan="' .
-							$total_acompanantes .
-							'" id="td_salida_3_' .
-							$row_ingreso["id_controlIngresoVehiculo"] .
-							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle;">';
-
-						if (strlen($row_ingreso["fechahora_salida"]) > 0) {
-							$html .=
-								"    " . $row_ingreso["observacion_salida"];
-						}
-
-						$html .= "  </td>";
+							"      " .
+							$row_ingreso["fechahora_salida"] .
+							"<br>";
+						$html .=
+							"      <i>" .
+							$row_ingreso["usuario_salida"] .
+							"</i>";
 					}
 
-					// // Información de Acompañantes
-					// 	$a = 1;
+					$html .= "  </td>";
 
-					// 	if ($row_ingreso["TOTAL_ACOMPANANTES"] > 0){
-					// 		// Obteniendo detalle de Acompañantes
-					// 			$q_acompanantes = "SELECT Id,
-					// 																dni,
-					// 																nombres,
-					// 																tiene_imagen,
-					// 																imagen,
-					// 																fechahora_salida,
-					// 																usuario_salida
-					// 													 FROM controlingresovehiculo_acompanantes
-					// 													WHERE id_controlingreso = ".$row_ingreso["id_controlIngresoVehiculo"]."
-					// 												 ORDER BY Id";
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" id="td_salida_2_' .
+						$row_ingreso["id_controlIngresoVehiculo"] .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
 
-					// 			if ($res_acompanantes = mysqli_query($enlace, $q_acompanantes)){
-					// 				if (mysqli_num_rows($res_acompanantes) > 0) {
-					// 					while($row_acompanantes = mysqli_fetch_array($res_acompanantes)){
-					// 						if ($a > 1){
-					// 							$html .= '<tr style="cursor: pointer; font-size: 14px;">';
-					// 						}
+					if (strlen($row_ingreso["fechahora_salida"]) > 0) {
+						$html .= "    " . $row_ingreso["ESTADO_SALIDA"];
+					}
 
-					// 						$html .= '        <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-					// 						$html .= '          '.$row_acompanantes["dni"];
-					// 						$html .= '        </td>';
+					$html .= "  </td>";
 
-					// 						$html .= '        <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-					// 						$html .= '          '.$row_acompanantes["nombres"];
-					// 						$html .= '        </td>';
+					$html .=
+						'  <td rowspan="' .
+						$total_acompanantes .
+						'" id="td_salida_3_' .
+						$row_ingreso["id_controlIngresoVehiculo"] .
+						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle;">';
 
-					// 						$html .= '        <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+					if (strlen($row_ingreso["fechahora_salida"]) > 0) {
+						$html .=
+							"    " . $row_ingreso["observacion_salida"];
+					}
 
-					// 						if ($row_acompanantes["tiene_imagen"] == 1){
-					// 							$html .= '          <img src="'.$img_view.'" style="width: 25px;" onclick="f_ShowDocumentoAcompanante('.$row_acompanantes["Id"].", '".$row_acompanantes["nombres"]."'".');">';
-					// 						}
-
-					// 						$html .= '        </td>';
-
-					// 						$html .= '        <td id="td_salidaacompanante_'.$row_acompanantes["Id"].'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
-
-					// 						if (strlen($row_acompanantes["fechahora_salida"]) == 0){
-					// 							$html .= '  <button class="btn btn-danger" type="button" onclick="f_RegistroSalida_Acompanantes('.$row_acompanantes["Id"].", '".$row_acompanantes["nombres"]."'".');" style="color: #ffffff; font-size: 11px; margin-top: -5px;">';
-					// 							$html .= '    <b>Registrar Salida</b>';
-					// 							$html .= '  </button>';
-					// 						}
-					// 						else{
-					// 							$html .= '    '.$row_acompanantes["fechahora_salida"].'<br>';
-					// 							$html .= '    <i>'.$row_acompanantes["usuario_salida"].'</i>';
-					// 						}
-
-					// 						$html .= '        </td>';
-
-					// 						// Información de Imágenes
-					// 							if ($a == 1){
-					// 								if ($id_registro != $row_ingreso["id_controlIngresoVehiculo"]){
-					// 									$html .= '  <td rowspan="'.$total_acompanantes.'" id="td_x_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; padding: 0px; text-align: center; color: #dc3545; font-size: 12px;">';
-
-					// 									$i = 1;
-
-					// 									if ($row_ingreso["TOTAL_IMAGENES"] > 0){
-					// 										// $html .= '   <div class="d-flex" style="padding: 5px;">';
-					// 										$html .= '    <div>';
-
-					// 										// // Obteniendo detalle de Imágenes
-					// 										//  $q_imagenes = "SELECT Id,
-					// 										//                        descripcion
-					// 										//                   FROM controlingresovehiculo_imagenes
-					// 										//                  WHERE id_controlingreso = ".$row_ingreso["id_controlIngresoVehiculo"]."
-					// 										//                 ORDER BY Id";
-
-					// 										//  if ($res_imagenes = mysqli_query($enlace, $q_imagenes)){
-					// 										//    if (mysqli_num_rows($res_imagenes) > 0) {
-					// 										//      while($row_imagenes = mysqli_fetch_array($res_imagenes)){
-					// 										//        $html .= '      <button class="btn btn-primary" style="margin-left: 5px; font-size: 11px;" onclick="f_ShowImagenes('.$row_imagenes["Id"].', 0, '.$i.');">';
-					// 										//        $html .= '        '.$row_imagenes["descripcion"];
-					// 										//        $html .= '      </button>';
-
-					// 										//        $i ++;
-					// 										//      }
-					// 										//    }
-					// 										//  }
-
-					// 										$html .= '     <img src="images/view.png" style="margin-left: -5px; margin-right: 5px;padding: 2px; width: 32px; height: 32px; cursor: pointer;" onclick="f_ShowImagenesCarousel('.$row_ingreso["id_controlIngresoVehiculo"].');">';
-
-					// 										$html .= '    </div>';
-					// 									}
-
-					// 									$html .= '  </td>';
-					// 								}
-					// 							}
-
-					// 						if ($a > 1){
-					// 							$html .= '</tr>';
-					// 						}
-
-					// 						$a ++;
-					// 					}
-
-					// 					$a - 1;
-					// 				}
-					// 			}
-					// 	}
-					// 	else{
-					// 		$html .= '  <td colspan="4" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; padding: 0px; text-align: center; color: #dc3545; font-size: 12px;">';
-					// 		$html .= '    <i>Sin Acompañantes</i>';
-					// 		$html .= '  </td>';
-
-					// 		// Información de Imágenes
-					// 			if ($id_registro != $row_ingreso["id_controlIngresoVehiculo"]){
-					// 				$html .= '  <td rowspan="'.$total_acompanantes.'" id="td_x_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; padding: 0px; text-align: center; color: #dc3545; font-size: 12px; padding-left: 5px;">';
-
-					// 				$i = 1;
-
-					// 				if ($row_ingreso["TOTAL_IMAGENES"] > 0){
-					// 					// $html .= '   <div class="d-flex" style="text-align: center">';
-
-					// 					$html .= '    <div>';
-
-					// 					// Obteniendo detalle de Imágenes
-					// 						// $q_imagenes = "SELECT Id,
-					// 						//                      descripcion
-					// 						//                 FROM controlingresovehiculo_imagenes
-					// 						//                WHERE id_controlingreso = ".$row_ingreso["id_controlIngresoVehiculo"]."
-					// 						//               ORDER BY Id";
-
-					// 						// if ($res_imagenes = mysqli_query($enlace, $q_imagenes)){
-					// 						//  if (mysqli_num_rows($res_imagenes) > 0) {
-					// 						//    while($row_imagenes = mysqli_fetch_array($res_imagenes)){
-					// 						//      $html .= '      <button class="btn btn-primary" style="margin-left: 5px; font-size: 11px;" onclick="f_ShowImagenes('.$row_imagenes["Id"].', 0, '.$i.');">';
-					// 						//      $html .= '        '.$row_imagenes["descripcion"];
-					// 						//      $html .= '      </button>';
-
-					// 						//      $i ++;
-					// 						//    }
-					// 						//  }
-					// 						// }
-
-					// 					$html .= '     <img src="images/view.png" style="margin-left: -5px; margin-right: 5px;  padding: 2px; width: 32px; height: 32px; cursor: pointer;" onclick="f_ShowImagenesCarousel('.$row_ingreso["id_controlIngresoVehiculo"].');">';
-
-					// 					$html .= '    </div>';
-					// 				}
-
-					// 				$html .= '  </td>';
-					// 			}
-					// 	}
-
-					$html .= "</tr>";
-
-					$id_registro = $row_ingreso["id_controlIngresoVehiculo"];
-
-					$d++;
+					$html .= "  </td>";
 				}
+
+				// // Información de Acompañantes
+				// 	$a = 1;
+
+				// 	if ($row_ingreso["TOTAL_ACOMPANANTES"] > 0){
+				// 		// Obteniendo detalle de Acompañantes
+				// 			$q_acompanantes = "SELECT Id,
+				// 																dni,
+				// 																nombres,
+				// 																tiene_imagen,
+				// 																imagen,
+				// 																fechahora_salida,
+				// 																usuario_salida
+				// 													 FROM controlingresovehiculo_acompanantes
+				// 													WHERE id_controlingreso = ".$row_ingreso["id_controlIngresoVehiculo"]."
+				// 												 ORDER BY Id";
+
+				// 			if ($res_acompanantes = mysqli_query($enlace, $q_acompanantes)){
+				// 				if (mysqli_num_rows($res_acompanantes) > 0) {
+				// 					while($row_acompanantes = mysqli_fetch_array($res_acompanantes)){
+				// 						if ($a > 1){
+				// 							$html .= '<tr style="cursor: pointer; font-size: 14px;">';
+				// 						}
+
+				// 						$html .= '        <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+				// 						$html .= '          '.$row_acompanantes["dni"];
+				// 						$html .= '        </td>';
+
+				// 						$html .= '        <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+				// 						$html .= '          '.$row_acompanantes["nombres"];
+				// 						$html .= '        </td>';
+
+				// 						$html .= '        <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+
+				// 						if ($row_acompanantes["tiene_imagen"] == 1){
+				// 							$html .= '          <img src="'.$img_view.'" style="width: 25px;" onclick="f_ShowDocumentoAcompanante('.$row_acompanantes["Id"].", '".$row_acompanantes["nombres"]."'".');">';
+				// 						}
+
+				// 						$html .= '        </td>';
+
+				// 						$html .= '        <td id="td_salidaacompanante_'.$row_acompanantes["Id"].'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;">';
+
+				// 						if (strlen($row_acompanantes["fechahora_salida"]) == 0){
+				// 							$html .= '  <button class="btn btn-danger" type="button" onclick="f_RegistroSalida_Acompanantes('.$row_acompanantes["Id"].", '".$row_acompanantes["nombres"]."'".');" style="color: #ffffff; font-size: 11px; margin-top: -5px;">';
+				// 							$html .= '    <b>Registrar Salida</b>';
+				// 							$html .= '  </button>';
+				// 						}
+				// 						else{
+				// 							$html .= '    '.$row_acompanantes["fechahora_salida"].'<br>';
+				// 							$html .= '    <i>'.$row_acompanantes["usuario_salida"].'</i>';
+				// 						}
+
+				// 						$html .= '        </td>';
+
+				// 						// Información de Imágenes
+				// 							if ($a == 1){
+				// 								if ($id_registro != $row_ingreso["id_controlIngresoVehiculo"]){
+				// 									$html .= '  <td rowspan="'.$total_acompanantes.'" id="td_x_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; padding: 0px; text-align: center; color: #dc3545; font-size: 12px;">';
+
+				// 									$i = 1;
+
+				// 									if ($row_ingreso["TOTAL_IMAGENES"] > 0){
+				// 										// $html .= '   <div class="d-flex" style="padding: 5px;">';
+				// 										$html .= '    <div>';
+
+				// 										// // Obteniendo detalle de Imágenes
+				// 										//  $q_imagenes = "SELECT Id,
+				// 										//                        descripcion
+				// 										//                   FROM controlingresovehiculo_imagenes
+				// 										//                  WHERE id_controlingreso = ".$row_ingreso["id_controlIngresoVehiculo"]."
+				// 										//                 ORDER BY Id";
+
+				// 										//  if ($res_imagenes = mysqli_query($enlace, $q_imagenes)){
+				// 										//    if (mysqli_num_rows($res_imagenes) > 0) {
+				// 										//      while($row_imagenes = mysqli_fetch_array($res_imagenes)){
+				// 										//        $html .= '      <button class="btn btn-primary" style="margin-left: 5px; font-size: 11px;" onclick="f_ShowImagenes('.$row_imagenes["Id"].', 0, '.$i.');">';
+				// 										//        $html .= '        '.$row_imagenes["descripcion"];
+				// 										//        $html .= '      </button>';
+
+				// 										//        $i ++;
+				// 										//      }
+				// 										//    }
+				// 										//  }
+
+				// 										$html .= '     <img src="images/view.png" style="margin-left: -5px; margin-right: 5px;padding: 2px; width: 32px; height: 32px; cursor: pointer;" onclick="f_ShowImagenesCarousel('.$row_ingreso["id_controlIngresoVehiculo"].');">';
+
+				// 										$html .= '    </div>';
+				// 									}
+
+				// 									$html .= '  </td>';
+				// 								}
+				// 							}
+
+				// 						if ($a > 1){
+				// 							$html .= '</tr>';
+				// 						}
+
+				// 						$a ++;
+				// 					}
+
+				// 					$a - 1;
+				// 				}
+				// 			}
+				// 	}
+				// 	else{
+				// 		$html .= '  <td colspan="4" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; padding: 0px; text-align: center; color: #dc3545; font-size: 12px;">';
+				// 		$html .= '    <i>Sin Acompañantes</i>';
+				// 		$html .= '  </td>';
+
+				// 		// Información de Imágenes
+				// 			if ($id_registro != $row_ingreso["id_controlIngresoVehiculo"]){
+				// 				$html .= '  <td rowspan="'.$total_acompanantes.'" id="td_x_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; padding: 0px; text-align: center; color: #dc3545; font-size: 12px; padding-left: 5px;">';
+
+				// 				$i = 1;
+
+				// 				if ($row_ingreso["TOTAL_IMAGENES"] > 0){
+				// 					// $html .= '   <div class="d-flex" style="text-align: center">';
+
+				// 					$html .= '    <div>';
+
+				// 					// Obteniendo detalle de Imágenes
+				// 						// $q_imagenes = "SELECT Id,
+				// 						//                      descripcion
+				// 						//                 FROM controlingresovehiculo_imagenes
+				// 						//                WHERE id_controlingreso = ".$row_ingreso["id_controlIngresoVehiculo"]."
+				// 						//               ORDER BY Id";
+
+				// 						// if ($res_imagenes = mysqli_query($enlace, $q_imagenes)){
+				// 						//  if (mysqli_num_rows($res_imagenes) > 0) {
+				// 						//    while($row_imagenes = mysqli_fetch_array($res_imagenes)){
+				// 						//      $html .= '      <button class="btn btn-primary" style="margin-left: 5px; font-size: 11px;" onclick="f_ShowImagenes('.$row_imagenes["Id"].', 0, '.$i.');">';
+				// 						//      $html .= '        '.$row_imagenes["descripcion"];
+				// 						//      $html .= '      </button>';
+
+				// 						//      $i ++;
+				// 						//    }
+				// 						//  }
+				// 						// }
+
+				// 					$html .= '     <img src="images/view.png" style="margin-left: -5px; margin-right: 5px;  padding: 2px; width: 32px; height: 32px; cursor: pointer;" onclick="f_ShowImagenesCarousel('.$row_ingreso["id_controlIngresoVehiculo"].');">';
+
+				// 					$html .= '    </div>';
+				// 				}
+
+				// 				$html .= '  </td>';
+				// 			}
+				// 	}
+
+				$html .= "</tr>";
+
+				$id_registro = $row_ingreso["id_controlIngresoVehiculo"];
+
+				$d++;
 			}
 		}
 
@@ -37435,31 +37579,148 @@ switch ($_POST["accion"]) {
 		$q_validacion .=
 			" ORDER BY V.lote_cod_lote, /*V.lote_num_ticket, V.lote_ticket_orden*/ V.guias_ticketbalanza";
 
+		$datos_finales = [];
 		if ($res_validacion = mysqli_query($enlace, $q_validacion)) {
-			if (mysqli_num_rows($res_validacion) > 0) {
-				$estado = 1;
+			while ($row_validacion = mysqli_fetch_array($res_validacion)) {
+				$row_validacion["es_historico"] = false;
+				$datos_finales[] = $row_validacion;
+			}
+		}
 
-				while ($row_validacion = mysqli_fetch_array($res_validacion)) {
-					$html .=
-						'<tr id="tr_detalle_' .
-						$d .
-						'" style="font-size: 14px;">';
+		// Cargar datos históricos desde el JSON
+		$json_path = __DIR__ . "/repo_old/cierre_lotes_primer_tramo.json";
+		if (file_exists($json_path)) {
+			$json_content = file_get_contents($json_path);
+			$historical_data = json_decode($json_content, true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $reg) {
+					// 1. Filtro por lotes específicos
+					if (isset($filtro_lote) && is_array($filtro_lote) && count($filtro_lote) > 0) {
+						if (!in_array($reg["lote_cod_lote"], $filtro_lote)) {
+							continue;
+						}
+					} else {
+						// 2. Filtro por rango de fechas
+						$fecha_reg = !empty($reg["fecha_peso_inicial"]) ? substr($reg["fecha_peso_inicial"], 0, 10) : "";
+						if ($fecha_reg < $fecha_inicio || $fecha_reg > $fecha_fin) {
+							continue;
+						}
+					}
 
-					// Inicia con la carga de datos
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $d;
-					$html .=
-						'    <input id="id_' .
-						$d .
-						'" type="hidden" value="' .
-						$row_validacion["Id"] .
-						'">';
-					$html .= "  </td>";
+					// Parsear guía de remitente y transportista
+					$guia_rem = explode("-", $reg["guia_remitente"]);
+					$guiaremitente_serie = isset($guia_rem[0]) ? trim($guia_rem[0]) : "";
+					$guiaremitente_numero = isset($guia_rem[1]) ? trim($guia_rem[1]) : "";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 45px;">';
+					$guia_trans = explode("-", $reg["guia_transportista"]);
+					$guiatransportista_serie = isset($guia_trans[0]) ? trim($guia_trans[0]) : "";
+					$guiatransportista_numero = isset($guia_trans[1]) ? trim($guia_trans[1]) : "";
 
+					$row = [
+						"Id" => "hist_" . uniqid(),
+						"ID_MD5" => "",
+						"lote_id_lote" => 0,
+						"lote_cod_lote" => $reg["lote_cod_lote"],
+						"lote_ticket_orden" => $reg["parte"],
+						"num_ticketbalanza" => $reg["ticket_balanza"],
+						"guias_ticketbalanza" => $reg["ticket_balanza"],
+						"FECHA_INGRESOBALANZA" => $reg["fecha_llegada_contable"],
+						"balanza_placa" => $reg["placa1"],
+						"balanza_placa2" => $reg["placa2"],
+						"TRANSPORTISTA_RUC" => $reg["transportista_ruc"],
+						"TRANSPORTISTA_RAZONSOCIAL" => $reg["transportista_razon_social"],
+						"TIPO_VEHICULO" => $reg["tipo_vehiculo"],
+						"CONDUCTOR_DNI" => $reg["conductor_licencia"],
+						"CONDUCTOR_NOMBRES" => $reg["conductor_nombres"],
+						"lote_id_tipocarga" => 0,
+						"TIPO_CARGA" => $reg["tipo_carga"],
+						"lote_id_zonaorigen" => 0,
+						"ZONA_ORIGEN" => $reg["zona_origen"],
+						"procedencia_distrito" => $reg["zona_origen"],
+						"PROVEEDORMINERO_RUC" => $reg["proveedor_minero_ruc"],
+						"PROVEEDORMINERO_RAZONSOCIAL" => $reg["proveedor_minero_razon_social"],
+						"proveedorminero_concesion" => "",
+						"proveedorminero_codigounico" => "",
+						"proveedorminero_ubicacion" => "",
+						"proveedorminero_ubicacion_departamento" => "",
+						"proveedorminero_ubicacion_provincia" => "",
+						"ENCARGADO_MUESTRA" => $reg["encargado_muestra"],
+						"PRODUCTO" => $reg["producto"],
+						"TIPO_MATERIAL" => $reg["tipo_mineral"],
+						"despacho_observacion" => $reg["observacion"],
+						"lote_pesoinicial_fechahoraregistro" => $reg["fecha_peso_inicial"],
+						"lote_pesofinal_fechahoraregistro" => $reg["fecha_peso_final"],
+						"lote_peso_bruto" => $reg["bruto"],
+						"lote_peso_tara" => $reg["tara"],
+						"lote_peso_neto" => $reg["neto"],
+						"operaciones_humedad" => 0,
+						"lote_peso_seco" => 0,
+						"unidad_capacidad" => 0,
+						"unidad_tara" => 0,
+						"unidad_idmarca" => 0,
+						"despacho_color" => "",
+						"is_cerrado" => 0,
+						"cerrado_fechahoraregistro" => "",
+						"cerrado_usuarioregistro" => "",
+						"is_cerradolote" => (!empty($reg["cierre_fecha_hora"]) ? 1 : 0),
+						"cerradolote_fechahoraregistro" => $reg["cierre_fecha_hora"],
+						"cerradolote_usuarioregistro" => "Histórico",
+						"guiaremitente_serie" => $guiaremitente_serie,
+						"guiaremitente_numero" => $guiaremitente_numero,
+						"guiatransportista_serie" => $guiatransportista_serie,
+						"guiatransportista_numero" => $guiatransportista_numero,
+						"codigo_gel" => $reg["codigo_gel"],
+						"codigogel_valorizado" => (strtolower($reg["valorizado"]) === "si" ? 1 : 0),
+						"codigogel_facturado" => (strtolower($reg["facturado"]) === "si" ? 1 : 0),
+						"codigo_gel_fechahoraregistro" => $reg["codigo_gel_fechahoraregistro"],
+						"codigo_gel_usuarioregistro" => "Histórico",
+						"es_historico" => true
+					];
+
+					$datos_finales[] = $row;
+				}
+			}
+		}
+
+		if (count($datos_finales) > 0) {
+			$estado = 1;
+
+			// Ordenar por lote_cod_lote ASC, y lote_ticket_orden / lote_pesoinicial_fechahoraregistro
+			usort($datos_finales, function ($a, $b) {
+				$cmp = strcmp($a["lote_cod_lote"], $b["lote_cod_lote"]);
+				if ($cmp === 0) {
+					$orden_a = intval($a["lote_ticket_orden"]);
+					$orden_b = intval($b["lote_ticket_orden"]);
+					if ($orden_a === $orden_b) {
+						return strcmp($a["lote_pesoinicial_fechahoraregistro"], $b["lote_pesoinicial_fechahoraregistro"]);
+					}
+					return $orden_a - $orden_b;
+				}
+				return $cmp;
+			});
+
+			foreach ($datos_finales as $row_validacion) {
+				$html .=
+					'<tr id="tr_detalle_' .
+					$d .
+					'" style="font-size: 14px;">';
+
+				// Inicia con la carga de datos
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $d;
+				$html .=
+					'    <input id="id_' .
+					$d .
+					'" type="hidden" value="' .
+					$row_validacion["Id"] .
+					'">';
+				$html .= "  </td>";
+
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 45px;">';
+
+				if (empty($row_validacion["es_historico"])) {
 					$html .=
 						'		<img src="' .
 						$img_print .
@@ -37468,214 +37729,221 @@ switch ($_POST["accion"]) {
 						$row_validacion["ID_MD5"] .
 						"'" .
 						');">';
+				} else {
+					$html .= '    -';
+				}
 
-					$html .= "  </td>";
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["lote_cod_lote"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["lote_cod_lote"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["lote_ticket_orden"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["lote_ticket_orden"];
+				$html .= "  </td>";
 
-					// $html .= '  <td id="td_codigogel_1_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				// $html .= '  <td id="td_codigogel_1_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
 
-					// if (strlen($row_validacion["codigo_gel"]) == 0){
-					// 	$html .= '		<input id="chk_codigogel_3_'.$d.'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
-					// }
-					// else{
-					// 	if ($row_validacion["is_cerradolote"] == 0){
-					// 		$html .= '		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel('.$d.', '.$row_validacion["Id"].')"><u> Revertir </u></label>';
-					// 	}
-					// }
+				// if (strlen($row_validacion["codigo_gel"]) == 0){
+				// 	$html .= '		<input id="chk_codigogel_3_'.$d.'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
+				// }
+				// else{
+				// 	if ($row_validacion["is_cerradolote"] == 0){
+				// 		$html .= '		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel('.$d.', '.$row_validacion["Id"].')"><u> Revertir </u></label>';
+				// 	}
+				// }
 
-					// $html .= '  </td>';
+				// $html .= '  </td>';
 
-					// /* COLUMNA SEL. - Checkbox de selección para Código GEL */
-					// $html .=
-					// 	'  <td id="td_codigogel_1_' .
-					// 	$d .
-					// 	'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					// if (strlen($row_validacion["codigo_gel"]) == 0) {
-					// 	$html .=
-					// 		'		<input id="chk_codigogel_3_' .
-					// 		$d .
-					// 		'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
-					// } else {
-					// 	if ($row_validacion["is_cerradolote"] == 0) {
-					// 		$html .=
-					// 			'		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel(' .
-					// 			$d .
-					// 			", " .
-					// 			$row_validacion["Id"] .
-					// 			')"><u> Revertir </u></label>';
-					// 	}
-					// }
-					// $html .= "  </td>";
+				// /* COLUMNA SEL. - Checkbox de selección para Código GEL */
+				// $html .=
+				// 	'  <td id="td_codigogel_1_' .
+				// 	$d .
+				// 	'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				// if (strlen($row_validacion["codigo_gel"]) == 0) {
+				// 	$html .=
+				// 		'		<input id="chk_codigogel_3_' .
+				// 		$d .
+				// 		'" class="form-check-input chk_codigogel" type="checkbox" style="transform: scale(1.5);">';
+				// } else {
+				// 	if ($row_validacion["is_cerradolote"] == 0) {
+				// 		$html .=
+				// 			'		<label style="font-style: italic; color: #F23030; cursor: pointer;" onclick="f_RevertirCodigoGel(' .
+				// 			$d .
+				// 			", " .
+				// 			$row_validacion["Id"] .
+				// 			')"><u> Revertir </u></label>';
+				// 	}
+				// }
+				// $html .= "  </td>";
 
-					/* COLUMNA CÓDIGO GEL */
-					$html .=
-						'  <td id="td_codigogel_2_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["codigo_gel"];
-					$html .= "  </td>";
+				/* COLUMNA CÓDIGO GEL */
+				$html .=
+					'  <td id="td_codigogel_2_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["codigo_gel"];
+				$html .= "  </td>";
 
-					$fecha_lote_formateada = !empty(
-						$row_validacion["codigo_gel_fechahoraregistro"]
-					)
-						? date(
-							"d/m/Y H:m:s",
-							strtotime(
-								$row_validacion["codigo_gel_fechahoraregistro"]
-							)
+				$fecha_lote_formateada = !empty(
+					$row_validacion["codigo_gel_fechahoraregistro"]
+				)
+					? date(
+						"d/m/Y H:m:s",
+						strtotime(
+							$row_validacion["codigo_gel_fechahoraregistro"]
 						)
-						: "";
+					)
+					: "";
 
-					$html .=
-						'  <td id="td_codigogel_3_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $fecha_lote_formateada;
-					$html .= "  </td>";
+				$html .=
+					'  <td id="td_codigogel_3_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $fecha_lote_formateada;
+				$html .= "  </td>";
 
-					$html .=
-						'  <td id="td_codigogel_4_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						"    " . $row_validacion["codigo_gel_usuarioregistro"];
-					$html .= "  </td>";
+				$html .=
+					'  <td id="td_codigogel_4_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .=
+					"    " . $row_validacion["codigo_gel_usuarioregistro"];
+				$html .= "  </td>";
 
-					// $html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 60px;">';
-					// // $html .= '    '.$row_validacion["num_ticketbalanza"];
-					// $html .= '    '.$row_validacion["guias_ticketbalanza"];
-					// $html .= '  </td>';
+				// $html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 60px;">';
+				// // $html .= '    '.$row_validacion["num_ticketbalanza"];
+				// $html .= '    '.$row_validacion["guias_ticketbalanza"];
+				// $html .= '  </td>';
 
-					$html .=
-						'  <td id="td_numticket_' .
-						$row_validacion["Id"] .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 60px;">';
-					$html .= "    " . $row_validacion["num_ticketbalanza"];
-					$html .= "  </td>";
+				$html .=
+					'  <td id="td_numticket_' .
+					$row_validacion["Id"] .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 60px;">';
+				$html .= "    " . $row_validacion["num_ticketbalanza"];
+				$html .= "  </td>";
 
-					/*$html .= '  <td id="td_fechallegada_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				/*$html .= '  <td id="td_fechallegada_'.$d.'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
 
-			if (strlen($row_validacion["codigo_gel"]) == 0){
-				$html .= '		<div class="d-flex">';
-				$html .= '			<input id="td_ingreso_fecha_'.$d.'" type="date" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; margin-right: 5px;" value="'.$row_validacion["FECHA_INGRESOBALANZA"].'" onchange="f_UpdateDatos('.$d.', 5)">';
+		if (strlen($row_validacion["codigo_gel"]) == 0){
+			$html .= '		<div class="d-flex">';
+			$html .= '			<input id="td_ingreso_fecha_'.$d.'" type="date" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; margin-right: 5px;" value="'.$row_validacion["FECHA_INGRESOBALANZA"].'" onchange="f_UpdateDatos('.$d.', 5)">';
 
-				$html .= '			<input id="td_ingreso_hora_'.$d.'" type="time" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 100px;" value="00:00" onchange="f_UpdateDatos('.$d.', 6)" hidden>';
-				$html .= '  	</div>';
-			}
-			else{
-				$html .= '    '.$row_validacion["FECHA_INGRESOBALANZA"];
-			}
+			$html .= '			<input id="td_ingreso_hora_'.$d.'" type="time" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 100px;" value="00:00" onchange="f_UpdateDatos('.$d.', 6)" hidden>';
+			$html .= '  	</div>';
+		}
+		else{
+			$html .= '    '.$row_validacion["FECHA_INGRESOBALANZA"];
+		}
 
-			$html .= '  </td>';*/
+		$html .= '  </td>';*/
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "		" . $row_validacion["FECHA_INGRESOBALANZA"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "		" . $row_validacion["FECHA_INGRESOBALANZA"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .= "		" . $row_validacion["balanza_placa"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "		" . $row_validacion["balanza_placa"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .= "		" . $row_validacion["balanza_placa2"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "		" . $row_validacion["balanza_placa2"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .=
-						"		" .
-						$row_validacion["guiaremitente_serie"] .
-						"-" .
-						$row_validacion["guiaremitente_numero"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .=
+					"		" .
+					$row_validacion["guiaremitente_serie"] .
+					"-" .
+					$row_validacion["guiaremitente_numero"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .=
-						"		" .
-						$row_validacion["guiatransportista_serie"] .
-						"-" .
-						$row_validacion["guiatransportista_numero"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .=
+					"		" .
+					$row_validacion["guiatransportista_serie"] .
+					"-" .
+					$row_validacion["guiatransportista_numero"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["TRANSPORTISTA_RUC"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["TRANSPORTISTA_RUC"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						"    " . $row_validacion["TRANSPORTISTA_RAZONSOCIAL"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .=
+					"    " . $row_validacion["TRANSPORTISTA_RAZONSOCIAL"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["TIPO_VEHICULO"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["TIPO_VEHICULO"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["CONDUCTOR_DNI"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["CONDUCTOR_DNI"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["CONDUCTOR_NOMBRES"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["CONDUCTOR_NOMBRES"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["TIPO_CARGA"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["TIPO_CARGA"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					// $html .= '    '.$row_validacion["ZONA_ORIGEN"];
-					// $html .= '    '.$row_validacion["proveedorminero_ubicacion_distrito"];
-					$html .= "    " . $row_validacion["procedencia_distrito"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				// $html .= '    '.$row_validacion["ZONA_ORIGEN"];
+				// $html .= '    '.$row_validacion["proveedorminero_ubicacion_distrito"];
+				$html .= "    " . $row_validacion["procedencia_distrito"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["PROVEEDORMINERO_RUC"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["PROVEEDORMINERO_RUC"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						"    " . $row_validacion["PROVEEDORMINERO_RAZONSOCIAL"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .=
+					"    " . $row_validacion["PROVEEDORMINERO_RAZONSOCIAL"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["ENCARGADO_MUESTRA"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["ENCARGADO_MUESTRA"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["PRODUCTO"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["PRODUCTO"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["TIPO_MATERIAL"];
-					$html .= "  </td>";
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["TIPO_MATERIAL"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+
+				if (!empty($row_validacion["es_historico"])) {
+					$html .= $row_validacion["despacho_observacion"];
+				} else {
 					$html .=
 						'		<textarea id="val_9_' .
 						$d .
@@ -37697,144 +37965,144 @@ switch ($_POST["accion"]) {
 					}
 
 					$html .= "</textarea>";
-					$html .= "	</td>";
-
-					$html .=
-						'  <td id="td_pesoinicio_fecha_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					// $html .= '		<div class="d-flex">';
-					// $html .= '			<input id="td_pesoinicio_fecha_'.$d.'" type="date" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; margin-right: 5px;" value="'.substr($row_validacion["lote_pesoinicial_fechahoraregistro"], 0, 10).'" onchange="f_UpdateDatos('.$d.', 1)">';
-
-					// $html .= '			<input id="td_pesoinicio_hora_'.$d.'" type="time" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 100px;" value="00:00" onchange="f_UpdateDatos('.$d.', 2)" hidden>';
-					// $html .= '  	</div>';
-					$html .=
-						"  	" .
-						substr(
-							$row_validacion[
-								"lote_pesoinicial_fechahoraregistro"
-							],
-							0,
-							10
-						);
-					$html .= "  </td>";
-
-					$html .=
-						'  <td id="td_pesofin_fecha_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					// $html .= '		<div class="d-flex">';
-					// $html .= '			<input id="td_pesofin_fecha_'.$d.'" type="date" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; margin-right: 5px;" value="'.substr($row_validacion["lote_pesofinal_fechahoraregistro"], 0, 10).'" onchange="f_UpdateDatos('.$d.', 3)">';
-
-					// $html .= '			<input id="td_pesofin_hora_'.$d.'" type="time" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 100px;" value="00:00" onchange="f_UpdateDatos('.$d.', 4)" hidden>';
-					// $html .= '  	</div>';
-					$html .=
-						"  	" .
-						substr(
-							$row_validacion["lote_pesofinal_fechahoraregistro"],
-							0,
-							10
-						);
-					$html .= "  </td>";
-
-					$html .=
-						'  <td id="td_pesobruto_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; min-width: 110px;">';
-					// $html .= '			<input id="val_8_'.$d.'" type="number" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; font-weight: bold;" value="'.$row_validacion["lote_peso_bruto"].'" onchange="f_UpdateDatos('.$d.', 8, 0)">';
-					$html .=
-						"  	" .
-						number_format(
-							$row_validacion["lote_peso_bruto"],
-							0,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; min-width: 110px;">';
-					// $html .= '			<input id="val_7_'.$d.'" type="number" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; font-weight: bold;" value="'.$row_validacion["lote_peso_tara"].'" onchange="f_UpdateDatos('.$d.', 7, 0)">';
-					$html .=
-						"  	" .
-						number_format(
-							$row_validacion["lote_peso_tara"],
-							0,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					/* COLUMNA NETO: Peso Neto del lote */
-					$html .=
-						'  <td id="td_pesoneto_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
-					$html .=
-						"    " .
-						number_format(
-							$row_validacion["lote_peso_neto"],
-							0,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					/* =====================================================
-					   INICIO: COLUMNAS DE CIERRE (3 COLUMNAS)
-					   - COLUMNA 1: Valorizado (codigogel_valorizado)
-					   - COLUMNA 2: Facturado (codigogel_facturado)
-					   - COLUMNA 3: Fecha Hora (cerradolote_fechahoraregistro)
-					   ===================================================== */
-
-					/* COLUMNA 1 DE CIERRE: VALORIZADO
-					   Atributo SQL: codigogel_valorizado
-					   Lógica: Si codigogel_valorizado == 1 -> checkbox marcado */
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .=
-						'		<input id="chk_codigogel_1_' .
-						$d .
-						'" class="form-check-input chk_cierre" type="checkbox" style="transform: scale(1.5);" ' .
-						($row_validacion["codigogel_valorizado"] == 1
-							? "checked"
-							: "") .
-						' disabled>';
-					$html .= "  </td>";
-
-					/* COLUMNA 2 DE CIERRE: FACTURADO
-					   Atributo SQL: codigogel_facturado
-					   Lógica: Si codigogel_facturado == 1 -> checkbox marcado */
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
-					$html .=
-						'		<input id="chk_codigogel_2_' .
-						$d .
-						'" class="form-check-input chk_cierre" type="checkbox" style="transform: scale(1.5);" ' .
-						($row_validacion["codigogel_facturado"] == 1
-							? "checked"
-							: "") .
-						' disabled>';
-					$html .= "  </td>";
-
-					/* COLUMNA 3 DE CIERRE: FECHA HORA DEL CIERRE
-					   Atributo SQL: cerradolote_fechahoraregistro
-					   Lógica: Muestra la fecha/hora del cierre del lote */
-					$html .=
-						'  <td id="td_cierre_fechahora_' .
-						$d .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; min-width: 100px;">';
-					if ($row_validacion["is_cerradolote"] == 1) {
-						$html .=
-							"		" .
-							$row_validacion["cerradolote_fechahoraregistro"];
-					}
-					$html .= "  </td>";
-
-					$html .= "</tr>";
-
-					$d++;
 				}
+				$html .= "	</td>";
+
+				$html .=
+					'  <td id="td_pesoinicio_fecha_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				// $html .= '		<div class="d-flex">';
+				// $html .= '			<input id="td_pesoinicio_fecha_'.$d.'" type="date" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; margin-right: 5px;" value="'.substr($row_validacion["lote_pesoinicial_fechahoraregistro"], 0, 10).'" onchange="f_UpdateDatos('.$d.', 1)">';
+
+				// $html .= '			<input id="td_pesoinicio_hora_'.$d.'" type="time" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 100px;" value="00:00" onchange="f_UpdateDatos('.$d.', 2)" hidden>';
+				// $html .= '  	</div>';
+				$html .=
+					"  	" .
+					substr(
+						$row_validacion[
+							"lote_pesoinicial_fechahoraregistro"
+						],
+						0,
+						10
+					);
+				$html .= "  </td>";
+
+				$html .=
+					'  <td id="td_pesofin_fecha_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				// $html .= '		<div class="d-flex">';
+				// $html .= '			<input id="td_pesofin_fecha_'.$d.'" type="date" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; margin-right: 5px;" value="'.substr($row_validacion["lote_pesofinal_fechahoraregistro"], 0, 10).'" onchange="f_UpdateDatos('.$d.', 3)">';
+
+				// $html .= '			<input id="td_pesofin_hora_'.$d.'" type="time" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 100px;" value="00:00" onchange="f_UpdateDatos('.$d.', 4)" hidden>';
+				// $html .= '  	</div>';
+				$html .=
+					"  	" .
+					substr(
+						$row_validacion["lote_pesofinal_fechahoraregistro"],
+						0,
+						10
+					);
+				$html .= "  </td>";
+
+				$html .=
+					'  <td id="td_pesobruto_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; min-width: 110px;">';
+				// $html .= '			<input id="val_8_'.$d.'" type="number" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; font-weight: bold;" value="'.$row_validacion["lote_peso_bruto"].'" onchange="f_UpdateDatos('.$d.', 8, 0)">';
+				$html .=
+					"  	" .
+					number_format(
+						$row_validacion["lote_peso_bruto"],
+						0,
+						".",
+						","
+					);
+				$html .= "  </td>";
+
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; min-width: 110px;">';
+				// $html .= '			<input id="val_7_'.$d.'" type="number" class="form-control input_datos_'.$d.'" style="text-align: center; font-size: 14px; max-width: 220px; font-weight: bold;" value="'.$row_validacion["lote_peso_tara"].'" onchange="f_UpdateDatos('.$d.', 7, 0)">';
+				$html .=
+					"  	" .
+					number_format(
+						$row_validacion["lote_peso_tara"],
+						0,
+						".",
+						","
+					);
+				$html .= "  </td>";
+
+				/* COLUMNA NETO: Peso Neto del lote */
+				$html .=
+					'  <td id="td_pesoneto_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
+				$html .=
+					"    " .
+					number_format(
+						$row_validacion["lote_peso_neto"],
+						0,
+						".",
+						","
+					);
+				$html .= "  </td>";
+
+				/* =====================================================
+				   INICIO: COLUMNAS DE CIERRE (3 COLUMNAS)
+				   - COLUMNA 1: Valorizado (codigogel_valorizado)
+				   - COLUMNA 2: Facturado (codigogel_facturado)
+				   - COLUMNA 3: Fecha Hora (cerradolote_fechahoraregistro)
+				   ===================================================== */
+
+				/* COLUMNA 1 DE CIERRE: VALORIZADO
+				   Atributo SQL: codigogel_valorizado
+				   Lógica: Si codigogel_valorizado == 1 -> checkbox marcado */
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .=
+					'		<input id="chk_codigogel_1_' .
+					$d .
+					'" class="form-check-input chk_cierre" type="checkbox" style="transform: scale(1.5);" ' .
+					($row_validacion["codigogel_valorizado"] == 1
+						? "checked"
+						: "") .
+					' disabled>';
+				$html .= "  </td>";
+
+				/* COLUMNA 2 DE CIERRE: FACTURADO
+				   Atributo SQL: codigogel_facturado
+				   Lógica: Si codigogel_facturado == 1 -> checkbox marcado */
+				$html .=
+					'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .=
+					'		<input id="chk_codigogel_2_' .
+					$d .
+					'" class="form-check-input chk_cierre" type="checkbox" style="transform: scale(1.5);" ' .
+					($row_validacion["codigogel_facturado"] == 1
+						? "checked"
+						: "") .
+					' disabled>';
+				$html .= "  </td>";
+
+				/* COLUMNA 3 DE CIERRE: FECHA HORA DEL CIERRE
+				   Atributo SQL: cerradolote_fechahoraregistro
+				   Lógica: Muestra la fecha/hora del cierre del lote */
+				$html .=
+					'  <td id="td_cierre_fechahora_' .
+					$d .
+					'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; min-width: 100px;">';
+				if ($row_validacion["is_cerradolote"] == 1) {
+					$html .=
+						"		" .
+						$row_validacion["cerradolote_fechahoraregistro"];
+				}
+				$html .= "  </td>";
+
+				$html .= "</tr>";
+
+				$d++;
 			}
 		}
 
@@ -71892,89 +72160,251 @@ switch ($_POST["accion"]) {
 
 
 		saveLog(["query" => $q_validacion]);
+		$datos_finales = [];
 		if ($res_validacion = mysqli_query($enlace, $q_validacion)) {
-			if (mysqli_num_rows($res_validacion) > 0) {
-				$estado = 1;
+			while ($row_validacion = mysqli_fetch_array($res_validacion)) {
+				$row_validacion["es_historico"] = false;
+				$datos_finales[] = $row_validacion;
+			}
+		}
 
-				// Agrupar por guía (serie-número)
-				$grupos = [];
+		// Cargar datos del JSON histórico
+		$json_path = __DIR__ . "/repo_old/guias_resumen.json";
+		if (file_exists($json_path)) {
+			$json_content = file_get_contents($json_path);
+			$historical_data = json_decode($json_content, true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $guia) {
+					$guiaremitente = isset($guia["guiaremitente"]) ? $guia["guiaremitente"] : "";
+					$parts = explode("-", $guiaremitente);
+					$serie = isset($parts[0]) ? $parts[0] : "";
+					$numero = isset($parts[1]) ? $parts[1] : "";
 
-				while ($row_validacion = mysqli_fetch_array($res_validacion)) {
-					$clave =
-						$row_validacion["guiaremitente_serie"] .
-						"-" .
-						$row_validacion["guiaremitente_numero"] .
-						"-" .
-						$row_validacion["guiatransportista_serie"] .
-						"-" .
-						$row_validacion["guiatransportista_numero"] .
-						"-" .
-						$row_validacion["ID_REMITENTE"];
-
-					if (!isset($grupos[$clave])) {
-						$grupos[$clave] = [];
-					}
-
-					$grupos[$clave][] = $row_validacion;
-				}
-
-				$i = 1;
-				// Recorrer cada grupo y aplicar rowspan
-				foreach ($grupos as $registros) {
-					$rowspan = count($registros);
-					$primera = true;
-
-					//Validar si alguno de los lotes NO tiene código GEL
-					$mostrar_boton_gel = false;
-					foreach ($registros as $r) {
-						if (empty($r["codigo_gel"])) {
-							$mostrar_boton_gel = true;
-							break;
+					$match = false;
+					if (isset($filtro_guiaremitente) && is_array($filtro_guiaremitente) && count($filtro_guiaremitente) > 0) {
+						if (in_array($guiaremitente, $filtro_guiaremitente)) {
+							$match = true;
+						}
+					} else {
+						// Filtrado por rango de fechas
+						$guia_date = isset($guia["fecha_guia"]) ? substr($guia["fecha_guia"], 0, 10) : "";
+						if ($guia_date >= $fecha_inicio && $guia_date <= $fecha_fin) {
+							$match = true;
 						}
 					}
 
-					foreach ($registros as $row_validacion) {
-						$html .= '  <tr style="font-size: 13px;">';
+					if ($match) {
+						$lotes = isset($guia["lotes"]) && is_array($guia["lotes"]) ? $guia["lotes"] : [];
+						foreach ($lotes as $lote) {
+							$planta = 0;
+							if (isset($guia["planta_destino"])) {
+								if ($guia["planta_destino"] === "HUANCHACO") {
+									$planta = 1;
+								} elseif ($guia["planta_destino"] === "LAREDO") {
+									$planta = 2;
+								}
+							}
 
-						if ($primera) {
-							// Validaciones para Placa 2
-							$id_transporte2 = isset(
-								$row_validacion["id_transporte2"]
-							)
-								? $row_validacion["id_transporte2"]
-								: 0;
-							$id_transportista2 = isset(
-								$row_validacion["id_transportista2"]
-							)
-								? $row_validacion["id_transportista2"]
-								: 0;
-							$unidad_codigo_mtc2 = isset(
-								$row_validacion["unidad_codigo_mtc2"]
-							)
-								? $row_validacion["unidad_codigo_mtc2"]
-								: "";
-							$unidad_capacidad2 = isset(
-								$row_validacion["unidad_capacidad2"]
-							)
-								? $row_validacion["unidad_capacidad2"] / 1000
-								: 0;
-							$unidad_id_marca2 = isset(
-								$row_validacion["unidad_id_marca2"]
-							)
-								? $row_validacion["unidad_id_marca2"]
-								: 0;
+							$gt_parts = explode("-", isset($guia["guiatransportista"]) ? $guia["guiatransportista"] : "");
+							$gt_serie = isset($gt_parts[0]) ? $gt_parts[0] : "";
+							$gt_numero = isset($gt_parts[1]) ? $gt_parts[1] : "";
 
-							$html .=
-								'    <td rowspan="' .
-								$rowspan .
-								'" style="vertical-align: middle; text-align: center; font-size: 12px; font-weight: bold;">' .
-								$i .
-								"</td>";
+							$row = [
+								"Id" => 0,
+								"ID_MD5" => "",
+								"lote_id_lote" => 0,
+								"lote_cod_lote" => isset($lote["lote"]) ? $lote["lote"] : "",
+								"planta_destino" => $planta,
+								"lote_ticket_orden" => "",
+								"num_ticketbalanza" => isset($lote["ticket_balanza"]) ? $lote["ticket_balanza"] : "",
+								"guias_ticketbalanza" => isset($lote["ticket_balanza"]) ? $lote["ticket_balanza"] : "",
+								"FECHA_INGRESOBALANZA" => isset($lote["fecha_llegada"]) ? substr($lote["fecha_llegada"], 0, 10) : "",
+								"balanza_placa" => isset($lote["placa1"]) ? $lote["placa1"] : "",
+								"balanza_placa2" => isset($lote["placa2"]) ? $lote["placa2"] : "",
+								"TRANSPORTISTA_RUC" => isset($lote["transportista_ruc"]) ? $lote["transportista_ruc"] : "",
+								"TRANSPORTISTA_RAZONSOCIAL" => isset($lote["transportista_razon_social"]) ? $lote["transportista_razon_social"] : "",
+								"TIPO_VEHICULO" => isset($lote["tipo_vehiculo"]) ? $lote["tipo_vehiculo"] : "",
+								"CONDUCTOR_ID" => 0,
+								"CONDUCTOR_DNI" => "",
+								"CONDUCTOR_LICENCIA" => isset($lote["licencia"]) ? $lote["licencia"] : "",
+								"CONDUCTOR_NOMBRES" => isset($lote["conductor_nombres"]) ? $lote["conductor_nombres"] : "",
+								"lote_id_tipocarga" => 0,
+								"TIPO_CARGA" => isset($lote["tipo_carga"]) ? $lote["tipo_carga"] : "",
+								"lote_id_zonaorigen" => 0,
+								"ZONA_ORIGEN" => isset($lote["zona_origen"]) ? $lote["zona_origen"] : "",
+								"lote_id_proveedorminero" => 0,
+								"lote_id_proveedorminero_concesion" => 0,
+								"PROVEEDORMINERO_RUC" => isset($lote["proveedor_minero_ruc"]) ? $lote["proveedor_minero_ruc"] : "",
+								"PROVEEDORMINERO_RAZONSOCIAL" => isset($lote["proveedor_minero_razon_social"]) ? $lote["proveedor_minero_razon_social"] : "",
+								"proveedorminero_concesion" => "",
+								"proveedorminero_codigounico" => "",
+								"proveedorminero_ubicacion" => "",
+								"proveedorminero_ubicacion_departamento" => "",
+								"proveedorminero_ubicacion_provincia" => "",
+								"procedencia_distrito" => isset($lote["zona_origen"]) ? $lote["zona_origen"] : "",
+								"lote_id_encargadomuestra" => 0,
+								"ENCARGADO_MUESTRA" => isset($lote["encargado_muestra"]) ? $lote["encargado_muestra"] : "",
+								"lote_id_producto" => 0,
+								"PRODUCTO" => isset($lote["producto"]) ? $lote["producto"] : "",
+								"lote_id_tipomineral" => 0,
+								"TIPO_MATERIAL" => isset($lote["tipo_mineral"]) ? $lote["tipo_mineral"] : "",
+								"despacho_observacion" => isset($lote["observacion"]) ? $lote["observacion"] : "",
+								"lote_pesoinicial_fechahoraregistro" => isset($lote["fecha_peso_inicial"]) ? $lote["fecha_peso_inicial"] : "",
+								"lote_pesofinal_fechahoraregistro" => isset($lote["fecha_peso_final"]) ? $lote["fecha_peso_final"] : "",
+								"lote_peso_bruto" => isset($lote["bruto"]) ? $lote["bruto"] : 0,
+								"lote_peso_tara" => isset($lote["tara"]) ? $lote["tara"] : 0,
+								"lote_peso_neto" => isset($lote["neto"]) ? $lote["neto"] : 0,
+								"operaciones_humedad" => 0,
+								"lote_peso_seco" => 0,
+								"unidad_capacidad" => 0,
+								"unidad_tara" => 0,
+								"unidad_idmarca" => 0,
+								"despacho_color" => "",
+								"is_cerrado" => 1,
+								"cerrado_fechahoraregistro" => "",
+								"cerrado_usuarioregistro" => "",
+								"is_cerradolote" => 1,
+								"cerradolote_fechahoraregistro" => "",
+								"cerradolote_usuarioregistro" => "",
+								"guiaremitente_serie" => $serie,
+								"guiaremitente_numero" => $numero,
+								"guiaremitente_serie_MD5" => md5($serie),
+								"guiaremitente_numero_MD5" => md5($numero),
+								"guiatransportista_serie_MD5" => md5($gt_serie),
+								"guiatransportista_numero_MD5" => md5($gt_numero),
+								"guiatransportista_serie" => $gt_serie,
+								"guiatransportista_numero" => $gt_numero,
+								"ID_REMITENTE" => 0,
+								"ID_TRANSPORTISTA" => 0,
+								"codigo_gel" => isset($lote["cod_gel"]) ? $lote["cod_gel"] : "",
+								"codigogel_valorizado" => "",
+								"codigogel_facturado" => "",
+								"codigo_gel_fechahoraregistro" => "",
+								"codigo_gel_usuarioregistro" => "",
+								"guias_fecha" => isset($guia["fecha_guia"]) ? substr($guia["fecha_guia"], 0, 10) : "",
+								"guias_idchofer" => 0,
+								"guias_fechahoraemision" => isset($guia["fecha_guia"]) ? $guia["fecha_guia"] : "",
+								"id_transporte" => 0,
+								"balanza_id_transportista" => 0,
+								"unidad_codigo_mtc" => "",
+								"id_transporte2" => 0,
+								"id_transportista2" => 0,
+								"unidad_capacidad2" => 0,
+								"unidad_codigo_mtc2" => "",
+								"unidad_id_marca2" => 0,
+								"guias_motivotraslado" => "",
+								"CONCESION_DESCRIPCION" => isset($lote["concesion"]) ? $lote["concesion"] : "",
+								"es_historico" => true
+							];
+							$datos_finales[] = $row;
+						}
+					}
+				}
+			}
+		}
 
-							$html .=
-								'    <td rowspan="' .
-								$rowspan .
-								'" style="vertical-align: middle; text-align: center; min-width: 80px;">';
+		if (count($datos_finales) > 0) {
+			$estado = 1;
+
+			// Ordenar por lote_pesoinicial_fechahoraregistro DESC, codigo_gel DESC
+			usort($datos_finales, function ($a, $b) {
+				$fecha_a = isset($a["lote_pesoinicial_fechahoraregistro"]) ? $a["lote_pesoinicial_fechahoraregistro"] : "";
+				$fecha_b = isset($b["lote_pesoinicial_fechahoraregistro"]) ? $b["lote_pesoinicial_fechahoraregistro"] : "";
+
+				if ($fecha_a != $fecha_b) {
+					return strcmp($fecha_b, $fecha_a);
+				}
+
+				$gel_a = isset($a["codigo_gel"]) ? $a["codigo_gel"] : "";
+				$gel_b = isset($b["codigo_gel"]) ? $b["codigo_gel"] : "";
+
+				return strcmp($gel_b, $gel_a);
+			});
+
+			// Agrupar por guía (serie-número)
+			$grupos = [];
+
+			foreach ($datos_finales as $row_validacion) {
+				$clave =
+					$row_validacion["guiaremitente_serie"] .
+					"-" .
+					$row_validacion["guiaremitente_numero"] .
+					"-" .
+					$row_validacion["guiatransportista_serie"] .
+					"-" .
+					$row_validacion["guiatransportista_numero"] .
+					"-" .
+					$row_validacion["ID_REMITENTE"];
+
+				if (!isset($grupos[$clave])) {
+					$grupos[$clave] = [];
+				}
+
+				$grupos[$clave][] = $row_validacion;
+			}
+
+			$i = 1;
+			// Recorrer cada grupo y aplicar rowspan
+			foreach ($grupos as $registros) {
+				$rowspan = count($registros);
+				$primera = true;
+
+				//Validar si alguno de los lotes NO tiene código GEL
+				$mostrar_boton_gel = false;
+				foreach ($registros as $r) {
+					if (empty($r["codigo_gel"])) {
+						$mostrar_boton_gel = true;
+						break;
+					}
+				}
+
+				foreach ($registros as $row_validacion) {
+					$html .= '  <tr style="font-size: 13px;">';
+
+					if ($primera) {
+						// Validaciones para Placa 2
+						$id_transporte2 = isset(
+							$row_validacion["id_transporte2"]
+						)
+							? $row_validacion["id_transporte2"]
+							: 0;
+						$id_transportista2 = isset(
+							$row_validacion["id_transportista2"]
+						)
+							? $row_validacion["id_transportista2"]
+							: 0;
+						$unidad_codigo_mtc2 = isset(
+							$row_validacion["unidad_codigo_mtc2"]
+						)
+							? $row_validacion["unidad_codigo_mtc2"]
+							: "";
+						$unidad_capacidad2 = isset(
+							$row_validacion["unidad_capacidad2"]
+						)
+							? $row_validacion["unidad_capacidad2"] / 1000
+							: 0;
+						$unidad_id_marca2 = isset(
+							$row_validacion["unidad_id_marca2"]
+						)
+							? $row_validacion["unidad_id_marca2"]
+							: 0;
+
+						$html .=
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="vertical-align: middle; text-align: center; font-size: 12px; font-weight: bold;">' .
+							$i .
+							"</td>";
+
+						$html .=
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="vertical-align: middle; text-align: center; min-width: 80px;">';
+
+						if (!empty($row_validacion["es_historico"])) {
+							// Badge premium para datos históricos
+							$html .= '     <span class="badge bg-secondary p-2" style="font-size: 12px;" title="Dato Histórico de solo lectura"><i class="bi bi-clock-history"></i> Histórico</span>';
+						} else {
 							$html .=
 								'     <label style="border: solid; border-width: 1px; border-color: #D9D9D9; border-radius: 7px; padding-top: 1px; padding-left: 6px; padding-right: 6px; padding-bottom: 1px; background-color: #FF5F5D; color: #ffffff; font-weight: bold; cursor: pointer; width: 25px; height: 25px;" onclick="f_EliminarGuia(\'' .
 								$row_validacion["guiaremitente_serie"] .
@@ -72037,29 +72467,26 @@ switch ($_POST["accion"]) {
 
 							$html .= '  		 <i class="bi bi-pencil-square"></i>';
 							$html .= "  	 </label>";
+						}
 
-							// if ($mostrar_boton_gel){
-							//   $html .= '     <label style="border: solid; border-width: 1px; border-color: #198754; border-radius: 7px; padding-left: 4px; padding-right: 4px; padding-bottom: 1px; background-color: #198754; color: #ffffff; font-weight: bold; cursor: pointer; padding-top: 5px; width: 25px; height: 25px;"  onclick="f_Guias_GenerarCodigoGel(\''.$row_validacion["guiaremitente_serie"].'-'.$row_validacion["guiaremitente_numero"].'\',\''.$row_validacion["guias_fechahoraemision"].'\',\''.substr($row_validacion["lote_pesoinicial_fechahoraregistro"], 0, 10).'\')">';
-							//   $html .= '  		 <i class="bi bi-bookmark-check"></i>';
-							//   $html .= '  	 </label>';
-							// }
+						$html .= "    </td>";
 
-							$html .= "    </td>";
+						$html .=
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff; min-width: 120px;">' .
+							$row_validacion["guiaremitente_serie"] .
+							"-" .
+							$row_validacion["guiaremitente_numero"] .
+							"</td>";
 
-							$html .=
-								'    <td rowspan="' .
-								$rowspan .
-								'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff; min-width: 120px;">' .
-								$row_validacion["guiaremitente_serie"] .
-								"-" .
-								$row_validacion["guiaremitente_numero"] .
-								"</td>";
-
-							$html .=
-								'  <td rowspan="' .
-								$rowspan .
-								'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 45px;">';
-							//$html .= '		<img src="'.$img_print.'" style="width: 25px; cursor: pointer;" onclick="f_PrintTicketBakanza('."'".$row_validacion["ID_MD5"]."'".');">';
+						$html .=
+							'  <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 45px;">';
+						if (!empty($row_validacion["es_historico"])) {
+							$html .= ' - ';
+						} else {
 							$html .=
 								'		<img src="' .
 								$img_print .
@@ -72076,22 +72503,25 @@ switch ($_POST["accion"]) {
 								$row_validacion["guias_fecha"] .
 								"'" .
 								')">';
-							$html .= "  </td>";
+						}
+						$html .= "  </td>";
 
-							$html .=
-								'    <td rowspan="' .
-								$rowspan .
-								'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff; min-width: 120px;">' .
-								$row_validacion["guiatransportista_serie"] .
-								"-" .
-								$row_validacion["guiatransportista_numero"] .
-								"</td>";
+						$html .=
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff; min-width: 120px;">' .
+							$row_validacion["guiatransportista_serie"] .
+							"-" .
+							$row_validacion["guiatransportista_numero"] .
+							"</td>";
 
-							$html .=
-								'  <td rowspan="' .
-								$rowspan .
-								'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 45px;">';
-							//$html .= '		<img src="'.$img_print.'" style="width: 25px; cursor: pointer;" onclick="f_PrintTicketBakanza('."'".$row_validacion["ID_MD5"]."'".');">';
+						$html .=
+							'  <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 45px;">';
+						if (!empty($row_validacion["es_historico"])) {
+							$html .= ' - ';
+						} else {
 							$html .=
 								'		<img src="' .
 								$img_print .
@@ -72110,232 +72540,232 @@ switch ($_POST["accion"]) {
 								$row_validacion["guias_fecha"] .
 								"'" .
 								')">';
-							$html .= "  </td>";
-
-							// Columna Planta Destino
-							$nombre_planta = "";
-							if ($row_validacion["planta_destino"] == 1)
-								$nombre_planta = "HUANCHACO";
-							elseif ($row_validacion["planta_destino"] == 2)
-								$nombre_planta = "LAREDO";
-
-							$html .=
-								'    <td rowspan="' .
-								$rowspan .
-								'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 120px;">' .
-								$nombre_planta .
-								"</td>";
-
-							$fecha_guia_formateada = !empty(
-								$row_validacion["guias_fecha"]
-							)
-								? date(
-									"d/m/Y",
-									strtotime($row_validacion["guias_fecha"])
-								)
-								: "";
-
-							$html .=
-								'    <td rowspan="' .
-								$rowspan .
-								'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 120px;">' .
-								$fecha_guia_formateada .
-								"</td>";
-
-							$primera = false;
-							$i++;
 						}
-
-						$lote_cerrado_texto =
-							$row_validacion["is_cerradolote"] == 1
-							? "(Cerrado)"
-							: "";
-
-						$html .=
-							'    <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">' .
-							$row_validacion["lote_cod_lote"] .
-							'<label style="color: red; font-size: 11px;">' .
-							$lote_cerrado_texto .
-							"</label></td>";
-
-						$html .=
-							'    <td style="color: #25476a; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">' .
-							$row_validacion["codigo_gel"] .
-							"</td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-						$html .=
-							"    " . $row_validacion["guias_ticketbalanza"];
 						$html .= "  </td>";
 
-						$fecha_ingresoplanta_formateada = !empty(
-							$row_validacion["FECHA_INGRESOBALANZA"]
+						// Columna Planta Destino
+						$nombre_planta = "";
+						if ($row_validacion["planta_destino"] == 1)
+							$nombre_planta = "HUANCHACO";
+						elseif ($row_validacion["planta_destino"] == 2)
+							$nombre_planta = "LAREDO";
+
+						$html .=
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 120px;">' .
+							$nombre_planta .
+							"</td>";
+
+						$fecha_guia_formateada = !empty(
+							$row_validacion["guias_fecha"]
 						)
 							? date(
 								"d/m/Y",
-								strtotime(
-									$row_validacion["FECHA_INGRESOBALANZA"]
-								)
+								strtotime($row_validacion["guias_fecha"])
 							)
 							: "";
 
 						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $fecha_ingresoplanta_formateada;
-						$html .= "  </td>";
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 120px;">' .
+							$fecha_guia_formateada .
+							"</td>";
 
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " . $row_validacion["PROVEEDORMINERO_RUC"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							$row_validacion["PROVEEDORMINERO_RAZONSOCIAL"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " . $row_validacion["CONCESION_DESCRIPCION"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["balanza_placa"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["balanza_placa2"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["TRANSPORTISTA_RUC"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							$row_validacion["TRANSPORTISTA_RAZONSOCIAL"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["TIPO_VEHICULO"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["CONDUCTOR_LICENCIA"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["CONDUCTOR_NOMBRES"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["TIPO_CARGA"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " . $row_validacion["procedencia_distrito"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["ENCARGADO_MUESTRA"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["PRODUCTO"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .= "    " . $row_validacion["TIPO_MATERIAL"];
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-						$html .= $row_validacion["despacho_observacion"];
-						$html .= "	</td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							substr(
-								$row_validacion[
-									"lote_pesoinicial_fechahoraregistro"
-								],
-								0,
-								10
-							);
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							substr(
-								$row_validacion[
-									"lote_pesofinal_fechahoraregistro"
-								],
-								0,
-								10
-							);
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							number_format(
-								$row_validacion["lote_peso_bruto"],
-								0,
-								".",
-								","
-							);
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							number_format(
-								$row_validacion["lote_peso_tara"],
-								0,
-								".",
-								","
-							);
-						$html .= "  </td>";
-
-						$html .=
-							'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-						$html .=
-							"    " .
-							number_format(
-								$row_validacion["lote_peso_neto"],
-								0,
-								".",
-								","
-							);
-						$html .= "  </td>";
-
-						$html .= "  </tr>";
+						$primera = false;
+						$i++;
 					}
+
+					$lote_cerrado_texto =
+						$row_validacion["is_cerradolote"] == 1
+						? "(Cerrado)"
+						: "";
+
+					$html .=
+						'    <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">' .
+						$row_validacion["lote_cod_lote"] .
+						'<label style="color: red; font-size: 11px;">' .
+						$lote_cerrado_texto .
+						"</label></td>";
+
+					$html .=
+						'    <td style="color: #25476a; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">' .
+						$row_validacion["codigo_gel"] .
+						"</td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+					$html .=
+						"    " . $row_validacion["guias_ticketbalanza"];
+					$html .= "  </td>";
+
+					$fecha_ingresoplanta_formateada = !empty(
+						$row_validacion["FECHA_INGRESOBALANZA"]
+					)
+						? date(
+							"d/m/Y",
+							strtotime(
+								$row_validacion["FECHA_INGRESOBALANZA"]
+							)
+						)
+						: "";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $fecha_ingresoplanta_formateada;
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " . $row_validacion["PROVEEDORMINERO_RUC"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						$row_validacion["PROVEEDORMINERO_RAZONSOCIAL"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " . $row_validacion["CONCESION_DESCRIPCION"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["balanza_placa"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["balanza_placa2"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["TRANSPORTISTA_RUC"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						$row_validacion["TRANSPORTISTA_RAZONSOCIAL"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["TIPO_VEHICULO"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["CONDUCTOR_LICENCIA"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["CONDUCTOR_NOMBRES"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["TIPO_CARGA"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " . $row_validacion["procedencia_distrito"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["ENCARGADO_MUESTRA"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["PRODUCTO"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .= "    " . $row_validacion["TIPO_MATERIAL"];
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+					$html .= $row_validacion["despacho_observacion"];
+					$html .= "	</td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						substr(
+							$row_validacion[
+								"lote_pesoinicial_fechahoraregistro"
+							],
+							0,
+							10
+						);
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						substr(
+							$row_validacion[
+								"lote_pesofinal_fechahoraregistro"
+							],
+							0,
+							10
+						);
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						number_format(
+							$row_validacion["lote_peso_bruto"],
+							0,
+							".",
+							","
+						);
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						number_format(
+							$row_validacion["lote_peso_tara"],
+							0,
+							".",
+							","
+						);
+					$html .= "  </td>";
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+					$html .=
+						"    " .
+						number_format(
+							$row_validacion["lote_peso_neto"],
+							0,
+							".",
+							","
+						);
+					$html .= "  </td>";
+
+					$html .= "  </tr>";
 				}
 			}
 		}
@@ -81011,7 +81441,7 @@ SQL;
 		break;
 
 
-	
+
 
 	// ══════════════════════════════════════════════════════════════
 	// MÓDULO: Comprobantes de Venta Mineral (factura_venta)
@@ -81688,232 +82118,266 @@ SQL;
 		}
 		break;
 
-// ────────────────────────────────────────────────────────────
+	// ────────────────────────────────────────────────────────────
 // CASE 1 — Reporte principal (JSON para la tabla)
 // ────────────────────────────────────────────────────────────
-case "getReporteAnticiposPlantaTransacciones":
-    $id_planta   = intval($_POST["id_planta"]   ?? 0);
-    $fecha_desde = $_POST["fecha_desde"] ?? null;
-    $fecha_hasta = $_POST["fecha_hasta"] ?? null;
- 
-    if ($id_planta == 0) {
-        header("Content-Type: application/json");
-        echo json_encode(["estado" => 0, "msg" => "ID de planta inválido."]);
-        exit();
-    }
- 
-    $data_final = getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta);
- 
-    header("Content-Type: application/json");
-    echo json_encode(["estado" => 1, "data" => $data_final]);
-    break;
- 
-// ────────────────────────────────────────────────────────────
+	case "getReporteAnticiposPlantaTransacciones":
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$fecha_desde = $_POST["fecha_desde"] ?? null;
+		$fecha_hasta = $_POST["fecha_hasta"] ?? null;
+
+		if ($id_planta == 0) {
+			header("Content-Type: application/json");
+			echo json_encode(["estado" => 0, "msg" => "ID de planta inválido."]);
+			exit();
+		}
+
+		$data_final = getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta);
+
+		header("Content-Type: application/json");
+		echo json_encode(["estado" => 1, "data" => $data_final]);
+		break;
+
+	// ────────────────────────────────────────────────────────────
 // CASE 3 — Exportar Excel respetando TODOS los filtros activos
 // ────────────────────────────────────────────────────────────
-case "exportExcelAnticiposPlantaTransacciones":
-    error_reporting(0);
-    ini_set('display_errors', 0);
-    while (ob_get_level()) ob_end_clean();
- 
-    $id_planta       = intval($_POST["id_planta"]      ?? 0);
-    $fecha_desde     = $_POST["fecha_desde"]    ?? null;
-    $fecha_hasta     = $_POST["fecha_hasta"]    ?? null;
-    // Filtros cliente que llegan desde el JS
-    $filter_anticipo = strtolower(trim($_POST["filter_anticipo"] ?? ''));
-    $filter_venta    = strtolower(trim($_POST["filter_venta"]    ?? ''));
-    $filter_estado   = trim($_POST["filter_estado"] ?? '');
- 
-    if ($id_planta == 0) {
-        die("Error: Planta no seleccionada.");
-    }
- 
-    // 1. Obtener todos los datos del backend (ya filtrados por fecha y planta)
-    $data_raw = getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta);
- 
-    // 2. Aplicar filtros cliente-side (igual que el JS) para que el Excel
-    //    refleje exactamente lo que ve el usuario en pantalla.
-    $data_final = [];
-    foreach ($data_raw as $group) {
-        $ant = $group['anticipo_info'];
- 
-        // Filtro factura anticipo
-        if ($filter_anticipo !== '' && stripos($ant['factura'], $filter_anticipo) === false) continue;
- 
-        $matching_trs = array_filter($group['transacciones'], function ($tr) use ($filter_venta, $filter_estado) {
-            if ($filter_venta  !== '' && stripos($tr['factura_venta'], $filter_venta) === false) return false;
-            if ($filter_estado !== '' && $tr['estado'] !== $filter_estado) return false;
-            return true;
-        });
- 
-        if (count($matching_trs) > 0) {
-            $data_final[] = [
-                'anticipo_info'  => $ant,
-                'transacciones'  => array_values($matching_trs),
-            ];
-        }
-    }
- 
-    // 3. Nombre de planta
-    $res_planta    = mysqli_query($enlace, "SELECT descripcion FROM tbconfig_plantas WHERE id = $id_planta LIMIT 1");
-    $row_planta    = $res_planta ? mysqli_fetch_assoc($res_planta) : null;
-    $nombre_planta = $row_planta ? $row_planta['descripcion'] : 'PLANTA';
- 
-    // 4. Crear Excel con PhpSpreadsheet
-    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-    $sheet       = $spreadsheet->getActiveSheet();
-    $sheet->setTitle("Transacciones");
- 
-    // ── Estilos base ──
-    $styleHeaderBase = [
-        'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
-        'alignment' => [
-            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-        ],
-        'borders'   => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
-    ];
- 
-    $mkStyle = function ($argb) use ($styleHeaderBase) {
-        return array_merge($styleHeaderBase, [
-            'fill' => [
-                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => ['argb' => $argb],
-            ],
-        ]);
-    };
- 
-    $stylePrimary   = $mkStyle('FF2C3E50');
-    $styleSecondary = $mkStyle('FF3498DB');
-    $styleSuccess   = $mkStyle('FF27AE60');
-    $styleWarning   = $mkStyle('FFF39C12');
-    $styleInfo      = $mkStyle('FF17A2B8');
-    $styleDanger    = $mkStyle('FFE74C3C');
- 
-    $styleCellBorder = [
-        'borders' => ['allBorders' => [
-            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-            'color'       => ['argb' => 'FFCCCCCC'],
-        ]],
-    ];
- 
-    $styleAnticipoRow = [
-        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE9ECEF']],
-        'font' => ['bold' => true],
-    ];
- 
-    // ── Fila 1: Título Planta ──
-    $sheet->mergeCells('A1:O1');
-    $sheet->setCellValue('A1', $nombre_planta);
-    $sheet->getStyle('A1')->applyFromArray([
-        'font'      => ['bold' => true, 'size' => 14],
-        'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
-        'borders'   => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
-    ]);
- 
-    // ── Fila 2: Grupos ──
-    $sheet->mergeCells('A2:C2'); $sheet->setCellValue('A2', 'Factura por anticipo'); $sheet->getStyle('A2:C2')->applyFromArray($stylePrimary);
-    $sheet->mergeCells('D2:F2'); $sheet->setCellValue('D2', 'Acción de anticipo');   $sheet->getStyle('D2:F2')->applyFromArray($styleSuccess);
-    $sheet->mergeCells('G2:J2'); $sheet->setCellValue('G2', 'Factura de venta');     $sheet->getStyle('G2:J2')->applyFromArray($styleSecondary);
-    $sheet->setCellValue('K2', 'SALDO');       $sheet->getStyle('K2')->applyFromArray($styleWarning);
-    $sheet->setCellValue('L2', 'DSCT DETRACC'); $sheet->getStyle('L2')->applyFromArray($styleInfo);
-    $sheet->setCellValue('M2', 'SALDO DEUDA'); $sheet->getStyle('M2')->applyFromArray($styleDanger);
-    $sheet->mergeCells('N2:N3'); $sheet->setCellValue('N2', 'ESTADO');         $sheet->getStyle('N2:N3')->applyFromArray($stylePrimary);
-    $sheet->mergeCells('O2:O3'); $sheet->setCellValue('O2', 'VALORIZACIONES'); $sheet->getStyle('O2:O3')->applyFromArray($stylePrimary);
- 
-    // ── Fila 3: Subtítulos ──
-    $subHeaders = [
-        'A3' => ['Factura Número',               $stylePrimary],
-        'B3' => ['Fecha',                         $stylePrimary],
-        'C3' => ['Importe USD $',                 $stylePrimary],
-        'D3' => ['Aplicado al 100%',              $styleSuccess],
-        'E3' => ['Aplicado parcialmente',         $styleSuccess],
-        'F3' => ['LOTE',                          $styleSuccess],
-        'G3' => ['N° Factura Venta',              $styleSecondary],
-        'H3' => ['Fecha',                         $styleSecondary],
-        'I3' => ['Importe Factura USD $',         $styleSecondary],
-        'J3' => ['Importe Amortiza Adelanto USD $', $styleSecondary],
-        'K3' => ['Saldo Factura Amortiza',        $styleWarning],
-        'L3' => ['Saldo Neto Factura',            $styleInfo],
-        'M3' => ['Importe USD $',                 $styleDanger],
-    ];
-    foreach ($subHeaders as $cell => [$val, $sty]) {
-        $sheet->setCellValue($cell, $val);
-        $sheet->getStyle($cell)->applyFromArray($sty);
-    }
- 
-    // ── Anchos ──
-    $colWidths = ['A'=>15,'B'=>12,'C'=>18,'D'=>14,'E'=>20,'F'=>18,
-                  'G'=>18,'H'=>12,'I'=>20,'J'=>22,'K'=>20,'L'=>20,
-                  'M'=>15,'N'=>22,'O'=>22];
-    foreach ($colWidths as $col => $w) {
-        $sheet->getColumnDimension($col)->setWidth($w);
-    }
- 
-    // Congelar encabezados
-    $sheet->freezePane('A4');
- 
-    $usdFmt = '"US$ "#,##0.00';
-    $row    = 4;
- 
-    foreach ($data_final as $group) {
-        $ant = $group['anticipo_info'];
- 
-        // Fila cabecera anticipo
-        $sheet->setCellValue('A' . $row, $ant['factura']);
-        $sheet->setCellValue('B' . $row, $ant['fecha']);
-        $sheet->setCellValue('C' . $row, $ant['importe_inicial']);
-        $sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode($usdFmt);
-        $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleAnticipoRow);
-        $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
-        $row++;
- 
-        foreach ($group['transacciones'] as $tr) {
-            $sheet->setCellValue('D' . $row, $tr['porcentaje_aplicado']);
-            $sheet->setCellValue('E' . $row, $tr['monto_retirado']);
-            $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode($usdFmt);
-            $sheet->setCellValue('F' . $row, $tr['lotes']);
-            $sheet->setCellValue('G' . $row, $tr['factura_venta']);
-            $sheet->setCellValue('H' . $row, $tr['fecha_emision']);
-            $sheet->setCellValue('I' . $row, $tr['total_dolares']);
-            $sheet->getStyle('I' . $row)->getNumberFormat()->setFormatCode($usdFmt);
- 
-            // Importe amortiza = monto_retirado, fondo amarillo
-            $sheet->setCellValue('J' . $row, $tr['monto_retirado']);
-            $sheet->getStyle('J' . $row)->applyFromArray([
-                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFFFF00']],
-            ]);
-            $sheet->getStyle('J' . $row)->getNumberFormat()->setFormatCode($usdFmt);
- 
-            $sheet->setCellValue('K' . $row, $tr['saldo_factura_amortiza']);
-            $sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode($usdFmt);
-            $sheet->setCellValue('L' . $row, $tr['saldo_neto_factura']);
-            $sheet->getStyle('L' . $row)->getNumberFormat()->setFormatCode($usdFmt);
-            $sheet->setCellValue('M' . $row, $tr['saldo_restante']);
-            $sheet->getStyle('M' . $row)->getNumberFormat()->setFormatCode($usdFmt);
-            $sheet->setCellValue('N' . $row, $tr['estado_label']);
-            $sheet->setCellValue('O' . $row, $tr['valorizaciones']);
- 
-            $sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
-            $row++;
-        }
-    }
- 
-    // ── Descargar ──
-    $filename = 'Anticipos_Planta_' . date('Ymd_His') . '.xlsx';
-    while (ob_get_level()) ob_end_clean();
- 
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
-    header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-    header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-    header('Cache-Control: cache, must-revalidate');
-    header('Pragma: public');
- 
-    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-    $writer->save('php://output');
-    break;
+	case "exportExcelAnticiposPlantaTransacciones":
+		error_reporting(0);
+		ini_set('display_errors', 0);
+		while (ob_get_level())
+			ob_end_clean();
+
+		$id_planta = intval($_POST["id_planta"] ?? 0);
+		$fecha_desde = $_POST["fecha_desde"] ?? null;
+		$fecha_hasta = $_POST["fecha_hasta"] ?? null;
+		// Filtros cliente que llegan desde el JS
+		$filter_anticipo = strtolower(trim($_POST["filter_anticipo"] ?? ''));
+		$filter_venta = strtolower(trim($_POST["filter_venta"] ?? ''));
+		$filter_estado = trim($_POST["filter_estado"] ?? '');
+
+		if ($id_planta == 0) {
+			die("Error: Planta no seleccionada.");
+		}
+
+		// 1. Obtener todos los datos del backend (ya filtrados por fecha y planta)
+		$data_raw = getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta);
+
+		// 2. Aplicar filtros cliente-side (igual que el JS) para que el Excel
+		//    refleje exactamente lo que ve el usuario en pantalla.
+		$data_final = [];
+		foreach ($data_raw as $group) {
+			$ant = $group['anticipo_info'];
+
+			// Filtro factura anticipo
+			if ($filter_anticipo !== '' && stripos($ant['factura'], $filter_anticipo) === false)
+				continue;
+
+			$matching_trs = array_filter($group['transacciones'], function ($tr) use ($filter_venta, $filter_estado) {
+				if ($filter_venta !== '' && stripos($tr['factura_venta'], $filter_venta) === false)
+					return false;
+				if ($filter_estado !== '' && $tr['estado'] !== $filter_estado)
+					return false;
+				return true;
+			});
+
+			if (count($matching_trs) > 0) {
+				$data_final[] = [
+					'anticipo_info' => $ant,
+					'transacciones' => array_values($matching_trs),
+				];
+			}
+		}
+
+		// 3. Nombre de planta
+		$res_planta = mysqli_query($enlace, "SELECT descripcion FROM tbconfig_plantas WHERE id = $id_planta LIMIT 1");
+		$row_planta = $res_planta ? mysqli_fetch_assoc($res_planta) : null;
+		$nombre_planta = $row_planta ? $row_planta['descripcion'] : 'PLANTA';
+
+		// 4. Crear Excel con PhpSpreadsheet
+		$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle("Transacciones");
+
+		// ── Estilos base ──
+		$styleHeaderBase = [
+			'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+			'alignment' => [
+				'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+				'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+			],
+			'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
+		];
+
+		$mkStyle = function ($argb) use ($styleHeaderBase) {
+			return array_merge($styleHeaderBase, [
+				'fill' => [
+					'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+					'startColor' => ['argb' => $argb],
+				],
+			]);
+		};
+
+		$stylePrimary = $mkStyle('FF2C3E50');
+		$styleSecondary = $mkStyle('FF3498DB');
+		$styleSuccess = $mkStyle('FF27AE60');
+		$styleWarning = $mkStyle('FFF39C12');
+		$styleInfo = $mkStyle('FF17A2B8');
+		$styleDanger = $mkStyle('FFE74C3C');
+
+		$styleCellBorder = [
+			'borders' => [
+				'allBorders' => [
+					'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+					'color' => ['argb' => 'FFCCCCCC'],
+				]
+			],
+		];
+
+		$styleAnticipoRow = [
+			'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE9ECEF']],
+			'font' => ['bold' => true],
+		];
+
+		// ── Fila 1: Título Planta ──
+		$sheet->mergeCells('A1:O1');
+		$sheet->setCellValue('A1', $nombre_planta);
+		$sheet->getStyle('A1')->applyFromArray([
+			'font' => ['bold' => true, 'size' => 14],
+			'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+			'borders' => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
+		]);
+
+		// ── Fila 2: Grupos ──
+		$sheet->mergeCells('A2:C2');
+		$sheet->setCellValue('A2', 'Factura por anticipo');
+		$sheet->getStyle('A2:C2')->applyFromArray($stylePrimary);
+		$sheet->mergeCells('D2:F2');
+		$sheet->setCellValue('D2', 'Acción de anticipo');
+		$sheet->getStyle('D2:F2')->applyFromArray($styleSuccess);
+		$sheet->mergeCells('G2:J2');
+		$sheet->setCellValue('G2', 'Factura de venta');
+		$sheet->getStyle('G2:J2')->applyFromArray($styleSecondary);
+		$sheet->setCellValue('K2', 'SALDO');
+		$sheet->getStyle('K2')->applyFromArray($styleWarning);
+		$sheet->setCellValue('L2', 'DSCT DETRACC');
+		$sheet->getStyle('L2')->applyFromArray($styleInfo);
+		$sheet->setCellValue('M2', 'SALDO DEUDA');
+		$sheet->getStyle('M2')->applyFromArray($styleDanger);
+		$sheet->mergeCells('N2:N3');
+		$sheet->setCellValue('N2', 'ESTADO');
+		$sheet->getStyle('N2:N3')->applyFromArray($stylePrimary);
+		$sheet->mergeCells('O2:O3');
+		$sheet->setCellValue('O2', 'VALORIZACIONES');
+		$sheet->getStyle('O2:O3')->applyFromArray($stylePrimary);
+
+		// ── Fila 3: Subtítulos ──
+		$subHeaders = [
+			'A3' => ['Factura Número', $stylePrimary],
+			'B3' => ['Fecha', $stylePrimary],
+			'C3' => ['Importe USD $', $stylePrimary],
+			'D3' => ['Aplicado al 100%', $styleSuccess],
+			'E3' => ['Aplicado parcialmente', $styleSuccess],
+			'F3' => ['LOTE', $styleSuccess],
+			'G3' => ['N° Factura Venta', $styleSecondary],
+			'H3' => ['Fecha', $styleSecondary],
+			'I3' => ['Importe Factura USD $', $styleSecondary],
+			'J3' => ['Importe Amortiza Adelanto USD $', $styleSecondary],
+			'K3' => ['Saldo Factura Amortiza', $styleWarning],
+			'L3' => ['Saldo Neto Factura', $styleInfo],
+			'M3' => ['Importe USD $', $styleDanger],
+		];
+		foreach ($subHeaders as $cell => [$val, $sty]) {
+			$sheet->setCellValue($cell, $val);
+			$sheet->getStyle($cell)->applyFromArray($sty);
+		}
+
+		// ── Anchos ──
+		$colWidths = [
+			'A' => 15,
+			'B' => 12,
+			'C' => 18,
+			'D' => 14,
+			'E' => 20,
+			'F' => 18,
+			'G' => 18,
+			'H' => 12,
+			'I' => 20,
+			'J' => 22,
+			'K' => 20,
+			'L' => 20,
+			'M' => 15,
+			'N' => 22,
+			'O' => 22
+		];
+		foreach ($colWidths as $col => $w) {
+			$sheet->getColumnDimension($col)->setWidth($w);
+		}
+
+		// Congelar encabezados
+		$sheet->freezePane('A4');
+
+		$usdFmt = '"US$ "#,##0.00';
+		$row = 4;
+
+		foreach ($data_final as $group) {
+			$ant = $group['anticipo_info'];
+
+			// Fila cabecera anticipo
+			$sheet->setCellValue('A' . $row, $ant['factura']);
+			$sheet->setCellValue('B' . $row, $ant['fecha']);
+			$sheet->setCellValue('C' . $row, $ant['importe_inicial']);
+			$sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+			$sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleAnticipoRow);
+			$sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
+			$row++;
+
+			foreach ($group['transacciones'] as $tr) {
+				$sheet->setCellValue('D' . $row, $tr['porcentaje_aplicado']);
+				$sheet->setCellValue('E' . $row, $tr['monto_retirado']);
+				$sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+				$sheet->setCellValue('F' . $row, $tr['lotes']);
+				$sheet->setCellValue('G' . $row, $tr['factura_venta']);
+				$sheet->setCellValue('H' . $row, $tr['fecha_emision']);
+				$sheet->setCellValue('I' . $row, $tr['total_dolares']);
+				$sheet->getStyle('I' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+
+				// Importe amortiza = monto_retirado, fondo amarillo
+				$sheet->setCellValue('J' . $row, $tr['monto_retirado']);
+				$sheet->getStyle('J' . $row)->applyFromArray([
+					'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFFFF00']],
+				]);
+				$sheet->getStyle('J' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+
+				$sheet->setCellValue('K' . $row, $tr['saldo_factura_amortiza']);
+				$sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+				$sheet->setCellValue('L' . $row, $tr['saldo_neto_factura']);
+				$sheet->getStyle('L' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+				$sheet->setCellValue('M' . $row, $tr['saldo_restante']);
+				$sheet->getStyle('M' . $row)->getNumberFormat()->setFormatCode($usdFmt);
+				$sheet->setCellValue('N' . $row, $tr['estado_label']);
+				$sheet->setCellValue('O' . $row, $tr['valorizaciones']);
+
+				$sheet->getStyle('A' . $row . ':O' . $row)->applyFromArray($styleCellBorder);
+				$row++;
+			}
+		}
+
+		// ── Descargar ──
+		$filename = 'Anticipos_Planta_' . date('Ymd_His') . '.xlsx';
+		while (ob_get_level())
+			ob_end_clean();
+
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Disposition: attachment;filename="' . $filename . '"');
+		header('Cache-Control: max-age=0');
+		header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+		header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+		header('Cache-Control: cache, must-revalidate');
+		header('Pragma: public');
+
+		$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+		$writer->save('php://output');
+		break;
 }
 
 // ─── HELPER: Actualizar montos pagados y estado de factura ───
@@ -82260,15 +82724,15 @@ function getNuevoNumeroCorrelativoValorizacionVenta($enlace)
 // ============================================================
 //  FUNCIÓN — Pegar FUERA del switch, en el mismo archivo
 // ============================================================
- 
+
 /**
  * Obtiene el reporte de anticipos planta con sus transacciones.
  * Parámetros de fecha filtran sobre fecha_emision de factura_venta.
  */
 function getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta)
 {
-    // 1. Obtener anticipos de la planta
-    $q_anticipos = "
+	// 1. Obtener anticipos de la planta
+	$q_anticipos = "
         SELECT
             ant.id,
             CONCAT(ant.serie_factura, '-', ant.numero_factura) AS factura,
@@ -82280,16 +82744,16 @@ function getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta)
           AND ant.estado <> 'X'
         ORDER BY ant.created_at DESC
     ";
- 
-    $res_anticipos = mysqli_query($enlace, $q_anticipos);
-    $data_final    = [];
- 
-    while ($ant = mysqli_fetch_assoc($res_anticipos)) {
-        $anticipo_id     = (int) $ant['id'];
-        $saldo_inicial   = floatval($ant['saldo_inicial']);
- 
-        // 2. Transacciones de este anticipo — los cálculos se resuelven en el SQL
-        $q_trans = "
+
+	$res_anticipos = mysqli_query($enlace, $q_anticipos);
+	$data_final = [];
+
+	while ($ant = mysqli_fetch_assoc($res_anticipos)) {
+		$anticipo_id = (int) $ant['id'];
+		$saldo_inicial = floatval($ant['saldo_inicial']);
+
+		// 2. Transacciones de este anticipo — los cálculos se resuelven en el SQL
+		$q_trans = "
             SELECT
                 trn.id                               AS id_transaccion,
                 trn.monto_retirado,
@@ -82342,69 +82806,86 @@ function getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta)
               AND fact.estado <> 'X'
             ORDER BY trn.created_at ASC
         ";
- 
-        $res_trans         = mysqli_query($enlace, $q_trans);
-        $transacciones     = [];
-        $anticipoMatchDate = false;
- 
-        while ($tr = mysqli_fetch_assoc($res_trans)) {
-            $fecha_emision = $tr['fecha_emision']; // YYYY-MM-DD
- 
-            // Filtro de fechas (client-side sobre el resultado del query)
-            $matches = true;
-            if ($fecha_desde && (!$fecha_emision || $fecha_emision < $fecha_desde)) $matches = false;
-            if ($fecha_hasta && (!$fecha_emision || $fecha_emision > $fecha_hasta))  $matches = false;
-            if ($matches) $anticipoMatchDate = true;
- 
-            // Mapeo de estado de la factura de venta
-            $estado_label = 'En espera';
-            switch ($tr['estado']) {
-                case 'A': $estado_label = 'Pagado - Mixto';         break;
-                case 'B': $estado_label = 'Pagado - Banco';         break;
-                case 'C': $estado_label = 'Pagado - Anticipos';     break;
-                case 'P': $estado_label = 'En proceso de pago';     break;
-                case 'E': $estado_label = 'En espera';              break;
-                case 'X': $estado_label = 'Anulada';                break;
-            }
- 
-            $transacciones[] = [
-                'id_transaccion'         => $tr['id_transaccion'],
-                'factura_venta'          => $tr['factura_venta'],
-                'fecha_emision'          => $fecha_emision ?: '-',
-                'total_dolares'          => round(floatval($tr['total_dolares']), 2),
-                'porcentaje_aplicado'    => number_format(floatval($tr['porcentaje_aplicado']), 2) . '%',
-                'monto_retirado'         => round(floatval($tr['monto_retirado']), 2),
-                'lotes'                  => $tr['lotes'] ?: '-',
-                'saldo_factura_amortiza' => round(floatval($tr['saldo_factura_amortiza']), 2),
-                'saldo_neto_factura'     => round(floatval($tr['saldo_neto_factura']), 2),
-                'saldo_restante'         => round(floatval($tr['saldo_restante']), 2),
-                'estado'                 => $tr['estado'],        // clave raw para filtros JS
-                'estado_label'           => $estado_label,        // texto legible para Excel
-                'valorizaciones'         => $tr['valorizaciones'] ?: '-',
-            ];
-        }
- 
-        // Decidir si incluir el grupo
-        $include = false;
-        if (!$fecha_desde && !$fecha_hasta) {
-            if (count($transacciones) > 0 || $ant['estado'] === 'B') $include = true;
-        } else {
-            if ($anticipoMatchDate) $include = true;
-        }
- 
-        if ($include) {
-            $data_final[] = [
-                'anticipo_info' => [
-                    'id'             => $anticipo_id,
-                    'factura'        => $ant['factura'],
-                    'fecha'          => $ant['fecha_registro'],
-                    'importe_inicial'=> round($saldo_inicial, 2),
-                ],
-                'transacciones' => $transacciones,
-            ];
-        }
-    }
- 
-    return $data_final;
+
+		$res_trans = mysqli_query($enlace, $q_trans);
+		$transacciones = [];
+		$anticipoMatchDate = false;
+
+		while ($tr = mysqli_fetch_assoc($res_trans)) {
+			$fecha_emision = $tr['fecha_emision']; // YYYY-MM-DD
+
+			// Filtro de fechas (client-side sobre el resultado del query)
+			$matches = true;
+			if ($fecha_desde && (!$fecha_emision || $fecha_emision < $fecha_desde))
+				$matches = false;
+			if ($fecha_hasta && (!$fecha_emision || $fecha_emision > $fecha_hasta))
+				$matches = false;
+			if ($matches)
+				$anticipoMatchDate = true;
+
+			// Mapeo de estado de la factura de venta
+			$estado_label = 'En espera';
+			switch ($tr['estado']) {
+				case 'A':
+					$estado_label = 'Pagado - Mixto';
+					break;
+				case 'B':
+					$estado_label = 'Pagado - Banco';
+					break;
+				case 'C':
+					$estado_label = 'Pagado - Anticipos';
+					break;
+				case 'P':
+					$estado_label = 'En proceso de pago';
+					break;
+				case 'E':
+					$estado_label = 'En espera';
+					break;
+				case 'X':
+					$estado_label = 'Anulada';
+					break;
+			}
+
+			$transacciones[] = [
+				'id_transaccion' => $tr['id_transaccion'],
+				'factura_venta' => $tr['factura_venta'],
+				'fecha_emision' => $fecha_emision ?: '-',
+				'total_dolares' => round(floatval($tr['total_dolares']), 2),
+				'porcentaje_aplicado' => number_format(floatval($tr['porcentaje_aplicado']), 2) . '%',
+				'monto_retirado' => round(floatval($tr['monto_retirado']), 2),
+				'lotes' => $tr['lotes'] ?: '-',
+				'saldo_factura_amortiza' => round(floatval($tr['saldo_factura_amortiza']), 2),
+				'saldo_neto_factura' => round(floatval($tr['saldo_neto_factura']), 2),
+				'saldo_restante' => round(floatval($tr['saldo_restante']), 2),
+				'estado' => $tr['estado'],        // clave raw para filtros JS
+				'estado_label' => $estado_label,        // texto legible para Excel
+				'valorizaciones' => $tr['valorizaciones'] ?: '-',
+			];
+		}
+
+		// Decidir si incluir el grupo
+		$include = false;
+		if (!$fecha_desde && !$fecha_hasta) {
+			if (count($transacciones) > 0 || $ant['estado'] === 'B')
+				$include = true;
+		} else {
+			if ($anticipoMatchDate)
+				$include = true;
+		}
+
+		if ($include) {
+			$data_final[] = [
+				'anticipo_info' => [
+					'id' => $anticipo_id,
+					'factura' => $ant['factura'],
+					'fecha' => $ant['fecha_registro'],
+					'importe_inicial' => round($saldo_inicial, 2),
+				],
+				'transacciones' => $transacciones,
+			];
+		}
+	}
+
+	return $data_final;
 }
 ?>

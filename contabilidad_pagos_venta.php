@@ -567,6 +567,12 @@ $r_plantas = mysqli_query($enlace, $q_plantas);
             color: #0f172a;
             font-size: 13px;
         }
+
+        .chk-lote-lg {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
     </style>
 </head>
 
