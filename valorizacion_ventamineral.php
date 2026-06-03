@@ -798,6 +798,6 @@ if (!isset($_SESSION["Id"])) {
 <?php include('global/auxiliares_js.php'); ?>
 
 <!-- Lógica de la vista -->
-<script src="valorizacion_ventamineral.js"></script>
+<script src="valorizacion_ventamineral.js?v=<?php echo filemtime('valorizacion_ventamineral.js'); ?>"></script>
 </body>
 </html>

@@ -1,0 +1,50 @@
+[
+  {
+    "fecha_hora_ingreso": "2026-05-13 10:44:00",
+    "condicion": "Recepcion de Mineral",
+    "placa1": "RRF-567",
+    "placa2": "-",
+    "transportista_ruc": "74688888",
+    "transportista_razon_social": "BOLAÑOS VERA EMILIO ANSELMO",
+    "tipo_vehiculo": "Camión Coaster",
+    "conductor_licencia": "-",
+    "conductor_nombres": "-",
+    "tipo_carga": "-",
+    "observacion_ingreso": "Unidad Ficticia",
+    "fecha_hora_salida": "2026-05-05 01:16:25",
+    "estado_salida": "Unidad Vacía",
+    "observacion_salida": "-"
+  },
+  {
+    "fecha_hora_ingreso": "2026-05-05 01:11:55",
+    "condicion": "Despacho de Mineral",
+    "placa1": "TAW-803",
+    "placa2": "",
+    "transportista_ruc": "20609571536",
+    "transportista_razon_social": "ABPASE TRANSPORTES EXPRESS S.A.C.",
+    "tipo_vehiculo": "Camión Coaster",
+    "conductor_licencia": "47456445",
+    "conductor_nombres": "ABEL MANTILLA VENTURA",
+    "tipo_carga": "-",
+    "observacion_ingreso": "-",
+    "fecha_hora_salida": "2026-05-05 01:16:25",
+    "estado_salida": "Unidad con Carga",
+    "observacion_salida": "-"
+  },
+  {
+    "fecha_hora_ingreso": "2026-05-05 01:11:45",
+    "condicion": "Despacho de Mineral",
+    "placa1": "C8P-843",
+    "placa2": "",
+    "transportista_ruc": "10446113033",
+    "transportista_razon_social": "ABANTO GARCIA MIGUEL ORLANDO",
+    "tipo_vehiculo": "Camión Coaster",
+    "conductor_licencia": "42588999",
+    "conductor_nombres": "ABANTO ARANA JUAN OSBER",
+    "tipo_carga": "---",
+    "observacion_ingreso": "",
+    "fecha_hora_salida": "2026-05-05 01:16:27",
+    "estado_salida": "Unidad con Carga",
+    "observacion_salida": ""
+  }
+]
