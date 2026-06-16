@@ -72896,13 +72896,23 @@ switch ($_POST["accion"]) {
 	case "get_Lotes_Disponibles":
 		$out = ["estado" => 0, "res" => []];
 
-		$q = "SELECT Id, lote_cod_lote, balanza_placa,
-									IFNULL(lote_peso_bruto, 0) AS lote_peso_bruto,
-									IFNULL(lote_peso_tara, 0) AS lote_peso_tara,
-									IFNULL(lote_peso_neto, 0) AS lote_peso_neto
-						FROM despachos_primertramo_validaciondatos
-						WHERE guias_fecha IS NULL
-						ORDER BY lote_cod_lote";
+		$q = "
+		SELECT
+			Id,
+			lote_cod_lote,
+			balanza_placa,
+			IFNULL(lote_peso_bruto, 0) AS lote_peso_bruto,
+			IFNULL(lote_peso_tara, 0) AS lote_peso_tara,
+			IFNULL(lote_peso_neto, 0) AS lote_peso_neto,
+			lot.dFechaIngreso as fecha_ingreso_planta
+		FROM
+			despachos_primertramo_validaciondatos val
+		INNER JOIN catalogolotes lot on lot.id_CatalogoLotes = val.lote_id_lote
+		WHERE
+			guias_fecha IS NULL
+		ORDER BY
+			lote_cod_lote
+		";
 
 		$res = mysqli_query($enlace, $q);
 
