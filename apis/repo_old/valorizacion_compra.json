@@ -1,0 +1,93 @@
+[
+  {
+    "cabecera": {
+      "ruc": "20477604375",
+      "proveedor": "ALCAORO S.A.C.",
+      "elaborado": "2026-05-05 00:39:47",
+      "aprobado": "2026-05-05 00:52:41",
+      "estado": "Activo"
+    },
+    "detalles": [
+      {
+        "elemento": "Au",
+        "lote": "BH-26-0002",
+        "cod_gel": "BJ-26-0002",
+        "guia_remitente": "TGG-44",
+        "guia_transportista": "VG-33",
+        "fecha_ingreso": "2026-05-05",
+        "tmh": 3.3,
+        "porc_h2o": 0.06,
+        "tms": 3.298,
+        "ley": 0.12,
+        "rec": 90.0,
+        "inter": 5666.0,
+        "des_inter": 60.0,
+        "maquila": 0.0,
+        "react": 0.0,
+        "factor": 1.1023,
+        "precio_por_tn": 667.39,
+        "total": 2201.05
+      },
+      {
+        "elemento": "Au",
+        "lote": "BH-26-0003",
+        "cod_gel": "BJ-26-0003",
+        "guia_remitente": "TGG-44",
+        "guia_transportista": "VG-33",
+        "fecha_ingreso": "2026-05-05",
+        "tmh": 4.4,
+        "porc_h2o": 0.09,
+        "tms": 4.396,
+        "ley": 0.13,
+        "rec": 90.0,
+        "inter": 3455.0,
+        "des_inter": 60.0,
+        "maquila": 0.0,
+        "react": 0.0,
+        "factor": 1.1023,
+        "precio_por_tn": 437.85,
+        "total": 1924.79
+      },
+      {
+        "elemento": "Ag",
+        "lote": "BH-26-0003",
+        "cod_gel": "BJ-26-0003",
+        "guia_remitente": "TGG-44",
+        "guia_transportista": "VG-33",
+        "fecha_ingreso": "2026-05-05",
+        "tmh": 4.4,
+        "porc_h2o": 0.09,
+        "tms": 4.396,
+        "ley": 0.16,
+        "rec": 40.0,
+        "inter": 3456.0,
+        "des_inter": 0.0,
+        "maquila": 0.0,
+        "react": 0.0,
+        "factor": 1.1023,
+        "precio_por_tn": 243.81,
+        "total": 1071.79
+      },
+      {
+        "elemento": "Ag",
+        "lote": "BH-26-0002",
+        "cod_gel": "BJ-26-0002",
+        "guia_remitente": "TGG-44",
+        "guia_transportista": "VG-33",
+        "fecha_ingreso": "2026-05-05",
+        "tmh": 3.3,
+        "porc_h2o": 0.06,
+        "tms": 3.298,
+        "ley": 0.17,
+        "rec": 40.0,
+        "inter": 1200.0,
+        "des_inter": 0.0,
+        "maquila": 0.0,
+        "react": 0.0,
+        "factor": 1.1023,
+        "precio_por_tn": 89.95,
+        "total": 296.66
+      }
+    ]
+  }
+]

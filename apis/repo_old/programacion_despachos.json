@@ -1,0 +1,85 @@
+[
+  {
+    "cliente": "CORPORACION JONGOS S.A.C.",
+    "ruc_cliente": "20600016319",
+    "codigo": "DSP-26-05-05-00001",
+    "proveedor": "ALCAORO S.A.C.",
+    "ruc_proveedor": "20477604375",
+    "fecha": "2026-05-05",
+    "estado": "Activo",
+    "detalles": [
+      {
+        "tipo": "Lote",
+        "codigo_mineral": "BJ-26-0002",
+        "peso_lote": 2000.0,
+        "peso_despacho": 2000.0,
+        "peso_distribucion": 2000.0
+      },
+      {
+        "tipo": "Lote",
+        "codigo_mineral": "BJ-26-0003",
+        "peso_lote": 2000.0,
+        "peso_despacho": 2000.0,
+        "peso_distribucion": 2000.0
+      },
+      {
+        "tipo": "Blending",
+        "codigo_mineral": "BLEND-26-00001",
+        "peso_lote": 3700.0,
+        "peso_despacho": 3700.0,
+        "peso_distribucion": 3700.0
+      }
+    ],
+    "distribuciones": [
+      {
+        "transportista": "ABANTO GARCIA MIGUEL ORLANDO",
+        "ruc": "10446113033",
+        "unidad": "C8P-843",
+        "vehiculo": "Camión Coaster",
+        "segunda_placa": "TRY-346",
+        "fecha_estimada": "2026-05-05",
+        "fecha_llegada": "2026-05-05 01:11:45",
+        "fecha_salida": "2026-05-05 01:16:27",
+        "peso_acumulado": 4600.0,
+        "detalles_destino": [
+          {
+            "codigo_destino": "TEC-1",
+            "peso_destino": 990.0,
+            "ley_au": 0.12,
+            "ley_ag": 0.23,
+            "ley_h2o": 0.05,
+            "codigo_origen": "BJ-26-0002",
+            "ticket": "BH-26-0004",
+            "tipo_carga": "Granel",
+            "peso_neto": 1000.0,
+            "nro": 1.0
+          },
+          {
+            "codigo_destino": "TEC-2",
+            "peso_destino": 1150.0,
+            "ley_au": 0.13,
+            "ley_ag": 0.25,
+            "ley_h2o": 0.06,
+            "codigo_origen": "BJ-26-0003",
+            "ticket": "BH-26-0005",
+            "tipo_carga": "Granel",
+            "peso_neto": 1200.0,
+            "nro": 1.0
+          },
+          {
+            "codigo_destino": "TEC-3",
+            "peso_destino": 2370.0,
+            "ley_au": 0.14,
+            "ley_ag": 0.26,
+            "ley_h2o": 0.07,
+            "codigo_origen": "BLEND-26-00001",
+            "ticket": "BH-26-0006",
+            "tipo_carga": "Granel",
+            "peso_neto": 2400.0,
+            "nro": 1.0
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+[
+  {
+    "cabecera": {
+      "serie": "F-45",
+      "numero": 5666.0,
+      "fecha_emision": "2026-05-13",
+      "tipo_cambio_venta": 3.52,
+      "porcentaje_igv": 0.18,
+      "porcentaje_detraccion": 10.0,
+      "total_dolares": 295.29,
+      "total_soles": 1039.4208,
+      "monto_igv": 158.5557,
+      "avance_pago_anticipo": 170.0,
+      "monto_detraccion": 12.529,
+      "monto_neto": 112.761,
+      "avance_pago_neto": 112.76,
+      "avance_pago_detraccion": 12.5284,
+      "tipo_pago": "A",
+      "estado": "A",
+      "Fecha de Creacion": "2026-05-13 10:37:01",
+      "Cliente Planta": "CORPORACION JONGOS S.A.C."
+    },
+    "lotes": [
+      {
+        "Numero Parte": 1.0,
+        "Precio Total": 295.29,
+        "Lote Codigo Cliente": "TEC-3",
+        "lote_codigo_interno": "BLEND-26-00001",
+        "Elemento Quimico": "Ag"
+      }
+    ]
+  }
+]

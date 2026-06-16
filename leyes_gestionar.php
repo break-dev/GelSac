@@ -135,6 +135,19 @@
 												<select id="filtro_lote" class="form-control" multiple data-placeholder="Elija una o más opciones..." style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
 													<?php
 
+													// Cargar lotes históricos desde el JSON
+													$json_path = __DIR__ . '/apis/repo_old/cierre_leyes.json';
+													$historical_options = [];
+													if (file_exists($json_path)) {
+														$historical_data = json_decode(file_get_contents($json_path), true);
+														if (is_array($historical_data)) {
+															foreach ($historical_data as $item) {
+																$historical_options[] = $item["codigo"];
+															}
+														}
+													}
+
+													$rendered_options = [];
 													$q_lotes = "SELECT ccod_Lote
 																				FROM catalogolotes
 																			ORDER BY ccod_Lote DESC";
@@ -142,12 +155,22 @@
 													if ($res_lotes = mysqli_query($enlace, $q_lotes)){
 														if (mysqli_num_rows($res_lotes) > 0) {
 															while($row_lotes = mysqli_fetch_array($res_lotes)){
+																$rendered_options[] = $row_lotes["ccod_Lote"];
 																?>
 
 																<option value="<?php echo $row_lotes["ccod_Lote"]; ?>"><?php echo $row_lotes["ccod_Lote"]; ?></option>
 
 																<?php
 															}
+														}
+													}
+
+													// Renderizar los lotes históricos que no existan en la consulta normal
+													foreach ($historical_options as $cod) {
+														if (!in_array($cod, $rendered_options)) {
+															?>
+															<option value="<?php echo $cod; ?>"><?php echo $cod; ?></option>
+															<?php
 														}
 													}
 

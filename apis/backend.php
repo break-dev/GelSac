@@ -62,6 +62,22 @@ function nombre_meses($num_mes)
 	}
 }
 
+function f_EsLoteHistorico($cod_lote)
+{
+	$json_path = __DIR__ . '/repo_old/cierre_leyes.json';
+	if (file_exists($json_path)) {
+		$historical_data = json_decode(file_get_contents($json_path), true);
+		if (is_array($historical_data)) {
+			foreach ($historical_data as $item) {
+				if ($item["codigo"] == $cod_lote) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 function f_getTipoPagoValorizacion($enlace, $id_valorizacion)
 {
 	$q_tipo_pago = "
@@ -69323,6 +69339,44 @@ switch ($_POST["accion"]) {
 			}
 		}
 
+		// Cargar datos históricos desde JSON
+		$json_path = __DIR__ . '/repo_old/cierre_leyes.json';
+		$historical_lotes = [];
+		if (file_exists($json_path)) {
+			$json_content = file_get_contents($json_path);
+			$historical_data = json_decode($json_content, true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $item) {
+					$cod = $item["codigo"];
+					// Validar filtro por lote
+					if (isset($filtro_lote) && is_array($filtro_lote) && count($filtro_lote) > 0) {
+						if (!in_array($cod, $filtro_lote)) {
+							continue;
+						}
+					} else {
+						// Validar filtro por rango de fechas
+						$creacion_date = substr($item["creacion"], 0, 10);
+						if ($creacion_date < $fecha_inicio || $creacion_date > $fecha_fin) {
+							continue;
+						}
+						// Validar filtro por estado: 0 = Pendientes, 1 = Cerrados, 99 = Todos.
+						// El JSON contiene registros cerrados. Si buscan pendientes, no los incluimos.
+						if ($_estado == 0) {
+							continue;
+						}
+					}
+					$historical_lotes[$cod] = [
+						"Id" => 0,
+						"ccod_Lote" => $cod,
+						"dFechaCreacion" => $item["creacion"],
+						"id_UsuarioCreacion" => "HISTORICO",
+						"cantidad_importar" => 1,
+						"is_historico" => true
+					];
+				}
+			}
+		}
+
 		// Obtiene datos y arma el html
 		$html = "";
 
@@ -69361,8 +69415,25 @@ switch ($_POST["accion"]) {
 				$estado = 1;
 
 				while ($row_lotes = mysqli_fetch_array($res_lotes)) {
-					array_push($res, $row_lotes);
+					$cod = $row_lotes["ccod_Lote"];
+					if (isset($historical_lotes[$cod])) {
+						// Si está en base de datos e histórico, marcar y preferir el del JSON
+						$row_lotes["is_historico"] = true;
+						$res[] = $row_lotes;
+						unset($historical_lotes[$cod]);
+					} else {
+						$row_lotes["is_historico"] = false;
+						array_push($res, $row_lotes);
+					}
 				}
+			}
+		}
+
+		// Agregar los lotes históricos que no estaban en la base de datos
+		if (count($historical_lotes) > 0) {
+			$estado = 1;
+			foreach ($historical_lotes as $hl) {
+				array_push($res, $hl);
 			}
 		}
 
@@ -69378,46 +69449,80 @@ switch ($_POST["accion"]) {
 		$cod_lote = $_POST["cod_lote"];
 		$array_id_grupo_analitoabv = isset($_POST["array_id_grupo_analitoabv"]) ? $_POST["array_id_grupo_analitoabv"] : [];
 
-		foreach ($array_id_grupo_analitoabv as $arr_ga) {
-			$array_ga = explode("|", str_replace('"', "", $arr_ga));
+		// Verificar si es un lote histórico en el JSON
+		$json_path = __DIR__ . '/repo_old/cierre_leyes.json';
+		$historical_item = null;
+		if (file_exists($json_path)) {
+			$historical_data = json_decode(file_get_contents($json_path), true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $item) {
+					if ($item["codigo"] == $cod_lote) {
+						$historical_item = $item;
+						break;
+					}
+				}
+			}
+		}
 
-			$id_grupo = $array_ga[0];
-			$id_grupo_tiene_tipo = $array_ga[1];
-			$abv_elemento = $array_ga[2];
+		if ($historical_item !== null) {
+			// Es histórico, retornamos filas simuladas
+			foreach ($array_id_grupo_analitoabv as $arr_ga) {
+				$array_ga = explode("|", str_replace('"', "", $arr_ga));
+				$id_grupo = $array_ga[0];
+				$id_grupo_tiene_tipo = $array_ga[1];
+				$abv_elemento = $array_ga[2];
 
-			/*ID.porc_".$abv_elemento." AS valor,*/
+				$res[] = [
+					"id_grupo" => $id_grupo,
+					"id_elemento" => $abv_elemento,
+					"valor" => "",
+					"tipo" => isset($historical_item["tipo"]) ? $historical_item["tipo"] : "",
+					"Id" => "hist_" . $id_grupo . "_" . $abv_elemento
+				];
+			}
+		} else {
+			// Lógica normal de base de datos
+			foreach ($array_id_grupo_analitoabv as $arr_ga) {
+				$array_ga = explode("|", str_replace('"', "", $arr_ga));
 
-			$q_lotes_grupo_analito =
-				"SELECT " .
-				$id_grupo .
-				" as id_grupo,
-										'" .
-				$abv_elemento .
-				"' AS id_elemento,
-										'' AS valor,
-										ID.porc_" .
-				$abv_elemento .
-				"_tipo AS tipo,
-										ID.Id as Id
-									FROM import_resultadosleyes_detalle ID
-										LEFT JOIN import_resultadosleyes IC ON (IC.Id = ID.id_importacion)
-									WHERE ID.cod_interno = '" .
-				$cod_lote .
-				"'";
+				$id_grupo = $array_ga[0];
+				$id_grupo_tiene_tipo = $array_ga[1];
+				$abv_elemento = $array_ga[2];
 
-			if (
-				$res_lotes_grupo_analito = mysqli_query(
-					$enlace,
-					$q_lotes_grupo_analito
-				)
-			) {
-				if (mysqli_num_rows($res_lotes_grupo_analito) > 0) {
-					while (
-						$row_lotes_grupo_analito2 = mysqli_fetch_array(
-							$res_lotes_grupo_analito
-						)
-					) {
-						array_push($res, $row_lotes_grupo_analito2);
+				/*ID.porc_".$abv_elemento." AS valor,*/
+
+				$q_lotes_grupo_analito =
+					"SELECT " .
+					$id_grupo .
+					" as id_grupo,
+											'" .
+					$abv_elemento .
+					"' AS id_elemento,
+											'' AS valor,
+											ID.porc_" .
+					$abv_elemento .
+					"_tipo AS tipo,
+											ID.Id as Id
+										FROM import_resultadosleyes_detalle ID
+											LEFT JOIN import_resultadosleyes IC ON (IC.Id = ID.id_importacion)
+										WHERE ID.cod_interno = '" .
+					$cod_lote .
+					"'";
+
+				if (
+					$res_lotes_grupo_analito = mysqli_query(
+						$enlace,
+						$q_lotes_grupo_analito
+					)
+				) {
+					if (mysqli_num_rows($res_lotes_grupo_analito) > 0) {
+						while (
+							$row_lotes_grupo_analito2 = mysqli_fetch_array(
+								$res_lotes_grupo_analito
+							)
+						) {
+							array_push($res, $row_lotes_grupo_analito2);
+						}
 					}
 				}
 			}
@@ -69432,6 +69537,12 @@ switch ($_POST["accion"]) {
 
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0]);
+			break;
+		}
+
 		$id_grupo = mysqli_real_escape_string($enlace, $_POST["id_grupo"]);
 		$abv_elemento = mysqli_real_escape_string(
 			$enlace,
@@ -69510,6 +69621,12 @@ switch ($_POST["accion"]) {
 
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0]);
+			break;
+		}
+
 		$id_grupo = mysqli_real_escape_string($enlace, $_POST["id_grupo"]);
 		$abv_elemento = mysqli_real_escape_string(
 			$enlace,
@@ -69610,6 +69727,12 @@ switch ($_POST["accion"]) {
 
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0]);
+			break;
+		}
+
 		$id_grupo = mysqli_real_escape_string($enlace, $_POST["id_grupo"]);
 		$abv_elemento = mysqli_real_escape_string(
 			$enlace,
@@ -69741,6 +69864,50 @@ switch ($_POST["accion"]) {
 		$posicion = mysqli_real_escape_string($enlace, $_POST["posicion"]);
 		$usuario_registro = $_SESSION["usu_usuario"];
 
+		// Verificar si es un lote histórico en el JSON
+		$json_path = __DIR__ . '/repo_old/cierre_leyes.json';
+		$historical_item = null;
+		if (file_exists($json_path)) {
+			$historical_data = json_decode(file_get_contents($json_path), true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $item) {
+					if ($item["codigo"] == $cod_lote) {
+						$historical_item = $item;
+						break;
+					}
+				}
+			}
+		}
+
+		if ($historical_item !== null) {
+			$val = null;
+			if ($id_grupo == 3 && $abv_elemento == 'newau') {
+				$val = $historical_item["ley_consolidada_au"];
+			} else if ($id_grupo == 3 && $abv_elemento == 'newag') {
+				$val = $historical_item["ley_consolidada_ag"];
+			} else if ($id_grupo == 4 && $abv_elemento == 'h2o') {
+				$val = $historical_item["humedad"];
+			} else if ($id_grupo == 5 && $abv_elemento == 'recup') {
+				$val = $historical_item["recuperacion"];
+			}
+
+			if ($val !== null) {
+				$valor_tipo = isset($historical_item["tipo"]) ? $historical_item["tipo"] : "";
+				if ($valor_tipo == "(P)") $valor_tipo = "P";
+				if ($valor_tipo == "(R)") $valor_tipo = "R";
+
+				$res[] = [
+					"is_select" => 1,
+					"valor" => $val,
+					"valor_tipo" => $valor_tipo,
+					"total_log" => 0
+				];
+				$estado = 1;
+			}
+			echo json_encode(["estado" => $estado, "res" => $res]);
+			break;
+		}
+
 		$q_log =
 			"SELECT V.is_select,
 												 V.valor,
@@ -69791,6 +69958,43 @@ switch ($_POST["accion"]) {
 
 		// el elemento químico: newau|newag
 		$abv_elemento = mysqli_real_escape_string($enlace, $_POST["abv_elemento"]);
+
+		// Verificar si es un lote histórico en el JSON
+		$json_path = __DIR__ . '/repo_old/cierre_leyes.json';
+		$historical_item = null;
+		if (file_exists($json_path)) {
+			$historical_data = json_decode(file_get_contents($json_path), true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $item) {
+					if ($item["codigo"] == $cod_lote) {
+						$historical_item = $item;
+						break;
+					}
+				}
+			}
+		}
+
+		if ($historical_item !== null) {
+			$val = null;
+			if ($id_grupo == 3 && $abv_elemento == 'newau') {
+				$val = $historical_item["ley_consolidada_au"];
+			} else if ($id_grupo == 3 && $abv_elemento == 'newag') {
+				$val = $historical_item["ley_consolidada_ag"];
+			} else if ($id_grupo == 4 && $abv_elemento == 'h2o') {
+				$val = $historical_item["humedad"];
+			} else if ($id_grupo == 5 && $abv_elemento == 'recup') {
+				$val = $historical_item["recuperacion"];
+			}
+
+			if ($val !== null) {
+				$estado = 1;
+				$res[] = [
+					"promedio" => $val
+				];
+			}
+			echo json_encode(["estado" => $estado, "res" => $res]);
+			break;
+		}
 
 		$q_valor_promedio = "
             SELECT 
@@ -69996,6 +70200,35 @@ switch ($_POST["accion"]) {
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
 
+		// Verificar si es un lote histórico en el JSON
+		$json_path = __DIR__ . '/repo_old/cierre_leyes.json';
+		$historical_item = null;
+		if (file_exists($json_path)) {
+			$historical_data = json_decode(file_get_contents($json_path), true);
+			if (is_array($historical_data)) {
+				foreach ($historical_data as $item) {
+					if ($item["codigo"] == $cod_lote) {
+						$historical_item = $item;
+						break;
+					}
+				}
+			}
+		}
+
+		if ($historical_item !== null) {
+			$is_valorizar = ($historical_item["estado_cierre"] == "Con Valor Comercial") ? 1 : 0;
+			$res[] = [
+				"is_valorizado" => 1,
+				"gestionleyes_cerrado" => 1,
+				"gestionleyes_cerrado_isvalorizar" => $is_valorizar,
+				"gestionleyes_cerrado_fechahoraregistro" => $historical_item["registro"],
+				"gestionleyes_cerrado_usuarioregistro" => "HISTORICO",
+				"gestionleyes_cerrado_comentario" => "Histórico importado del JSON"
+			];
+			echo json_encode(["estado" => 1, "res" => $res]);
+			break;
+		}
+
 		$q_cierre =
 			"SELECT is_valorizado,
 														gestionleyes_cerrado,
@@ -70028,6 +70261,12 @@ switch ($_POST["accion"]) {
 
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0, "res" => []]);
+			break;
+		}
+
 		$is_cierre = mysqli_real_escape_string($enlace, $_POST["is_cierre"]);
 		$usuario_registro = $_SESSION["usu_usuario"];
 
@@ -70069,6 +70308,12 @@ switch ($_POST["accion"]) {
 		$id_importacion = 0;
 		$id_ensayosdetalle = 1;
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0]);
+			break;
+		}
+
 		$usuario_registro = $_SESSION["usu_usuario"];
 
 		$q_insert = "INSERT INTO import_resultadosleyes_detalle (id_importacion, id_ensayosdetalle, cod_interno, nombre_lote, fechahora_registro, usuario_registro)
@@ -70096,6 +70341,12 @@ switch ($_POST["accion"]) {
 
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0]);
+			break;
+		}
+
 		$is_cierre = mysqli_real_escape_string($enlace, $_POST["is_cierre"]);
 		$is_valorizar = mysqli_real_escape_string(
 			$enlace,
@@ -70143,6 +70394,12 @@ switch ($_POST["accion"]) {
 
 		// Recupera variables
 		$cod_lote = mysqli_real_escape_string($enlace, $_POST["cod_lote"]);
+
+		if (f_EsLoteHistorico($cod_lote)) {
+			echo json_encode(["estado" => 0]);
+			break;
+		}
+
 		$id_grupo = mysqli_real_escape_string($enlace, $_POST["id_grupo"]);
 		$abv_elemento = mysqli_real_escape_string(
 			$enlace,
@@ -77805,7 +78062,75 @@ switch ($_POST["accion"]) {
 
 		if ($result) {
 			while ($d = mysqli_fetch_assoc($result)) {
+				$d['is_historico'] = false;
 				$despachos[] = $d;
+			}
+		}
+
+		// Cargar despachos históricos desde el archivo JSON
+		$json_path = __DIR__ . '/repo_old/programacion_despachos.json';
+		if (file_exists($json_path)) {
+			$historical_content = file_get_contents($json_path);
+			$historical_data = json_decode($historical_content, true);
+			if (is_array($historical_data)) {
+				// Mapear RUC de plantas/clientes a IDs
+				$planta_ids = [];
+				$res_pln = mysqli_query($enlace, "SELECT Id, ruc FROM tbconfig_plantas");
+				if ($res_pln) {
+					while ($p = mysqli_fetch_assoc($res_pln)) {
+						$planta_ids[$p['ruc']] = $p['Id'];
+					}
+				}
+
+				// Mapear RUC de proveedores a IDs
+				$proveedor_ids = [];
+				$res_prov = mysqli_query($enlace, "SELECT Id, documento FROM tb_clientes WHERE cod_clientecondicion = 1");
+				if ($res_prov) {
+					while ($p = mysqli_fetch_assoc($res_prov)) {
+						$proveedor_ids[$p['documento']] = $p['Id'];
+					}
+				}
+
+				foreach ($historical_data as $idx => $item) {
+					$ruc_cli = $item["ruc_cliente"];
+					$ruc_prov = $item["ruc_proveedor"];
+
+					$id_planta = isset($planta_ids[$ruc_cli]) ? $planta_ids[$ruc_cli] : -intval($ruc_cli);
+					$id_proveedor = isset($proveedor_ids[$ruc_prov]) ? $proveedor_ids[$ruc_prov] : -intval($ruc_prov);
+
+					// Contar items de detalles
+					$blending_usados = 0;
+					$lotes_usados = 0;
+					if (isset($item["detalles"]) && is_array($item["detalles"])) {
+						foreach ($item["detalles"] as $det) {
+							if (isset($det["tipo"]) && $det["tipo"] === "Blending") {
+								$blending_usados++;
+							} else {
+								$lotes_usados++;
+							}
+						}
+					}
+
+					$distribuciones_cerradas = isset($item["distribuciones"]) ? count($item["distribuciones"]) : 0;
+
+					$despachos[] = [
+						"id_despacho" => -1 - $idx,
+						"id_proveedor" => $id_proveedor,
+						"id_planta" => $id_planta,
+						"correlativo" => $item["codigo"],
+						"documento_proveedor" => $ruc_prov,
+						"razon_social" => $item["proveedor"],
+						"descripcion_planta" => $item["cliente"],
+						"ruc_planta" => $ruc_cli,
+						"direccion_planta" => "Dirección Histórica",
+						"fecha_registro" => $item["fecha"] . " 00:00:00",
+						"blending_usados" => $blending_usados,
+						"lotes_usados" => $lotes_usados,
+						"distribuciones_cerradas" => $distribuciones_cerradas,
+						"estado" => "A",
+						"is_historico" => true
+					];
+				}
 			}
 		}
 
@@ -77948,6 +78273,37 @@ switch ($_POST["accion"]) {
 
 	case "get_despacho_detalle_by_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+
+		if ($id_despacho < 0) {
+			$index = -$id_despacho - 1;
+			$json_path = __DIR__ . '/repo_old/programacion_despachos.json';
+			$detalle_blending = [];
+			if (file_exists($json_path)) {
+				$historical_content = file_get_contents($json_path);
+				$historical_data = json_decode($historical_content, true);
+				if (is_array($historical_data) && isset($historical_data[$index])) {
+					$dsp = $historical_data[$index];
+					$detalles = isset($dsp["detalles"]) ? $dsp["detalles"] : [];
+					foreach ($detalles as $idx => $d) {
+						$detalle_blending[] = [
+							"id_despacho_detalle" => -100 - $idx,
+							"codigo" => $d["codigo_mineral"],
+							"is_blending" => ($d["tipo"] === "Blending" ? 1 : 0),
+							"peso_tomado" => $d["peso_despacho"],
+							"peso_actual" => $d["peso_despacho"] - $d["peso_distribucion"],
+							"peso_actual_log" => $d["peso_lote"],
+							"peso_distribuido" => $d["peso_distribucion"],
+							"estado" => "A"
+						];
+					}
+				}
+			}
+			echo json_encode([
+				"estado" => 1,
+				"data" => ["detalle_blending" => $detalle_blending]
+			]);
+			break;
+		}
 		$q = "
 		SELECT
 			dsd.id as id_despacho_detalle,
@@ -78443,6 +78799,55 @@ switch ($_POST["accion"]) {
 
 	case "get_distribuciones_by_despacho":
 		$id_despacho = intval($_POST["id_despacho"] ?? 0);
+
+		if ($id_despacho < 0) {
+			$index = -$id_despacho - 1;
+			$json_path = __DIR__ . '/repo_old/programacion_despachos.json';
+			$distribuciones = [];
+			if (file_exists($json_path)) {
+				$historical_content = file_get_contents($json_path);
+				$historical_data = json_decode($historical_content, true);
+				if (is_array($historical_data) && isset($historical_data[$index])) {
+					$dsp = $historical_data[$index];
+					$dists = isset($dsp["distribuciones"]) ? $dsp["distribuciones"] : [];
+					foreach ($dists as $idx => $d) {
+						$id_dist = ($id_despacho * 100) - $idx; // e.g. -100, -101, etc.
+						
+						$placa2 = isset($d["segunda_placa"]) ? $d["segunda_placa"] : "";
+						$parts_placa2 = explode("-", $placa2);
+						$serie_placa2 = isset($parts_placa2[0]) ? $parts_placa2[0] : "";
+						$num_placa2 = isset($parts_placa2[1]) ? $parts_placa2[1] : "";
+
+						$distribuciones[] = [
+							"id_distribucion" => $id_dist,
+							"id_unidad" => 0,
+							"id_despacho" => $id_despacho,
+							"documento_transportista" => $d["ruc"],
+							"nombre_transportista" => $d["transportista"],
+							"tipo_vehiculo" => $d["vehiculo"],
+							"placa" => $d["unidad"],
+							"serie_segunda_placa" => $serie_placa2,
+							"numero_segunda_placa" => $num_placa2,
+							"capacidad" => $d["peso_acumulado"],
+							"peso_acumulado" => $d["peso_acumulado"],
+							"fecha_estimada" => $d["fecha_estimada"],
+							"fecha_registro" => $d["fecha_estimada"] . " 00:00:00",
+							"usuario_registro" => "HISTORICO",
+							"fecha_hora_llegada" => $d["fecha_llegada"],
+							"fecha_hora_salida" => $d["fecha_salida"],
+							"estado" => "E",
+							"estado_peso" => "A",
+							"estado_cierre" => "1",
+							"fecha_hora_cierre" => $d["fecha_salida"],
+							"fecha_hora_llegada_planta_destino" => $d["fecha_llegada"],
+							"usuario_cierre" => "HISTORICO"
+						];
+					}
+				}
+			}
+			echo json_encode(["estado" => 1, "data" => ["distribuciones" => $distribuciones]]);
+			break;
+		}
 		$q = "
 		SELECT
 			dist.id as id_distribucion,
@@ -78521,6 +78926,49 @@ switch ($_POST["accion"]) {
 
 	case "get_detalle_distribucion_by_distribucion":
 		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+
+		if ($id_distribucion < 0) {
+			$dispatch_idx = floor(abs($id_distribucion) / 100) - 1;
+			$dist_idx = abs($id_distribucion) % 100;
+			$json_path = __DIR__ . '/repo_old/programacion_despachos.json';
+			$detalles = [];
+			if (file_exists($json_path)) {
+				$historical_content = file_get_contents($json_path);
+				$historical_data = json_decode($historical_content, true);
+				if (is_array($historical_data) && isset($historical_data[$dispatch_idx]["distribuciones"][$dist_idx])) {
+					$dist = $historical_data[$dispatch_idx]["distribuciones"][$dist_idx];
+					$detalles_destino = isset($dist["detalles_destino"]) ? $dist["detalles_destino"] : [];
+					foreach ($detalles_destino as $idx => $item) {
+						$detalles[] = [
+							"id" => -1000 - $idx,
+							"id_distribucion" => $id_distribucion,
+							"id_despacho_detalle" => 0,
+							"codigo_en_planta_destino" => $item["codigo_destino"],
+							"peso_en_planta_destino" => $item["peso_destino"],
+							"ley_oro_en_planta_destino" => $item["ley_au"],
+							"ley_plata_en_planta_destino" => $item["ley_ag"],
+							"ley_humedad_en_planta_destino" => $item["ley_h2o"],
+							"ticket_balanza" => $item["ticket"],
+							"numero_ticket_balanza" => $item["ticket"],
+							"codigo" => $item["codigo_origen"],
+							"is_blending" => (strpos($item["codigo_origen"], 'BLEND') !== false ? 1 : 0),
+							"peso_actual_log" => $item["peso_neto"],
+							"peso_tomado" => $item["peso_neto"],
+							"peso_tara" => 0,
+							"peso_bruto" => $item["peso_neto"],
+							"peso_neto" => $item["peso_neto"],
+							"peso_restante" => 0,
+							"numero_parte" => $item["nro"],
+							"fecha_registro" => "2026-05-05 00:00:00",
+							"tipo_carga" => $item["tipo_carga"],
+							"cantidad_bigbags" => 0
+						];
+					}
+				}
+			}
+			echo json_encode(["estado" => 1, "data" => ["detalles" => $detalles]]);
+			break;
+		}
 		$q = "
 		SELECT
 			dst.id,
@@ -80097,6 +80545,45 @@ switch ($_POST["accion"]) {
 
 	case "get_trazabilidad_by_distribucion":
 		$id_distribucion = intval($_POST["id_distribucion"] ?? 0);
+
+		if ($id_distribucion < 0) {
+			$dispatch_idx = floor(abs($id_distribucion) / 100) - 1;
+			$dist_idx = abs($id_distribucion) % 100;
+			$json_path = __DIR__ . '/repo_old/programacion_despachos.json';
+			$data = [];
+			if (file_exists($json_path)) {
+				$historical_content = file_get_contents($json_path);
+				$historical_data = json_decode($historical_content, true);
+				if (is_array($historical_data) && isset($historical_data[$dispatch_idx]["distribuciones"][$dist_idx])) {
+					$dist = $historical_data[$dispatch_idx]["distribuciones"][$dist_idx];
+					$data = [
+						[
+							"id_trazabilidad" => -1,
+							"empleado" => "HISTORICO",
+							"estado" => "Llegada Destino",
+							"descripcion" => "Llegada a destino registrada e importada del archivo histórico.",
+							"created_at" => (!empty($dist["fecha_llegada"]) ? $dist["fecha_llegada"] : $dist["fecha_estimada"]) . " 00:00:00"
+						],
+						[
+							"id_trazabilidad" => -2,
+							"empleado" => "HISTORICO",
+							"estado" => "Distribución cerrada",
+							"descripcion" => "Distribución cerrada e importada del archivo histórico.",
+							"created_at" => (!empty($dist["fecha_salida"]) ? $dist["fecha_salida"] : $dist["fecha_estimada"]) . " 00:00:00"
+						],
+						[
+							"id_trazabilidad" => -3,
+							"empleado" => "HISTORICO",
+							"estado" => "Carga Registrada",
+							"descripcion" => "Carga de la unidad registrada en el sistema histórico.",
+							"created_at" => $dist["fecha_estimada"] . " 00:00:00"
+						]
+					];
+				}
+			}
+			echo json_encode(["estado" => 1, "data" => $data]);
+			break;
+		}
 
 		// Cambiamos las comillas dobles por simples en el CONCAT
 		$q = "

@@ -242,10 +242,9 @@ document.addEventListener("DOMContentLoaded", function () {
                        <td class="text-center">${estadoBadge}</td>
                        <td class="text-center">
                          <button class="btn btn-sm btn-link text-primary"><i class="bi bi-eye-fill"></i></button>
-
-                         ${parseInt(d.distribuciones_cerradas) > 0 ||
+                          ${d.id_despacho < 0 || parseInt(d.distribuciones_cerradas) > 0 ||
             parseInt(d.distribuciones_aprobadas) > 0
-            ? `<button class="btn btn-sm btn-link text-secondary" title="No se puede anular, tiene distribuciones cerradas o aprobadas" disabled><i class="bi bi-trash-fill"></i></button>`
+            ? `<button class="btn btn-sm btn-link text-secondary" title="No se puede anular un despacho histórico o con distribuciones cerradas/aprobadas" disabled><i class="bi bi-trash-fill"></i></button>`
             : `<button class="btn btn-sm btn-link text-danger" onclick="anularDespacho(${d.id_despacho}, event)" title="Anular Despacho"><i class="bi bi-trash-fill"></i></button>`
           }
                        </td>
@@ -285,7 +284,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (r.estado === 1) {
           renderDetalleDespacho(r.data.detalle_blending);
           selectedDespachoId = id;
-          $("#btn_open_new_distribucion").prop("disabled", false);
+          $("#btn_open_new_distribucion").prop("disabled", id < 0);
           loadDistribuciones(id); // Cargar distribuciones
         }
       },

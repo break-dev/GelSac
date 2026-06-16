@@ -1,0 +1,58 @@
+[
+  {
+    "cabecera": {
+      "Serie": "YGC",
+      "Número": 2345.0,
+      "Fecha Emisión": "2026-05-05 00:00:00",
+      "RUC": 20477604375.0,
+      "Razón Social": "ALCAORO S.A.C.",
+      "Aprobación": "2026-05-05 00:52:41",
+      "N°": 1.0,
+      "Valor Neto Mineral": 2494.29,
+      "I.G.V.": 448.97,
+      "Valor Total": 2943.26,
+      "Total por Pagar": 2648.94,
+      "Total Pagado": 2648.94,
+      "Saldo": 0.0,
+      "Estado": "PAGADO - Mixto",
+      "%": 0.1,
+      "Total por Pagar_%": 294.33,
+      "Tipo": 3.52,
+      "Total por Pagar_Tipo": 1036.0,
+      "Total Pagado_Total por Pagar": 1036.0,
+      "Saldo_Total Pagado": 0.0,
+      "Estado_Saldo": "PAGADO",
+      "Registro": "2026-05-05 00:55:59",
+      "Comercial": true,
+      "Registro_Comercial": "2026-05-05 00:56:11",
+      "Documentaria": true,
+      "Registro_Documentaria": "2026-05-05 00:56:13"
+    },
+    "detalles": [
+      {
+        "Lote": "BH-26-0002",
+        "Cod. GEL": "BJ-26-0002",
+        "Elemento": "NewAu",
+        "Sub Total": 296.66
+      },
+      {
+        "Lote": "BH-26-0003",
+        "Cod. GEL": "BJ-26-0003",
+        "Elemento": "NewAg",
+        "Sub Total": 2201.05
+      },
+      {
+        "Lote": null,
+        "Cod. GEL": null,
+        "Elemento": null,
+        "Sub Total": 1071.79
+      },
+      {
+        "Lote": null,
+        "Cod. GEL": null,
+        "Elemento": null,
+        "Sub Total": 1924.79
+      }
+    ]
+  }
+]
