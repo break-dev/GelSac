@@ -237,7 +237,7 @@ document.addEventListener("DOMContentLoaded", function () {
         listado.push({
           tipo: "GENERADA",
           id_guia: g.id_guia,
-          fecha_egreso: g.fecha_inicio_traslado, // Ojo, usamos inicio traslado como referencia
+          fecha_egreso: g.fecha_inicio_traslado,
           nro_guia:
             g.guia_remitente_serie && g.guia_remitente_numero
               ? g.guia_remitente_serie + "-" + g.guia_remitente_numero
@@ -248,7 +248,8 @@ document.addEventListener("DOMContentLoaded", function () {
           peso_total_neto: g.peso_total_neto || 0,
           conductor_nombre: g.conductor_nombre || "-",
           estado_guia: g.estado_guia,
-          raw: g, // data completa para edicion
+          is_historico: (g.is_historico === true || g.is_historico === "true" || g.is_historico == 1),
+          raw: g,
         });
         totalGeneradas++;
       });
@@ -277,22 +278,22 @@ document.addEventListener("DOMContentLoaded", function () {
       var rowClass = isPendiente ? "table-warning" : "table-success";
       if (item.estado_guia === "0") rowClass = "table-danger"; // Anulada
 
-      var rowId = isPendiente
-        ? "tr_unif_pend_" + idx
-        : "tr_unif_guia_" + item.id_guia;
-      var detailRowId = isPendiente
-        ? "tr_unif_pend_detail_" + idx
-        : "tr_unif_guia_detail_" + item.id_guia;
-
-      // Guardar referencia para click handler
+      var rowId, detailRowId, clickHandler;
       if (isPendiente) {
-        // La key es la misma usada para agrupacionesMap
         item._rowIdx = idx;
+        rowId        = "tr_unif_pend_" + idx;
+        detailRowId  = "tr_unif_pend_detail_" + idx;
+        clickHandler = "window.f_VerDetalleUnificado('" + idx + "', 'pend');";
+      } else if (item.is_historico) {
+        rowId        = "tr_unif_hist_" + idx;
+        detailRowId  = "tr_unif_hist_detail_" + idx;
+        clickHandler = "window.f_VerDetalleUnificado('" + idx + "', 'hist');";
+      } else {
+        rowId        = "tr_unif_guia_" + item.id_guia;
+        detailRowId  = "tr_unif_guia_detail_" + item.id_guia;
+        clickHandler = "window.f_VerDetalleUnificado('" + item.id_guia + "', 'guia');";
       }
 
-      var clickHandler = isPendiente
-        ? "window.f_VerDetalleUnificado('" + idx + "', 'pend');"
-        : "window.f_VerDetalleUnificado('" + item.id_guia + "', 'guia');";
 
       html +=
         '<tr id="' +
@@ -362,6 +363,12 @@ document.addEventListener("DOMContentLoaded", function () {
           idx +
           ');">';
         html += '<i class="bi bi-file-earmark-plus"></i> Generar</button>';
+      } else if (item.is_historico) {
+        html += '<div class="btn-group btn-group-sm">';
+        html += '<button class="btn btn-warning" disabled title="Dato histórico, no editable"><i class="bi bi-pencil"></i></button>';
+        html += '<button class="btn btn-danger" disabled title="Dato histórico, no editable"><i class="bi bi-trash"></i></button>';
+        html += '<button class="btn btn-dark" disabled title="Dato histórico, no editable"><i class="bi bi-printer"></i></button>';
+        html += '</div>';
       } else {
         html += '<div class="btn-group btn-group-sm">';
         html +=
@@ -412,10 +419,10 @@ document.addEventListener("DOMContentLoaded", function () {
         html += "</table></div></div>";
       } else {
         // Para GENERADAS: contenedor simple, se llena al hacer click
-        html +=
-          '<div id="ctn_unif_guia_' +
-          item.id_guia +
-          '"><div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> Cargando...</div></div>';
+        var ctnIdLocal = item.is_historico
+          ? "ctn_unif_hist_" + idx
+          : "ctn_unif_guia_" + item.id_guia;
+        html += '<div id="' + ctnIdLocal + '"><div class="text-center text-muted p-3"><span class="spinner-border spinner-border-sm"></span> Cargando...</div></div>';
       }
       html += "</td></tr>";
     });
@@ -427,12 +434,17 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   window.f_VerDetalleUnificado = function (id, tipo) {
-    var detailRowId =
-      tipo === "pend"
-        ? "tr_unif_pend_detail_" + id
-        : "tr_unif_guia_detail_" + id;
-    var mainRowId =
-      tipo === "pend" ? "tr_unif_pend_" + id : "tr_unif_guia_" + id;
+    var detailRowId, mainRowId;
+    if (tipo === "pend") {
+      detailRowId = "tr_unif_pend_detail_" + id;
+      mainRowId   = "tr_unif_pend_" + id;
+    } else if (tipo === "hist") {
+      detailRowId = "tr_unif_hist_detail_" + id;
+      mainRowId   = "tr_unif_hist_" + id;
+    } else {
+      detailRowId = "tr_unif_guia_detail_" + id;
+      mainRowId   = "tr_unif_guia_" + id;
+    }
     var tbodyId = "tbl_unif_detail_pend_" + id; // solo para PENDIENTE
 
     var detailRow = $("#" + detailRowId);
@@ -444,10 +456,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Ocultar otros detalles abiertos
-    $("[id^='tr_unif_pend_detail_'], [id^='tr_unif_guia_detail_']").hide();
-    $("[id^='tr_unif_pend_'], [id^='tr_unif_guia_']").removeClass(
-      "table-active",
-    );
+    $("[id^='tr_unif_pend_detail_'], [id^='tr_unif_guia_detail_'], [id^='tr_unif_hist_detail_']").hide();
+    $("[id^='tr_unif_pend_'], [id^='tr_unif_guia_'], [id^='tr_unif_hist_']").removeClass("table-active");
     mainRow.addClass("table-active");
     detailRow.fadeIn(150);
 
@@ -456,10 +466,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var listado = window._listadoUnificadoCache || [];
       var pendItem = null;
       for (var i = 0; i < listado.length; i++) {
-        if (
-          listado[i].tipo === "PENDIENTE" &&
-          listado[i]._rowIdx === parseInt(id)
-        ) {
+        if (listado[i].tipo === "PENDIENTE" && listado[i]._rowIdx === parseInt(id)) {
           pendItem = listado[i];
           break;
         }
@@ -482,6 +489,17 @@ document.addEventListener("DOMContentLoaded", function () {
           );
         }
       });
+    }
+    // HISTORICO: renderizar lotes desde cache sin AJAX
+    else if (tipo === "hist") {
+      var ctnId = "ctn_unif_hist_" + id;
+      var listado = window._listadoUnificadoCache || [];
+      var histItem = listado[parseInt(id)];
+      if (!histItem || !histItem.raw) {
+        $("#" + ctnId).html('<div class="text-center text-muted p-3">Sin información disponible.</div>');
+        return;
+      }
+      f_RenderizarDetalleGuiaCompleto(histItem.raw, "#" + ctnId);
     }
     // GENERADA: cargar detalle completo de guía via AJAX
     else {

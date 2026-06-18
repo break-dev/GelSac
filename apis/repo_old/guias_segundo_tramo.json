@@ -47,5 +47,54 @@
         "peso_neto": 1300.0
       }
     ]
+  },{
+    "guia": "NBVC-5555",
+    "fecha_egreso": "2026-05-05",
+    "placa": "TAW-803",
+    "empresa_transporte": "ABPASE TRANSPORTES EXPRESS S.A.C.",
+    "conductor": "ABEL MANTILLA VENTURA",
+    "estado": "ACTIVA",
+    "guia_remitente": "NBVC-5555",
+    "guia_transportista": "BONN-777",
+    "motivo": "VENTA SUJETA A CONFIRMACIÓN",
+    "planta_destino": "CORPORACION JONGOS S.A.C.",
+    "inicio_traslado": "2026-05-05",
+    "emision": "2026-05-05 01:14:00",
+    "llegada_planta": "2026-05-05 01:14:00",
+    "total_lotes": 3,
+    "peso_total_neto": 3100.0,
+    "lotes": [
+      {
+        "tipo": "Lote",
+        "codigo_mineral": "BH-26-0002",
+        "ticket_balanza": "BH-26-0001",
+        "presentacion": "Granel",
+        "peso_distribucion": 1000.0,
+        "peso_bruto": 2200.0,
+        "tara": 1200.0,
+        "peso_neto": 1000.0
+      },
+      {
+        "tipo": "Lote",
+        "codigo_mineral": "BH-26-0003",
+        "ticket_balanza": "BH-26-0002",
+        "presentacion": "Granel",
+        "peso_distribucion": 800.0,
+        "peso_bruto": 3000.0,
+        "tara": 2200.0,
+        "peso_neto": 800.0
+      },
+      {
+        "tipo": "Blending",
+        "codigo_mineral": "BLEND-26-00001",
+        "ticket_balanza": "BH-26-0003",
+        "presentacion": "Granel",
+        "peso_distribucion": 1300.0,
+        "peso_bruto": 4300.0,
+        "tara": 3000.0,
+        "peso_neto": 1300.0
+      }
+    ]
   }
+  
 ]
