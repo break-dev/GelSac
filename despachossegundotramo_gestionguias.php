@@ -801,7 +801,7 @@ $backendUrl = 'apis/backend.php';
   <script>
     const backendUrl = '<?php echo $backendUrl; ?>';
   </script>
-  <script src="despachossegundotramo_gestionguias.js"></script>
+  <script src="despachossegundotramo_gestionguias.js?v=<?php echo time(); ?>"></script>
 </body>
 
 </html>

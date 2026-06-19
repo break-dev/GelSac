@@ -3411,8 +3411,95 @@ function f_Guia_GenerarCodigoGel(
 	}
 
 	if ($ultimo_correlativo_guia === 0) {
-		// Guía nueva → correlativos nuevos sin letra
-		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
+		// Guía nueva
+		$id_primero = intval($lotes_sin_gel[0]["id_validaciondatos"]);
+		$nueva_guia_fecha = null;
+		if ($rs_f = mysqli_query($enlace, "SELECT guias_fecha FROM despachos_primertramo_validaciondatos WHERE Id = $id_primero")) {
+			if ($row_f = mysqli_fetch_assoc($rs_f)) {
+				$nueva_guia_fecha = $row_f["guias_fecha"];
+			}
+			mysqli_free_result($rs_f);
+		}
+
+		$hay_posterior = false;
+		if ($nueva_guia_fecha) {
+			$q_post = "SELECT COUNT(*) AS total 
+			           FROM despachos_primertramo_validaciondatos 
+			           WHERE guias_fecha > '$nueva_guia_fecha' 
+			             AND codigo_gel IS NOT NULL";
+			if ($rs_post = mysqli_query($enlace, $q_post)) {
+				$row_post = mysqli_fetch_assoc($rs_post);
+				if (intval($row_post["total"]) > 0) {
+					$hay_posterior = true;
+				}
+				mysqli_free_result($rs_post);
+			}
+		}
+
+		if ($hay_posterior) {
+			$fecha_anterior = null;
+			$q_ant = "SELECT MAX(guias_fecha) AS max_anterior 
+			          FROM despachos_primertramo_validaciondatos 
+			          WHERE guias_fecha < '$nueva_guia_fecha' 
+			            AND codigo_gel IS NOT NULL";
+			if ($rs_ant = mysqli_query($enlace, $q_ant)) {
+				$row_ant = mysqli_fetch_assoc($rs_ant);
+				$fecha_anterior = $row_ant["max_anterior"];
+				mysqli_free_result($rs_ant);
+			}
+
+			$ultimo_codigo = null;
+			$ultimo_correlativo = 0;
+			if ($fecha_anterior) {
+				$q_last = "SELECT C.correlativo, C.codigo_gel 
+				           FROM despachos_primertramo_validaciondatos V 
+				           INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado = 'A' AND C.cod_anho = '$g_anho'
+				           WHERE V.guias_fecha = '$fecha_anterior' 
+				             AND V.codigo_gel IS NOT NULL 
+				           ORDER BY C.correlativo DESC, C.codigo_gel DESC 
+				           LIMIT 1";
+				if ($rs_last = mysqli_query($enlace, $q_last)) {
+					if ($row_last = mysqli_fetch_assoc($rs_last)) {
+						$ultimo_codigo = $row_last["codigo_gel"];
+						$ultimo_correlativo = intval($row_last["correlativo"]);
+					}
+					mysqli_free_result($rs_last);
+				}
+			}
+
+			if ($ultimo_codigo) {
+				$tiene_letra = false;
+				$ultima_letra_idx = 0;
+				if (preg_match('/([A-Z]+)$/', $ultimo_codigo, $m)) {
+					$tiene_letra = true;
+					$ultima_letra_idx = _letraAIndice($m[1]);
+				}
+
+				$idx_letra_inicio = $tiene_letra ? ($ultima_letra_idx + 1) : 1;
+
+				return _asignarCodigosConLetra(
+					$enlace,
+					$lotes_sin_gel,
+					$ultimo_correlativo,
+					$idx_letra_inicio,
+					$g_fecha,
+					$g_anho
+				);
+			} else {
+				// Si no hay guía anterior, empezamos con correlativo 1 y letra A
+				return _asignarCodigosConLetra(
+					$enlace,
+					$lotes_sin_gel,
+					1,
+					1,
+					$g_fecha,
+					$g_anho
+				);
+			}
+		} else {
+			// Por cada lote, generas los códigos BJ respetando la continuidad (sin letra)
+			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
+		}
 	}
 
 	// Paso 2: dentro de ese correlativo, ¿hay alguno con letra?
@@ -73563,514 +73650,356 @@ switch ($_POST["accion"]) {
 
 
 		saveLog(["query" => $q_validacion]);
+		$records = [];
 		if ($res_validacion = mysqli_query($enlace, $q_validacion)) {
-			if (mysqli_num_rows($res_validacion) > 0) {
-				$estado = 1;
+			while ($row_validacion = mysqli_fetch_assoc($res_validacion)) {
+				$row_validacion['is_historical'] = false;
+				$records[] = $row_validacion;
+			}
+		}
 
-				while ($row_validacion = mysqli_fetch_array($res_validacion)) {
-					$html .=
-						'<tr id="tr_detalle_' .
-						$d .
-						'" style="font-size: 13px;">';
+		// Load historical data from JSON
+		$json_path = __DIR__ . '/repo_old/aprobacion_comprobantes.json';
+		if (file_exists($json_path)) {
+			$json_content = file_get_contents($json_path);
+			$historical_data = json_decode($json_content, true);
+			if (is_array($historical_data)) {
+				$has_lote_filter = (isset($filtro_lote) && is_array($filtro_lote) && count($filtro_lote) > 0);
+				$has_gel_filter = (isset($filtro_lote_gel) && is_array($filtro_lote_gel) && count($filtro_lote_gel) > 0);
 
-					// Verificando acciones
-					$comercial_disabled =
-						$_SESSION["is_compramineral_aprobacionescomercial"] == 1
-						? ""
-						: "disabled";
-					$conta_disabled =
-						$_SESSION["is_compramineral_pagodetracciones"] == 1
-						? ""
-						: "disabled";
-					$gerencia_disabled =
-						$_SESSION["is_compramineral_pagoneto"] == 1
-						? ""
-						: "disabled";
-
-					// Valida si tiene pago en curso
-					$tiene_pago = 0;
-
-					if (
-						$row_validacion["pago_sin_detraccion"] > 0 ||
-						$row_validacion["DETRACCION_PAGOTOTAL"] > 0
-					) {
-						$tiene_pago = 1;
+				foreach ($historical_data as $index => $item) {
+					// 1. Filter by Lote (if filtro_lote is provided)
+					if ($has_lote_filter) {
+						$match_lote = false;
+						if (isset($item['detalles']) && is_array($item['detalles'])) {
+							foreach ($item['detalles'] as $det) {
+								if (isset($det['Lote']) && in_array($det['Lote'], $filtro_lote)) {
+									$match_lote = true;
+									break;
+								}
+							}
+						}
+						if (!$match_lote) {
+							continue;
+						}
 					}
 
-					// Valida si tiene Aprobaciones
-					$tiene_aprobaciones = 0;
-
-					if (
-						$row_validacion["aprobo_comercial"] == 1 ||
-						$row_validacion["aprobo_documentaria"] == 1 ||
-						$row_validacion["djvm"] == 1 ||
-						$row_validacion["val"] == 1
-					) {
-						$tiene_aprobaciones = 1;
+					// 2. Filter by Cod GEL (if filtro_lote_gel is provided)
+					if ($has_gel_filter) {
+						$match_gel = false;
+						if (isset($item['detalles']) && is_array($item['detalles'])) {
+							foreach ($item['detalles'] as $det) {
+								if (isset($det['Cod. GEL']) && in_array($det['Cod. GEL'], $filtro_lote_gel)) {
+									$match_gel = true;
+									break;
+								}
+							}
+						}
+						if (!$match_gel) {
+							continue;
+						}
 					}
 
-					// Inicia con la carga de datos
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $d;
-					$html .=
-						'    <input id="id_' .
-						$d .
-						'" type="hidden" value="' .
-						$row_validacion["id_comprobante_pago"] .
-						'">';
-					$html .= "  </td>";
+					// 3. Filter by Emission/Payment Dates (only if no lote or gel filter is active)
+					if (!$has_lote_filter && !$has_gel_filter) {
+						if (strlen($fecha_inicio_emision) > 0 && strlen($fecha_fin_emision) > 0) {
+							$em_date = substr($item['Fecha Emisión'], 0, 10);
+							if ($em_date < $fecha_inicio_emision || $em_date > $fecha_fin_emision) {
+								continue;
+							}
+						}
+						
+						if (strlen($fecha_inicio_sindetraccion) > 0 && strlen($fecha_fin_sindetraccion) > 0) {
+							continue;
+						}
 
-					// Setea columnas que deben ocultarse
-					$hiddenmodulo_administracioncomercial = "";
-
-					if ($ismodulo_administracioncomercial == 1) {
-						$hiddenmodulo_administracioncomercial = "hidden";
+						if (strlen($fecha_inicio_detraccion) > 0 && strlen($fecha_fin_detraccion) > 0) {
+							continue;
+						}
 					}
 
-					// Setea columnas que deben bloquearse
-					$contabilidad_disabled = "";
-					$comercial_disabled = "";
-
-					if ($ismodulo_contabilidad == 1) {
-						$comercial_disabled = "disabled";
+					// Map JSON to unified row
+					$lotes = [];
+					$gels = [];
+					$elementos = [];
+					$subtotals = [];
+					if (isset($item['detalles']) && is_array($item['detalles'])) {
+						foreach ($item['detalles'] as $det) {
+							if (!empty($det['Lote'])) $lotes[] = $det['Lote'];
+							if (!empty($det['Cod. GEL'])) $gels[] = $det['Cod. GEL'];
+							if (!empty($det['Elemento'])) $elementos[] = $det['Elemento'];
+							if (isset($det['Sub Total'])) $subtotals[] = $det['Sub Total'];
+						}
 					}
 
-					if ($ismodulo_administracioncomercial == 1) {
-						$contabilidad_disabled = "disabled";
-					}
+					$mapped = [
+						'id_comprobante_pago' => 'hist_' . $index,
+						'id_valorizacion' => 0,
+						'serie_comprobante' => $item['Serie'],
+						'numero_comprobante' => intval($item['Número']),
+						'fecha_emision_comprobante' => $item['Fecha Emisión'],
+						'PROVEEDOR_RUC' => $item['RUC'],
+						'PROVEEDOR_RAZON_SOCIAL' => $item['Razón Social'],
+						'is_aprobado_usuarioregistro' => $item['Aprobación'],
+						'is_aprobado_fechahoraregistro' => null,
+						'COD_VALORIZACION' => $item['N°'],
+						'cod_lote' => implode(',', $lotes),
+						'cod_gel' => implode(',', $gels),
+						'ARR_ELEMENTO' => implode(',', $elementos),
+						'ARR_VALORIZACION_TOTAL' => implode(',', $subtotals),
+						'sub_total' => $item['Valor Neto Mineral'],
+						'igv' => $item['I.G.V.'],
+						'total_comprobante' => $item['Valor Total'],
+						'total_sin_detraccion' => $item['Total por Pagar'],
+						'pago_sin_detraccion' => $item['Total Pagado'],
+						'porc_detraccion' => $item['%'] * 100.0,
+						'total_detraccion' => $item['Total por Pagar_%'],
+						'tipo_cambio' => $item['Tipo'],
+						'total_detraccion_soles' => $item['Total por Pagar_Tipo'],
+						'DETRACCION_PAGOTOTAL' => $item['Total Pagado_Total por Pagar'],
+						'pago_detraccion' => $item['Total Pagado_Total por Pagar'] / (floatval($item['Tipo']) ?: 1.0),
+						'aprobo_contabilidad' => !empty($item['Registro']) ? 1 : 0,
+						'aprobo_contabilidad_fechahora_registro' => $item['Registro'],
+						'aprobo_contabilidad_usuario_registro' => !empty($item['Registro']) ? 'HISTORICO' : '',
+						'aprobo_comercial' => !empty($item['Registro_Comercial']) ? 1 : 0,
+						'aprobo_comercial_fechahora_registro' => $item['Registro_Comercial'],
+						'aprobo_comercial_usuario_registro' => !empty($item['Registro_Comercial']) ? 'HISTORICO' : '',
+						'aprobo_documentaria' => !empty($item['Registro_Documentaria']) ? 1 : 0,
+						'aprobo_documentaria_fechahora_registro' => $item['Registro_Documentaria'],
+						'aprobo_documentaria_usuario_registro' => !empty($item['Registro_Documentaria']) ? 'HISTORICO' : '',
+						'djvm' => !empty($item['Registro_DJVM']) ? 1 : 0,
+						'djvm_fechahora_registro' => $item['Registro_DJVM'],
+						'djvm_usuario_registro' => !empty($item['Registro_DJVM']) ? 'HISTORICO' : '',
+						'val' => !empty($item['Registro_Firma Proveedor']) ? 1 : 0,
+						'val_fechahora_registro' => $item['Registro_Firma Proveedor'],
+						'val_usuario_registro' => !empty($item['Registro_Firma Proveedor']) ? 'HISTORICO' : '',
+						'observaciones' => $item['Observaciones'],
+						'estado' => 'P',
+						'neto_estado' => $item['Estado'],
+						'detraccion_estado' => $item['Estado_Saldo'],
+						'is_historical' => true
+					];
 
-					if ($ismodulo_gerencia == 1) {
-						$contabilidad_disabled = "disabled";
-						$comercial_disabled = "disabled";
-					}
+					$records[] = $mapped;
+				}
+			}
+		}
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;" ' .
-						$hiddenmodulo_administracioncomercial .
-						">";
-					$html .=
-						'		<div class="d-flex justify-content-center flex-column">';
-					$html .=
-						'			<button class="btn btn-sm btn-danger me-1" style="width: 35px; margin-bottom: 3px;" title="Eliminar Comprobante" onclick="f_Eliminar_ComprobantePago(' .
-						$row_validacion["id_comprobante_pago"] .
-						');" ' .
-						($_SESSION["is_compramineral_pagodetracciones"] == 1
-							? ""
-							: "hidden") .
-						" " .
-						($tiene_pago == 1 ? "hidden" : "") .
-						" " .
-						($tiene_aprobaciones == 1 ? "hidden" : "") .
-						">";
+		// Sort by emission date ascending
+		usort($records, function($a, $b) {
+			return strcmp($a['fecha_emision_comprobante'], $b['fecha_emision_comprobante']);
+		});
+
+		if (count($records) > 0) {
+			$estado = 1;
+			foreach ($records as $row_validacion) {
+				$is_historical = isset($row_validacion['is_historical']) && $row_validacion['is_historical'];
+				$html .= '<tr id="tr_detalle_' . $d . '" style="font-size: 13px;">';
+
+				// Verificando acciones
+				$comercial_disabled = "";
+				$conta_disabled = "";
+				$gerencia_disabled = "";
+
+				// Valida si tiene pago en curso
+				$tiene_pago = 0;
+				if ($row_validacion["pago_sin_detraccion"] > 0 || $row_validacion["DETRACCION_PAGOTOTAL"] > 0) {
+					$tiene_pago = 1;
+				}
+
+				// Valida si tiene Aprobaciones
+				$tiene_aprobaciones = 0;
+				if ($row_validacion["aprobo_comercial"] == 1 || $row_validacion["aprobo_documentaria"] == 1 || $row_validacion["djvm"] == 1 || $row_validacion["val"] == 1) {
+					$tiene_aprobaciones = 1;
+				}
+
+				// Inicia con la carga de datos
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $d;
+				$html .= '    <input id="id_' . $d . '" type="hidden" value="' . $row_validacion["id_comprobante_pago"] . '">';
+				$html .= "  </td>";
+
+				// Setea columnas que deben ocultarse
+				$hiddenmodulo_administracioncomercial = "";
+				if ($ismodulo_administracioncomercial == 1) {
+					$hiddenmodulo_administracioncomercial = "hidden";
+				}
+
+				// Setea columnas que deben bloquearse
+				$contabilidad_disabled = "";
+				$comercial_disabled = "";
+				if ($ismodulo_contabilidad == 1) {
+					$comercial_disabled = "disabled";
+				}
+				if ($ismodulo_administracioncomercial == 1) {
+					$contabilidad_disabled = "disabled";
+				}
+				if ($ismodulo_gerencia == 1) {
+					$contabilidad_disabled = "disabled";
+					$comercial_disabled = "disabled";
+				}
+
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;" ' . $hiddenmodulo_administracioncomercial . '>';
+				$html .= '		<div class="d-flex justify-content-center flex-column">';
+
+				if ($is_historical) {
+					$html .= '			<button class="btn btn-sm btn-secondary me-1 disabled" style="width: 35px; margin-bottom: 3px;" title="Data Histórica (No eliminable)" disabled>';
 					$html .= '				<i class="bi bi-trash"></i>';
 					$html .= "			</button>";
 
-					$html .=
-						'			<button class="btn btn-sm btn-warning me-1" style="width: 35px; margin-bottom: 3px; color: white;" title="Anular Comprobante" onclick="f_Anular_ComprobantePago(' .
-						$row_validacion["id_comprobante_pago"] .
-						');" ' .
-						($row_validacion["estado"] == 'X' ? "hidden" : "") .
-						">";
+					$html .= '			<button class="btn btn-sm btn-secondary me-1 disabled" style="width: 35px; margin-bottom: 3px;" title="Data Histórica (No anulable)" disabled>';
+					$html .= '				<i class="bi bi-x-circle"></i>';
+					$html .= "			</button>";
+
+					$html .= '			<button class="btn btn-sm btn-secondary me-1 disabled" style="width: 35px; margin-bottom: 3px;" title="Data Histórica (Solo lectura)" disabled>';
+					$html .= '				<i class="bi bi-credit-card"></i>';
+					$html .= "			</button>";
+				} else {
+					$html .= '			<button class="btn btn-sm btn-danger me-1" style="width: 35px; margin-bottom: 3px;" title="Eliminar Comprobante" onclick="f_Eliminar_ComprobantePago(' . $row_validacion["id_comprobante_pago"] . ');" ' . ($_SESSION["is_compramineral_pagodetracciones"] == 1 ? "" : "hidden") . " " . ($tiene_pago == 1 ? "hidden" : "") . " " . ($tiene_aprobaciones == 1 ? "hidden" : "") . '>';
+					$html .= '				<i class="bi bi-trash"></i>';
+					$html .= "			</button>";
+
+					$html .= '			<button class="btn btn-sm btn-warning me-1" style="width: 35px; margin-bottom: 3px; color: white;" title="Anular Comprobante" onclick="f_Anular_ComprobantePago(' . $row_validacion["id_comprobante_pago"] . ');" ' . ($row_validacion["estado"] == 'X' ? "hidden" : "") . '>';
 					$html .= '				<i class="bi bi-x-circle"></i>';
 					$html .= "			</button>";
 
 					if ($row_validacion["estado"] != 'C' && $row_validacion["estado"] != 'X') {
-						if (
-							intval($row_validacion["aprobo_contabilidad"]) === 1 &&
-							intval($row_validacion["aprobo_comercial"]) === 1 &&
-							intval($row_validacion["aprobo_documentaria"]) === 1 &&
-							$row_validacion["estado"] != 'A' &&
-							$row_validacion["estado"] != 'B'
-						) {
-							$html .=
-								'    <button id="btn_pagar_' .
-								$row_validacion["id_comprobante_pago"] .
-								'" class="btn btn-sm btn-success" style="width: 35px; margin-bottom: 3px;" title="Registrar Pago" onclick="f_ConfirmarPago_ComprobantePago(' .
-								$row_validacion["id_comprobante_pago"] .
-								', \'' .
-								$row_validacion["cod_lote"] .
-								'\', \'' .
-								$row_validacion["cod_gel"] .
-								'\',\'' .
-								$row_validacion["PROVEEDOR_RUC"] .
-								" - " .
-								$row_validacion["PROVEEDOR_RAZON_SOCIAL"] .
-								'\',' .
-								$row_validacion["PROVEEDOR_ID"] .
-								', \'' .
-								$row_validacion["serie_comprobante"] .
-								'\', \'' .
-								$row_validacion["numero_comprobante"] .
-								'\', ' .
-								number_format(
-									$row_validacion["total_comprobante"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["total_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["total_detraccion_soles"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["total_sin_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["pago_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["pago_sin_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								$row_validacion["tipo_cambio"] .
-								", " .
-								$row_validacion["id_moneda"] .
-								", " .
-								$row_validacion["porc_detraccion"] .
-								');" ' .
-								($_SESSION[
-									"is_compramineral_aprobacionescomercial"
-								] == 1
-									? ""
-									: "") .
-								">";
+						$aprobado_total = intval($row_validacion["aprobo_contabilidad"]) === 1 && intval($row_validacion["aprobo_comercial"]) === 1 && intval($row_validacion["aprobo_documentaria"]) === 1;
+						if ($aprobado_total && $row_validacion["estado"] != 'A' && $row_validacion["estado"] != 'B') {
+							$html .= '    <button id="btn_pagar_' . $row_validacion["id_comprobante_pago"] . '" class="btn btn-sm btn-success" style="width: 35px; margin-bottom: 3px;" title="Registrar Pago" onclick="f_ConfirmarPago_ComprobantePago(' .
+								$row_validacion["id_comprobante_pago"] . ', \'' . $row_validacion["cod_lote"] . '\', \'' . $row_validacion["cod_gel"] . '\',\'' . $row_validacion["PROVEEDOR_RUC"] . " - " . $row_validacion["PROVEEDOR_RAZON_SOCIAL"] . '\',' . $row_validacion["PROVEEDOR_ID"] . ', \'' . $row_validacion["serie_comprobante"] . '\', \'' . $row_validacion["numero_comprobante"] . '\', ' .
+								number_format($row_validacion["total_comprobante"], 2, ".", "") . ", " . number_format($row_validacion["total_detraccion"], 2, ".", "") . ", " . number_format($row_validacion["total_detraccion_soles"], 2, ".", "") . ", " . number_format($row_validacion["total_sin_detraccion"], 2, ".", "") . ", " . number_format($row_validacion["pago_detraccion"], 2, ".", "") . ", " . number_format($row_validacion["pago_sin_detraccion"], 2, ".", "") . ", " . $row_validacion["tipo_cambio"] . ", " . $row_validacion["id_moneda"] . ", " . $row_validacion["porc_detraccion"] . ');">';
 							$html .= '      <i class="bi bi-credit-card"></i>';
 							$html .= "    </button>";
 						} else {
-							$html .=
-								'    <button id="btn_pagar_' .
-								$row_validacion["id_comprobante_pago"] .
-								'" style="display: none; width: 35px; margin-bottom: 3px;" class="btn btn-sm btn-success" title="Pagar" onclick="f_ConfirmarPago_ComprobantePago(' .
-								$row_validacion["id_comprobante_pago"] .
-								', \'' .
-								$row_validacion["cod_lote"] .
-								'\', \'' .
-								$row_validacion["cod_gel"] .
-								'\',\'' .
-								$row_validacion["PROVEEDOR_RUC"] .
-								" - " .
-								$row_validacion["PROVEEDOR_RAZON_SOCIAL"] .
-								'\',' .
-								$row_validacion["PROVEEDOR_ID"] .
-								', \'' .
-								$row_validacion["serie_comprobante"] .
-								'\', \'' .
-								$row_validacion["numero_comprobante"] .
-								'\', ' .
-								number_format(
-									$row_validacion["total_comprobante"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["total_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["total_detraccion_soles"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["total_sin_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["pago_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								number_format(
-									$row_validacion["pago_sin_detraccion"],
-									2,
-									".",
-									""
-								) .
-								", " .
-								$row_validacion["tipo_cambio"] .
-								", " .
-								$row_validacion["id_moneda"] .
-								", " .
-								$row_validacion["porc_detraccion"] .
-								');" ' .
-								($_SESSION[
-									"is_compramineral_aprobacionescomercial"
-								] == 1
-									? "hidden"
-									: "") .
-								">";
+							$html .= '    <button id="btn_pagar_' . $row_validacion["id_comprobante_pago"] . '" style="display: none; width: 35px; margin-bottom: 3px;" class="btn btn-sm btn-success" title="Pagar" onclick="f_ConfirmarPago_ComprobantePago(' .
+								$row_validacion["id_comprobante_pago"] . ', \'' . $row_validacion["cod_lote"] . '\', \'' . $row_validacion["cod_gel"] . '\',\'' . $row_validacion["PROVEEDOR_RUC"] . " - " . $row_validacion["PROVEEDOR_RAZON_SOCIAL"] . '\',' . $row_validacion["PROVEEDOR_ID"] . ', \'' . $row_validacion["serie_comprobante"] . '\', \'' . $row_validacion["numero_comprobante"] . '\', ' .
+								number_format($row_validacion["total_comprobante"], 2, ".", "") . ", " . number_format($row_validacion["total_detraccion"], 2, ".", "") . ", " . number_format($row_validacion["total_detraccion_soles"], 2, ".", "") . ", " . number_format($row_validacion["total_sin_detraccion"], 2, ".", "") . ", " . number_format($row_validacion["pago_detraccion"], 2, ".", "") . ", " . number_format($row_validacion["pago_sin_detraccion"], 2, ".", "") . ", " . $row_validacion["tipo_cambio"] . ", " . $row_validacion["id_moneda"] . ", " . $row_validacion["porc_detraccion"] . ');" ' . ($_SESSION["is_compramineral_aprobacionescomercial"] == 1 ? "hidden" : "") . '>';
 							$html .= '      <i class="bi bi-credit-card"></i>';
 							$html .= "    </button>";
 						}
 					}
+				}
 
-					$html .= "		</div>";
-					$html .= "  </td>";
+				$html .= "		</div>";
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				// Serie Comprobante
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["serie_comprobante"];
+				if ($row_validacion["estado"] == 'X') {
+					$html .= '<br><span class="badge bg-danger mt-1"><i class="bi bi-x-circle"></i> ANULADO</span>';
+				}
+				if ($is_historical) {
+					$html .= '<br><span class="badge bg-secondary mt-1" style="font-size: 10px;"><i class="bi bi-archive"></i> HISTÓRICO</span>';
+				}
+				$html .= "	</td>";
 
-					if (
-						$ismodulo_administracioncomercial == 1 ||
-						$ismodulo_gerencia == 1 ||
-						$tiene_pago == 1
-					) {
-						$html .= "    " . $row_validacion["serie_comprobante"];
-					} else {
-						// $html .= '		<div class="d-flex justify-content-center">';
-						// $html .=
-						// 	'			<input type="text" class="form-control form-control-sm" style="text-align: center;" value="' .
-						// 	$row_validacion["serie_comprobante"] .
-						// 	'" onblur="f_UpdateDatos(1, this.value, ' .
-						// 	$row_validacion["id_comprobante_pago"] .
-						// 	')">';
-						// $html .= "		</div>";
-						$html .= "    " . $row_validacion["serie_comprobante"];
-					}
+				// Número Comprobante
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["numero_comprobante"];
+				$html .= "	</td>";
 
-					if ($row_validacion["estado"] == 'X') {
-						$html .= '<br><span class="badge bg-danger mt-1"><i class="bi bi-x-circle"></i> ANULADO</span>';
-					}
+				// Fecha Emisión
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["fecha_emision_comprobante"];
+				$html .= "  </td>";
 
-					$html .= "	</td>";
+				// RUC
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["PROVEEDOR_RUC"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">';
+				// Razón Social
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["PROVEEDOR_RAZON_SOCIAL"];
+				$html .= "  </td>";
 
-					if (
-						$ismodulo_administracioncomercial == 1 ||
-						$ismodulo_gerencia == 1 ||
-						$tiene_pago == 1
-					) {
-						$html .= "    " . $row_validacion["numero_comprobante"];
-					} else {
-						// $html .= '		<div class="d-flex justify-content-center">';
-						// $html .=
-						// 	'			<input type="text" class="form-control form-control-sm" style="text-align: center;" value="' .
-						// 	$row_validacion["numero_comprobante"] .
-						// 	'" onblur="f_UpdateDatos(2, this.value, ' .
-						// 	$row_validacion["id_comprobante_pago"] .
-						// 	')">';
-						// $html .= "		</div>";
-						$html .= "    " . $row_validacion["numero_comprobante"];
-					}
+				// Aprobación (Column 7)
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= '		<label style="font-weight: bold;">HISTORICO</label><br>';
+					$html .= "    " . $row_validacion["fecha_emision_comprobante"];
+				} else {
+					$html .= '		<label style="font-weight: bold;">' . $row_validacion["is_aprobado_usuarioregistro"] . '</label><br>';
+					$html .= "    " . $row_validacion["is_aprobado_fechahoraregistro"];
+				}
+				$html .= "  </td>";
 
-					$html .= "	</td>";
+				// COD_VALORIZACION
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["COD_VALORIZACION"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				// Lote
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$arr_lotes = explode(",", $row_validacion["cod_lote"]);
+				foreach ($arr_lotes as $lote) {
+					$html .= "		" . trim($lote) . "<br>";
+				}
+				$html .= "  </td>";
 
-					// if ($ismodulo_administracioncomercial == 1 || $ismodulo_gerencia == 1 || $tiene_pago == 1){
-					$html .=
-						"    " . $row_validacion["fecha_emision_comprobante"];
-					// }
-					// else{
-					// 	$html .= '    <input type="date" class="form-control form-control-sm" style="width: 120px;" value="'.$row_validacion["fecha_emision_comprobante"].'"';
-					//   $html .= '      onblur="f_UpdateDatos(3, this.value, '.$row_validacion["id_comprobante_pago"].')"';
-					//   $html .= '    >';
-					// }
+				// Cod. GEL
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$arr_codigogel = explode(",", $row_validacion["cod_gel"]);
+				foreach ($arr_codigogel as $codigo_gel) {
+					$html .= "		" . trim($codigo_gel) . "<br>";
+				}
+				$html .= "  </td>";
 
-					$html .= "  </td>";
+				// Elemento
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$arr_elementos = explode(",", $row_validacion["ARR_ELEMENTO"]);
+				foreach ($arr_elementos as $elemento) {
+					$html .= "		" . trim($elemento) . "<br>";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["PROVEEDOR_RUC"];
-					$html .= "  </td>";
+				// Sub Total
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right;  background-color: #ffffff;">';
+				$arr_valorizacion_subtotal = explode(",", $row_validacion["ARR_VALORIZACION_TOTAL"]);
+				foreach ($arr_valorizacion_subtotal as $sub_total_val) {
+					$html .= '		$ ' . number_format(trim($sub_total_val), 2, ".", ",") . "<br>";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .= "    " . $row_validacion["PROVEEDOR_RAZON_SOCIAL"];
-					$html .= "  </td>";
+				// Valor Neto Mineral
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
+				$html .= '   $ ' . number_format($row_validacion["sub_total"], 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						'		<label style="font-weight: bold;">' .
-						$row_validacion["is_aprobado_usuarioregistro"] .
-						"</label><br>";
-					$html .=
-						"    " .
-						$row_validacion["is_aprobado_fechahoraregistro"];
-					$html .= "  </td>";
+				// I.G.V.
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
+				$html .= '   $ ' . number_format($row_validacion["igv"], 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				// Valor Total
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #ffffff; vertical-align: middle; text-align: right; background-color: #D9D9D9; font-weight: bold;">';
+				$html .= '   $ ' . number_format($row_validacion["total_comprobante"], 2, ".", ",");
+				$html .= "  </td>";
 
-					// Setear lista
-					$arr_codvalorizacion = explode(
-						",",
-						$row_validacion["ARR_CODVALORIZACION"]
-					);
+				// Total por Pagar ($USD)
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #ffffff; vertical-align: middle; text-align: right; background-color: #C9DFF2; font-weight: bold;">';
+				$html .= '   $ ' . number_format($row_validacion["total_sin_detraccion"], 2, ".", ",");
+				$html .= "  </td>";
 
-					// foreach ($arr_codvalorizacion as $cod_valorizacion) {
-					//     $html .= "		" . trim($cod_valorizacion) . "<br>";
-					// }
+				// Total Pagado ($USD)
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
+				$html .= '   $ ' . number_format($row_validacion["pago_sin_detraccion"], 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .= "    " . $row_validacion["COD_VALORIZACION"];
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-
-					// Setear lista
-					$arr_lotes = explode(",", $row_validacion["cod_lote"]);
-
-					foreach ($arr_lotes as $lote) {
-						$html .= "		" . trim($lote) . "<br>";
-					}
-
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-
-					// Setear lista
-					$arr_codigogel = explode(",", $row_validacion["cod_gel"]);
-
-					foreach ($arr_codigogel as $codigo_gel) {
-						$html .= "		" . trim($codigo_gel) . "<br>";
-					}
-
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-
-					// Setear lista
-					$arr_elementos = explode(
-						",",
-						$row_validacion["ARR_ELEMENTO"]
-					);
-
-					foreach ($arr_elementos as $elemento) {
-						$html .= "		" . trim($elemento) . "<br>";
-					}
-
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right;  background-color: #ffffff;">';
-
-					// Setear lista
-					$arr_valorizacion_subtotal = explode(
-						",",
-						$row_validacion["ARR_VALORIZACION_TOTAL"]
-					);
-
-					foreach ($arr_valorizacion_subtotal as $sub_total) {
-						$html .=
-							'		$ ' .
-							number_format(trim($sub_total), 2, ".", ",") .
-							"<br>";
-					}
-
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
-					$html .=
-						'   $ ' .
-						number_format(
-							$row_validacion["sub_total"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
-					$html .=
-						'   $ ' .
-						number_format($row_validacion["igv"], 2, ".", ",");
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #ffffff; vertical-align: middle; text-align: right; background-color: #D9D9D9; font-weight: bold;">';
-					$html .=
-						'   $ ' .
-						number_format(
-							$row_validacion["total_comprobante"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #ffffff; vertical-align: middle; text-align: right; background-color: #C9DFF2; font-weight: bold;">';
-					$html .=
-						'   $ ' .
-						number_format(
-							$row_validacion["total_sin_detraccion"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
-					$html .=
-						'   $ ' .
-						number_format(
-							$row_validacion["pago_sin_detraccion"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
-
-					// 
-					$aprobado_total =
-						intval($row_validacion["aprobo_contabilidad"]) == 1 &&
-						intval($row_validacion["aprobo_comercial"]) == 1 &&
-						intval($row_validacion["aprobo_documentaria"]) == 1;
-
-					// Corrección de saldo usando pagos bancarios detectados si son mayores al guardado
+				// Saldo ($USD)
+				$aprobado_total = intval($row_validacion["aprobo_contabilidad"]) == 1 && intval($row_validacion["aprobo_comercial"]) == 1 && intval($row_validacion["aprobo_documentaria"]) == 1;
+				
+				if ($is_historical) {
+					$neto_estado = $row_validacion['neto_estado'];
+					$neto_bg = (strpos(strtoupper($neto_estado), 'PAGADO') !== false) ? 'bg-success' : ((strpos(strtoupper($neto_estado), 'ANULADO') !== false) ? 'bg-danger' : 'bg-warning');
+					$neto_saldo = floatval($row_validacion["total_sin_detraccion"]) - floatval($row_validacion["pago_sin_detraccion"]);
+				} else {
 					$pago_banco_calc = floatval($row_validacion["pago_neto_banco"]);
 					if ($pago_banco_calc > floatval($row_validacion["pago_sin_detraccion"])) {
 						$row_validacion["pago_sin_detraccion"] = $pago_banco_calc;
 					}
-
-					// Obteniendo Saldo (Netoo)
-					$neto_estado = "";
-					$neto_bg = "";
 					$neto_saldo = $row_validacion["total_sin_detraccion"] - $row_validacion["pago_sin_detraccion"];
 
 					if ($row_validacion["estado"] == 'X') {
@@ -74088,345 +74017,174 @@ switch ($_POST["accion"]) {
 						$neto_estado = "PENDIENTE";
 						$neto_bg = "bg-warning";
 					}
+				}
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
-					$html .= '   $ ' . number_format($neto_saldo, 2, ".", ",");
-					$html .= "  </td>";
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; background-color: #ffffff; font-weight: bold;">';
+				$html .= '   $ ' . number_format($neto_saldo, 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td class="' .
-						$neto_bg .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; color: #ffffff;">';
-					$html .= "		" . $neto_estado;
-					$html .= "  </td>";
+				// Estado
+				$html .= '  <td class="' . $neto_bg . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; color: #ffffff;">';
+				$html .= "		" . $neto_estado;
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						"  " .
-						number_format(
-							$row_validacion["porc_detraccion"],
-							2,
-							".",
-							""
-						) .
-						"%";
-					$html .= "  </td>";
+				// %
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "  " . number_format($row_validacion["porc_detraccion"], 2, ".", "") . "%";
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; font-weight: bold;">';
-					$html .=
-						'   $ ' .
-						number_format(
-							$row_validacion["total_detraccion"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
+				// Total por Pagar ($USD) detracción
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; font-weight: bold;">';
+				$html .= '   $ ' . number_format($row_validacion["total_detraccion"], 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
-					$html .=
-						"		" .
-						number_format(
-							$row_validacion["tipo_cambio"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
+				// Tipo Cambio
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
+				$html .= "		" . number_format($row_validacion["tipo_cambio"], 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #ffffff; vertical-align: middle; text-align: right; background-color: #DEEFE7; font-weight: bold;">';
-					$html .=
-						"   S/ " .
-						number_format(
-							$row_validacion["total_detraccion_soles"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
+				// Total por Pagar (S/) detracción
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #ffffff; vertical-align: middle; text-align: right; background-color: #DEEFE7; font-weight: bold;">';
+				$html .= "   S/ " . number_format($row_validacion["total_detraccion_soles"], 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; font-weight: bold;">';
-					$html .=
-						"   S/ " .
-						number_format(
-							$row_validacion["DETRACCION_PAGOTOTAL"],
-							2,
-							".",
-							","
-						);
-					$html .= "  </td>";
+				// Total Pagado (S/) detracción
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: right; font-weight: bold;">';
+				$html .= "   S/ " . number_format($row_validacion["DETRACCION_PAGOTOTAL"], 2, ".", ",");
+				$html .= "  </td>";
 
-					// Obteniendo Saldo (Detracciones)
-					$detraccion_estado = "";
-					$detraccion_bg = "";
-					$detraccion_saldo =
-						$row_validacion["total_detraccion_soles"] -
-						$row_validacion["DETRACCION_PAGOTOTAL"];
+				// Saldo (S/) detracción
+				if ($is_historical) {
+					$detraccion_estado = $row_validacion['detraccion_estado'];
+					$detraccion_bg = (strpos(strtoupper($detraccion_estado), 'PAGADO') !== false) ? 'bg-success' : ((strpos(strtoupper($detraccion_estado), 'ANULADO') !== false) ? 'bg-danger' : 'bg-warning');
+					$detraccion_saldo = floatval($row_validacion["total_detraccion_soles"]) - floatval($row_validacion["DETRACCION_PAGOTOTAL"]);
+				} else {
+					$detraccion_saldo = $row_validacion["total_detraccion_soles"] - $row_validacion["DETRACCION_PAGOTOTAL"];
 
 					if ($row_validacion["estado"] == 'X') {
 						$detraccion_estado = "ANULADO";
 						$detraccion_bg = "bg-danger";
 					} else if (abs($detraccion_saldo) < 0.02 && $aprobado_total) {
 						$detraccion_estado = "PAGADO";
-						// // pago mixto
-						// if($row_validacion["estado"] == 'A'){
-						//     $detraccion_estado = "PAGADO - Mixto";
-						// }
-						// // solo por banco
-						// else if($row_validacion["estado"] == 'B'){
-						//     $detraccion_estado = "PAGADO - Banco";
-						// }
-						// // solo por anticipo
-						// else if($row_validacion["estado"] == 'C'){
-						//     $detraccion_estado = "PAGADO - Anticipo";
-						// }
 						$detraccion_bg = "bg-success";
 					} else {
 						$detraccion_estado = "PENDIENTE";
 						$detraccion_bg = "bg-warning";
 					}
+				}
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
-					$html .=
-						"		S/ " . number_format($detraccion_saldo, 2, ".", ",");
-					$html .= "  </td>";
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold;">';
+				$html .= "		S/ " . number_format($detraccion_saldo, 2, ".", ",");
+				$html .= "  </td>";
 
-					$html .=
-						'  <td class="' .
-						$detraccion_bg .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; color: #ffffff;">';
-					$html .= "		" . $detraccion_estado;
-					$html .= "  </td>";
+				// Estado Detracción
+				$html .= '  <td class="' . $detraccion_bg . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; color: #ffffff;">';
+				$html .= "		" . $detraccion_estado;
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						'    <input type="checkbox" ' .
-						($row_validacion["aprobo_contabilidad"] == 1
-							? "checked disabled"
-							: "") .
-						"";
-					$html .=
-						'    data-id="' .
-						$row_validacion["id_comprobante_pago"] .
-						'" data-tipo="aprobo_contabilidad"';
-					$html .=
-						'      onclick="f_ActualizarCampoComprobante(this)"';
-
+				// Checkbox Contabilidad
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["aprobo_contabilidad"] == 1 ? "checked" : "") . ' disabled data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="aprobo_contabilidad">';
+				} else {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["aprobo_contabilidad"] == 1 ? "checked disabled" : "") . ' data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="aprobo_contabilidad" onclick="f_ActualizarCampoComprobante(this)"';
 					if ($ismodulo_contabilidad == 1) {
-						if (
-							$_SESSION["is_compramineral_pagodetracciones"] == 1
-						) {
-							if (
-								intval($row_validacion["aprobo_comercial"]) ==
-								1 ||
-								intval(
-									$row_validacion["aprobo_documentaria"]
-								) == 1
-							) {
+						if ($_SESSION["is_compramineral_pagodetracciones"] == 1) {
+							if (intval($row_validacion["aprobo_comercial"]) == 1 || intval($row_validacion["aprobo_documentaria"]) == 1) {
 								$contabilidad_disabled = "disabled";
 							}
 						}
-
-						if (
-							$_SESSION[
-								"is_compramineral_aprobacionescomercial"
-							] == 1
-						) {
+						if ($_SESSION["is_compramineral_aprobacionescomercial"] == 1) {
 							$contabilidad_disabled = "disabled";
 						}
 					}
-
 					if ($ismodulo_administracioncomercial == 1) {
-						if (
-							$_SESSION["is_compramineral_pagodetracciones"] == 1
-						) {
+						if ($_SESSION["is_compramineral_pagodetracciones"] == 1) {
 							$comercial_disabled = "disabled";
 						}
 					}
-
 					$html .= "    " . $contabilidad_disabled . ">";
-					$html .= "  </td>";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td id="td_aprobo_contabilidad_' .
-						$row_validacion["id_comprobante_pago"] .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						"    " .
-						$row_validacion[
-							"aprobo_contabilidad_fechahora_registro"
-						] .
-						"<br>" .
-						$row_validacion[
-							"aprobo_contabilidad_usuario_registro"
-						] .
-						"";
-					$html .= "  </td>";
+				// Registro Contabilidad
+				$html .= '  <td id="td_aprobo_contabilidad_' . $row_validacion["id_comprobante_pago"] . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["aprobo_contabilidad_fechahora_registro"] . "<br>" . $row_validacion["aprobo_contabilidad_usuario_registro"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						'    <input type="checkbox" ' .
-						($row_validacion["aprobo_comercial"] == 1
-							? "checked disabled"
-							: "") .
-						"";
-					$html .=
-						'    data-id="' .
-						$row_validacion["id_comprobante_pago"] .
-						'" data-tipo="aprobo_comercial"';
-					$html .=
-						'      onclick="f_ActualizarCampoComprobante(this)"';
-					$html .=
-						"    " .
-						$comercial_disabled .
-						" " .
-						($tiene_pago == 1 ? "disabled" : "") .
-						">";
-					$html .= "  </td>";
+				// Checkbox Comercial
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["aprobo_comercial"] == 1 ? "checked" : "") . ' disabled data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="aprobo_comercial">';
+				} else {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["aprobo_comercial"] == 1 ? "checked disabled" : "") . ' data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="aprobo_comercial" onclick="f_ActualizarCampoComprobante(this)" ' . $comercial_disabled . " " . ($tiene_pago == 1 ? "disabled" : "") . ">";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td id="td_aprobo_comercial_' .
-						$row_validacion["id_comprobante_pago"] .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						"    " .
-						$row_validacion["aprobo_comercial_fechahora_registro"] .
-						"<br>" .
-						$row_validacion["aprobo_comercial_usuario_registro"] .
-						"";
-					$html .= "  </td>";
+				// Registro Comercial
+				$html .= '  <td id="td_aprobo_comercial_' . $row_validacion["id_comprobante_pago"] . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["aprobo_comercial_fechahora_registro"] . "<br>" . $row_validacion["aprobo_comercial_usuario_registro"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						'    <input type="checkbox" ' .
-						($row_validacion["aprobo_documentaria"] == 1
-							? "checked disabled"
-							: "") .
-						"";
-					$html .=
-						'    data-id="' .
-						$row_validacion["id_comprobante_pago"] .
-						'" data-tipo="aprobo_documentaria"';
-					$html .=
-						'      onclick="f_ActualizarCampoComprobante(this)"';
-					$html .=
-						"    " .
-						$comercial_disabled .
-						" " .
-						($tiene_pago == 1 ? "disabled" : "") .
-						">";
-					$html .= "  </td>";
+				// Checkbox Documentaria
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["aprobo_documentaria"] == 1 ? "checked" : "") . ' disabled data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="aprobo_documentaria">';
+				} else {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["aprobo_documentaria"] == 1 ? "checked disabled" : "") . ' data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="aprobo_documentaria" onclick="f_ActualizarCampoComprobante(this)" ' . $comercial_disabled . " " . ($tiene_pago == 1 ? "disabled" : "") . ">";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td id="td_aprobo_documentaria_' .
-						$row_validacion["id_comprobante_pago"] .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						"    " .
-						$row_validacion[
-							"aprobo_documentaria_fechahora_registro"
-						] .
-						"<br>" .
-						$row_validacion[
-							"aprobo_documentaria_usuario_registro"
-						] .
-						"";
-					$html .= "  </td>";
+				// Registro Documentaria
+				$html .= '  <td id="td_aprobo_documentaria_' . $row_validacion["id_comprobante_pago"] . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["aprobo_documentaria_fechahora_registro"] . "<br>" . $row_validacion["aprobo_documentaria_usuario_registro"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						'    <input type="checkbox" ' .
-						($row_validacion["djvm"] == 1 ? "checked" : "") .
-						"";
-					$html .=
-						'    data-id="' .
-						$row_validacion["id_comprobante_pago"] .
-						'" data-tipo="djvm"';
-					$html .=
-						'      onclick="f_ActualizarCampoComprobante(this)"';
-					$html .= "    " . $comercial_disabled . ">";
-					$html .= "  </td>";
+				// Checkbox DJVM
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["djvm"] == 1 ? "checked" : "") . ' disabled data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="djvm">';
+				} else {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["djvm"] == 1 ? "checked" : "") . ' data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="djvm" onclick="f_ActualizarCampoComprobante(this)" ' . $comercial_disabled . ">";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td id="td_djvm_' .
-						$row_validacion["id_comprobante_pago"] .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						"    " .
-						$row_validacion["djvm_fechahora_registro"] .
-						"<br>" .
-						$row_validacion["djvm_usuario_registro"] .
-						"";
-					$html .= "  </td>";
+				// Registro DJVM
+				$html .= '  <td id="td_djvm_' . $row_validacion["id_comprobante_pago"] . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["djvm_fechahora_registro"] . "<br>" . $row_validacion["djvm_usuario_registro"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-					$html .=
-						'    <input type="checkbox" ' .
-						($row_validacion["val"] == 1 ? "checked" : "") .
-						"";
-					$html .=
-						'    data-id="' .
-						$row_validacion["id_comprobante_pago"] .
-						'" data-tipo="val"';
-					$html .=
-						'      onclick="f_ActualizarCampoComprobante(this)"';
-					$html .= "    " . $comercial_disabled . ">";
-					$html .= "  </td>";
+				// Checkbox Firma Proveedor (val)
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["val"] == 1 ? "checked" : "") . ' disabled data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="val">';
+				} else {
+					$html .= '    <input type="checkbox" ' . ($row_validacion["val"] == 1 ? "checked" : "") . ' data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="val" onclick="f_ActualizarCampoComprobante(this)" ' . $comercial_disabled . ">";
+				}
+				$html .= "  </td>";
 
-					$html .=
-						'  <td id="td_val_' .
-						$row_validacion["id_comprobante_pago"] .
-						'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-					$html .=
-						"    " .
-						$row_validacion["val_fechahora_registro"] .
-						"<br>" .
-						$row_validacion["val_usuario_registro"] .
-						"";
-					$html .= "  </td>";
+				// Registro Firma Proveedor
+				$html .= '  <td id="td_val_' . $row_validacion["id_comprobante_pago"] . '" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
+				$html .= "    " . $row_validacion["val_fechahora_registro"] . "<br>" . $row_validacion["val_usuario_registro"];
+				$html .= "  </td>";
 
-					$html .=
-						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
-
-					if (
-						$ismodulo_administracioncomercial == 1 ||
-						$ismodulo_gerencia == 1 ||
-						$tiene_pago == 1
-					) {
+				// Observaciones
+				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
+				if ($is_historical) {
+					$html .= "		" . $row_validacion["observaciones"];
+				} else {
+					if ($ismodulo_administracioncomercial == 1 || $ismodulo_gerencia == 1 || $tiene_pago == 1) {
 						$html .= "		" . $row_validacion["observaciones"];
 					} else {
-						$html .=
-							'    <textarea class="form-control form-control-sm" rows="2" data-id="' .
-							$row_validacion["id_comprobante_pago"] .
-							'" data-tipo="observaciones" onblur="f_UpdateDatos(3, this.value, ' .
-							$row_validacion["id_comprobante_pago"] .
-							')">' .
-							$row_validacion["observaciones"] .
-							"</textarea>";
+						$html .= '    <textarea class="form-control form-control-sm" rows="2" data-id="' . $row_validacion["id_comprobante_pago"] . '" data-tipo="observaciones" onblur="f_UpdateDatos(3, this.value, ' . $row_validacion["id_comprobante_pago"] . ')">' . $row_validacion["observaciones"] . "</textarea>";
 					}
-
-					$html .= "  </td>";
-
-					$html .= "</tr>";
-
-					$d++;
 				}
-			}
-		}
+				$html .= "  </td>";
 
-		echo json_encode(["estado" => $estado, "html" => $html]);
+				$html .= "</tr>";
+				$d++;
+			}
+		}echo json_encode(["estado" => $estado, "html" => $html]);
 
 		break;
 	case "eliminar_ComprobantePago":
@@ -80262,14 +80020,87 @@ switch ($_POST["accion"]) {
 		";
 
 		$data = [];
-		if ($r = mysqli_query($enlace, $q)) {
-			while ($row = mysqli_fetch_assoc($r)) {
-				$data[] = $row;
-			}
-			echo json_encode(["estado" => 1, "data" => $data]);
-		} else {
+		if (!($r = mysqli_query($enlace, $q))) {
 			echo json_encode(["estado" => 0, "mensaje" => mysqli_error($enlace)]);
+			break;
 		}
+		while ($row = mysqli_fetch_assoc($r)) {
+			$row["is_historico"] = false;
+			$data[] = $row;
+		}
+
+		// Leer y fusionar datos historicos del JSON (sin guardar en DB)
+		$json_path = __DIR__ . '/repo_old/guias_segundo_tramo.json';
+		if (file_exists($json_path)) {
+			$historicos = json_decode(file_get_contents($json_path), true);
+			if (is_array($historicos)) {
+				foreach ($historicos as $h) {
+					// Filtro por fecha
+					if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+						$fecha_h = $h["fecha_egreso"] ?? '';
+						if ($fecha_h < $fecha_inicio || $fecha_h > $fecha_fin) continue;
+					}
+					// Filtro por placa
+					if (!empty($filtro_placa)) {
+						$placa_h = strtoupper($h["placa"] ?? '');
+						if (strpos($placa_h, strtoupper($filtro_placa)) === false) continue;
+					}
+
+					$partes_guia = explode("-", $h["guia_remitente"] ?? '', 2);
+					$partes_grt  = explode("-", $h["guia_transportista"] ?? '', 2);
+
+					// Mapear lotes al formato que usa f_RenderizarDetalleGuiaCompleto
+					$lotes_mapeados = [];
+					foreach ($h["lotes"] ?? [] as $l) {
+						$is_blending = ($l["tipo"] ?? '') === "Blending" ? 1 : 0;
+						$presentacion = $l["presentacion"] ?? '';
+						$tipo_carga = (stripos($presentacion, "Big Bag") !== false) ? 2 : 1;
+						$cantidad_bigbags = 0;
+						if ($tipo_carga == 2 && preg_match('/\((\d+)\)/', $presentacion, $m)) {
+							$cantidad_bigbags = intval($m[1]);
+						}
+						$lotes_mapeados[] = [
+							"is_blending"      => $is_blending,
+							"tipo_carga"       => $tipo_carga,
+							"cantidad_bigbags" => $cantidad_bigbags,
+							"codigo_mineral"   => $l["codigo_mineral"] ?? '',
+							"ticket_balanza"   => $l["ticket_balanza"] ?? '',
+							"peso_tomado"      => $l["peso_distribucion"] ?? 0,
+							"peso_bruto"       => $l["peso_bruto"] ?? 0,
+							"peso_tara"        => $l["tara"] ?? 0,
+							"peso_neto"        => $l["peso_neto"] ?? 0,
+						];
+					}
+
+					$data[] = [
+						// Campos para el listado
+						"id_guia"                   => null,
+						"guia_remitente_serie"      => $partes_guia[0] ?? '',
+						"guia_remitente_numero"     => $partes_guia[1] ?? '',
+						"fecha_inicio_traslado"     => $h["fecha_egreso"] ?? '',
+						"placas"                    => $h["placa"] ?? '',
+						"empresa_transporte"        => $h["empresa_transporte"] ?? '',
+						"conductor_nombre"          => $h["conductor"] ?? '',
+						"estado_guia"               => (($h["estado"] ?? '') === "ACTIVA") ? "1" : "0",
+						"total_lotes"               => $h["total_lotes"] ?? 0,
+						"peso_total_neto"           => $h["peso_total_neto"] ?? 0,
+						// Campos para f_RenderizarDetalleGuiaCompleto
+						"placa"                     => $h["placa"] ?? '',
+						"guia_transportista_serie"  => $partes_grt[0] ?? '',
+						"guia_transportista_numero" => $partes_grt[1] ?? '',
+						"sin_guia_transportista"    => empty($h["guia_transportista"]) ? 1 : 0,
+						"motivo_traslado"           => $h["motivo"] ?? '',
+						"planta_destino"            => $h["planta_destino"] ?? '',
+						"fecha_hora_emision"        => $h["emision"] ?? '',
+						"fecha_hora_planta"         => $h["llegada_planta"] ?? '',
+						"lotes"                     => $lotes_mapeados,
+						"is_historico"              => true,
+					];
+				}
+			}
+		}
+
+		echo json_encode(["estado" => 1, "data" => $data]);
 		break;
 
 	case "get_guia_segundo_tramo_detalle":

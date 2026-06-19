@@ -24,14 +24,16 @@ if (!isset($_SESSION["Id"])) {
   <link rel="icon" href="<?php echo $favicon; ?>" type="image/png" />
 
   <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
 
   <!-- Íconos -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
 
   <!-- Select2 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
   <link rel="stylesheet" href="<?php echo $url_lims ?>/global/styles.css">
 
@@ -119,14 +121,16 @@ if (!isset($_SESSION["Id"])) {
       <?php echo $navbar_maintop; ?>
 
       <!-- Modal (Menú Lateral) -->
-      <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true"
+        data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-left" style="margin-top: 0px !important; margin-left: 0px !important;">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title" id="menuModalLabel">Menú de Opciones</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="background: #25476a; color: white; border-top: solid #EFB810 3px; padding: 0px !important;">
+            <div class="modal-body"
+              style="background: #25476a; color: white; border-top: solid #EFB810 3px; padding: 0px !important;">
               <ul class="list-unstyled">
                 <div id="div_menu1"></div>
               </ul>
@@ -136,7 +140,8 @@ if (!isset($_SESSION["Id"])) {
       </div>
 
       <!-- Modal (Menú Lateral) -->
-      <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true"
+        data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-right" style="margin-top: 0px !important; margin-left: 0px !important;">
           <div class="modal-content">
             <div class="modal-header">
@@ -145,8 +150,10 @@ if (!isset($_SESSION["Id"])) {
             </div>
             <div class="modal-body" style="padding: 0px !important;">
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
-                <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+                <div
+                  style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                   <div class="row" style="padding-left: 10px; padding-right: 10px;">
                     <h6 style="font-size: 14px;">
                       Fecha de Emisión
@@ -159,19 +166,24 @@ if (!isset($_SESSION["Id"])) {
 
                   <div class="row">
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_inicio_emision" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>">
+                      <input id="fecha_inicio_emision" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>">
                     </div>
                     <br><br>
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_fin_emision" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>">
+                      <input id="fecha_fin_emision" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>">
                     </div>
 
                   </div>
                 </div>
               </div>
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;" hidden>
-                <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;"
+                hidden>
+                <div
+                  style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                   <div class="row" style="padding-left: 10px; padding-right: 10px;">
                     <h6 style="font-size: 14px;">
                       Fecha de Pago (Sin Detracción)
@@ -184,19 +196,24 @@ if (!isset($_SESSION["Id"])) {
 
                   <div class="row">
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_inicio_sindetraccion" type="date" class="form-control" style="text-align: center; font-size: 14px;">
+                      <input id="fecha_inicio_sindetraccion" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;">
                     </div>
                     <br><br>
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_fin_sindetraccion" type="date" class="form-control" style="text-align: center; font-size: 14px;">
+                      <input id="fecha_fin_sindetraccion" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;">
                     </div>
 
                   </div>
                 </div>
               </div>
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;" hidden>
-                <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;"
+                hidden>
+                <div
+                  style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                   <div class="row" style="padding-left: 10px; padding-right: 10px;">
                     <h6 style="font-size: 14px;">
                       Fecha de Pago (Detracción)
@@ -209,20 +226,24 @@ if (!isset($_SESSION["Id"])) {
 
                   <div class="row">
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_inicio_detraccion" type="date" class="form-control" style="text-align: center; font-size: 14px;">
+                      <input id="fecha_inicio_detraccion" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;">
                     </div>
                     <br><br>
                     <div class="col-md-12 col-sm-12 col-xs-12">
-                      <input id="fecha_fin_detraccion" type="date" class="form-control" style="text-align: center; font-size: 14px;">
+                      <input id="fecha_fin_detraccion" type="date" class="form-control"
+                        style="text-align: center; font-size: 14px;">
                     </div>
 
                   </div>
                 </div>
               </div>
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
                 <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 2px;">
-                  <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+                  <div
+                    style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                     <div class="row" style="padding-left: 10px; padding-right: 10px;">
                       <h6 style="font-size: 14px;">Por Lotes:</h6>
                     </div>
@@ -230,7 +251,9 @@ if (!isset($_SESSION["Id"])) {
                       <hr style="border-color: #D9D9D9;" />
                     </div>
                     <div class="d-flex" style="margin-top: -5px; padding-left: 10px; padding-right: 10px;">
-                      <select id="filtro_lote" class="form-control" multiple data-placeholder="Elija una o más opciones..." style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
+                      <select id="filtro_lote" class="form-control" multiple
+                        data-placeholder="Elija una o más opciones..."
+                        style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
                         <?php
 
                         $q_lotes = "SELECT cod_lote
@@ -242,11 +265,12 @@ if (!isset($_SESSION["Id"])) {
                         if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
                           if (mysqli_num_rows($res_lotes) > 0) {
                             while ($row_lotes = mysqli_fetch_array($res_lotes)) {
-                        ?>
+                              ?>
 
-                              <option value="<?php echo $row_lotes["cod_lote"]; ?>"><?php echo $row_lotes["cod_lote"]; ?></option>
+                              <option value="<?php echo $row_lotes["cod_lote"]; ?>"><?php echo $row_lotes["cod_lote"]; ?>
+                              </option>
 
-                        <?php
+                              <?php
                             }
                           }
                         }
@@ -258,9 +282,11 @@ if (!isset($_SESSION["Id"])) {
                 </div>
               </div>
 
-              <div class="row" style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
+              <div class="row"
+                style="padding-left: 20px;margin-top: 10px;margin-bottom: 10px;font-size: 13px;padding-right: 20px;">
                 <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 2px;">
-                  <div style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
+                  <div
+                    style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 10px;">
                     <div class="row" style="padding-left: 10px; padding-right: 10px;">
                       <h6 style="font-size: 14px;">Por Cod GEL:</h6>
                     </div>
@@ -268,7 +294,9 @@ if (!isset($_SESSION["Id"])) {
                       <hr style="border-color: #D9D9D9;" />
                     </div>
                     <div class="d-flex" style="margin-top: -5px; padding-left: 10px; padding-right: 10px;">
-                      <select id="filtro_lote_gel" class="form-control" multiple data-placeholder="Elija una o más opciones..." style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
+                      <select id="filtro_lote_gel" class="form-control" multiple
+                        data-placeholder="Elija una o más opciones..."
+                        style="font-size: 14px; border: solid; border-width: 1px; border-color: #BFBFBF; border-radius: 7px; max-height: 40px;">
                         <?php
 
                         $q_lotes = "SELECT cod_gel
@@ -281,11 +309,12 @@ if (!isset($_SESSION["Id"])) {
                         if ($res_lotes = mysqli_query($enlace, $q_lotes)) {
                           if (mysqli_num_rows($res_lotes) > 0) {
                             while ($row_lotes = mysqli_fetch_array($res_lotes)) {
-                        ?>
+                              ?>
 
-                              <option value="<?php echo $row_lotes["cod_gel"]; ?>"><?php echo $row_lotes["cod_gel"]; ?></option>
+                              <option value="<?php echo $row_lotes["cod_gel"]; ?>"><?php echo $row_lotes["cod_gel"]; ?>
+                              </option>
 
-                        <?php
+                              <?php
                             }
                           }
                         }
@@ -299,7 +328,8 @@ if (!isset($_SESSION["Id"])) {
 
               <div class="row" style="padding-left: 10px;margin-top: 30px;font-size: 13px;padding-right: 10px;">
                 <div class="col-md-12 col-sm-12 col-xs-12">
-                  <button class="btn btn-secondary" type="button" onclick="f_LoadResultados();" style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; background-color: #cfaa41; margin-bottom: 10px;">
+                  <button class="btn btn-secondary" type="button" onclick="f_LoadResultados();"
+                    style="width: 100%; color: #ffffff; font-size: 14px; margin-top: -8px; background-color: #cfaa41; margin-bottom: 10px;">
                     <i class="bi bi-search"></i> <b>Ejecutar Búsqueda</b>
                   </button>
                 </div>
@@ -317,10 +347,12 @@ if (!isset($_SESSION["Id"])) {
         </div>
       </div>
 
-      <div class="col-md-12 col-sm-12 col-xs-12" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding-top: 10px; padding-left: 35px;">
+      <div class="col-md-12 col-sm-12 col-xs-12"
+        style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding-top: 10px; padding-left: 35px;">
         <div class="d-flex row">
 
-          <div class="row" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; margin-bottom: 5px;">
+          <div class="row"
+            style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; margin-bottom: 5px;">
             <div class="row text-end" style="padding-top: 10px; padding-left : 20px; padding-right: 20px;">
               <h5>
                 Filtros
@@ -336,7 +368,8 @@ if (!isset($_SESSION["Id"])) {
 
           <div class="row" style="padding: 0px;">
             <div id="div_detalle" class="col-md-12 col-sm-12 col-xs-12" style="padding: 0px;">
-              <div class="row" style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; margin-left: 0px; margin-right: 0px;">
+              <div class="row"
+                style="border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; background-color: #ffffff; margin-left: 0px; margin-right: 0px;">
                 <div class="col-md-12 col-sm-12 col-xs-12" style="padding: 0px;">
                   <div class="row" style="padding-top: 10px; padding-left : 20px; padding-right: 20px;">
                     <div class="col-md-9 col-sm-9 col-xs-12">
@@ -344,12 +377,14 @@ if (!isset($_SESSION["Id"])) {
                         <div class="d-flex flex-fill">
                           <h5>Resumen </h5>
 
-                          <div id="wt_resumen" class="" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+                          <div id="wt_resumen" class=""
+                            style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
                             <img src="<?php echo $img_waiting ?>" style="width: 20px;">
                             <label style="font-style: italic;"> Cargando datos...</label>
                           </div>
 
-                          <div id="wt_saving" class="" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+                          <div id="wt_saving" class=""
+                            style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
                             <img src="<?php echo $img_waiting ?>" style="width: 20px;">
                             <label style="font-style: italic;"> Grabando datos...</label>
                           </div>
@@ -359,7 +394,9 @@ if (!isset($_SESSION["Id"])) {
 
                     <div class="col-md-3 col-sm-3 col-xs-12">
                       <div class="d-flex justify-content-end">
-                        <button id="btn_AddComprobante" type="button" class="btn btn-primary" style="font-size: 14px; margin-top: -6px;" onclick="f_AddComprobantePago();">+ Generar Comprobante</button>
+                        <button id="btn_AddComprobante" type="button" class="btn btn-primary"
+                          style="font-size: 14px; margin-top: -6px;" onclick="f_AddComprobantePago();">+ Generar
+                          Comprobante</button>
                       </div>
                     </div>
                   </div>
@@ -371,182 +408,227 @@ if (!isset($_SESSION["Id"])) {
                   <hr style="border-color: #D9D9D9;" />
                 </div>
 
-                <div class="col-md-12 col-sm-12 col-xs-12" style="padding-left: 20px; padding-right: 20px; margin-top: 5px; width: 100%;">
-                  <div class="table-container" style="margin-top: 5px; overflow-x: scroll; width: 100%; height: 500px; margin-bottom: 20px;">
+                <div class="col-md-12 col-sm-12 col-xs-12"
+                  style="padding-left: 20px; padding-right: 20px; margin-top: 5px; width: 100%;">
+                  <div class="table-container"
+                    style="margin-top: 5px; overflow-x: scroll; width: 100%; height: 500px; margin-bottom: 20px;">
                     <table class="table table-bordered table-hover">
                       <thead>
                         <tr style="font-size: 12px;">
-                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; border-top-left-radius: 15px;">
+                          <th rowspan="2"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; border-top-left-radius: 15px;">
                             N°
                           </th>
 
-                          <th colspan="3" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 200px;">
+                          <th colspan="3"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 200px;">
                             Información Comprobante
                           </th>
 
-                          <th colspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          <th colspan="2"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                             Información Proveedor
                           </th>
 
-                          <th colspan="9" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          <th colspan="9"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                             Información Valorización
                           </th>
 
-                          <th colspan="4" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          <th colspan="4"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                             Información Pago Neto
                           </th>
 
-                          <th colspan="7" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          <th colspan="7"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                             Información Pago Detracción
                           </th>
 
-                          <th colspan="10" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                          <th colspan="10"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                             Aprobaciones
                           </th>
 
-                          <th rowspan="2" style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 130px; border-top-right-radius: 15px; min-width: 250px;">
+                          <th rowspan="2"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 130px; border-top-right-radius: 15px; min-width: 250px;">
                             Observaciones
                           </th>
                         </tr>
 
                         <tr style="font-size: 12px;">
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 80px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 80px;">
                             Serie
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Número
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Fecha Emisión
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 80px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 80px;">
                             RUC
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 200px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 200px;">
                             Razón Social
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Aprobación
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 70px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 70px;">
                             N°
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Lote
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Cod. GEL
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Elemento
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Sub Total
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Valor Neto Mineral
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             I.G.V.
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Valor Total
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Total por Pagar<br>($USD)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Total Pagado<br>($USD)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Saldo<br>($USD)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Estado
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 60px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 60px;">
                             %
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Total por Pagar<br>($USD)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 60px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 60px;">
                             Tipo<br>Cambio
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Total por Pagar<br>(S/)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Total Pagado<br>(S/)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 120px;">
                             Saldo<br>(S/)
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Estado
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Contabilidad
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Registro
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Comercial
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Registro
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Documentaria
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Registro
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             DJVM
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Registro
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Firma Proveedor
                           </th>
 
-                          <th style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                          <th
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                             Registro
                           </th>
 
@@ -571,7 +653,8 @@ if (!isset($_SESSION["Id"])) {
   <input id="hd_id_moneda" type="hidden">
 
   <!-- Ventanas modales -->
-  <div class="modal fade modal-dialog-scrollable" id="modal_admincomprobantes" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_admincomprobantesLabel" aria-hidden="true">
+  <div class="modal fade modal-dialog-scrollable" id="modal_admincomprobantes" data-bs-backdrop="static"
+    data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_admincomprobantesLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -603,7 +686,9 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-3 col-sm-3 col-xs-12" style="margin-left: -20px;">
-              <input id="comprobante_fecha" type="date" class="form-control" style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>" onchange="f_GetTipoCambio();">
+              <input id="comprobante_fecha" type="date" class="form-control"
+                style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>"
+                onchange="f_GetTipoCambio();">
             </div>
           </div>
 
@@ -616,11 +701,13 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -20px;">
-              <input id="comprobante_serie" type="text" class="form-control" style="text-align: center; font-size: 14px; text-transform: uppercase;" placeholder="N° Serie">
+              <input id="comprobante_serie" type="text" class="form-control"
+                style="text-align: center; font-size: 14px; text-transform: uppercase;" placeholder="N° Serie">
             </div>
 
             <div class="col-md-3 col-sm-3 col-xs-12" style="margin-left: -20px;">
-              <input id="comprobante_numero" type="text" class="form-control" style="text-align: center; font-size: 14px; text-transform: uppercase;" placeholder="N° Comprobante">
+              <input id="comprobante_numero" type="text" class="form-control"
+                style="text-align: center; font-size: 14px; text-transform: uppercase;" placeholder="N° Comprobante">
             </div>
           </div>
 
@@ -633,7 +720,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-8 col-sm-8 col-xs-12" style="margin-left: -20px;">
-              <select id="comprobante_proveedor" class="form-select" data-placeholder="Elija una opción..." style="font-size: 14px;">
+              <select id="comprobante_proveedor" class="form-select" data-placeholder="Elija una opción..."
+                style="font-size: 14px;">
                 <option selected value="">Elija una opción...</option>
 
                 <?php
@@ -649,11 +737,12 @@ if (!isset($_SESSION["Id"])) {
                 if ($res_lista = mysqli_query($enlace, $q_lista)) {
                   if (mysqli_num_rows($res_lista) > 0) {
                     while ($row_lista = mysqli_fetch_array($res_lista)) {
-                ?>
+                      ?>
 
-                      <option value="<?php echo $row_lista["Id"] ?>"><?php echo $row_lista["documento"] . ' - ' . $row_lista["razon_social"] ?></option>
+                      <option value="<?php echo $row_lista["Id"] ?>">
+                        <?php echo $row_lista["documento"] . ' - ' . $row_lista["razon_social"] ?></option>
 
-                <?php
+                      <?php
                     }
                   }
                 }
@@ -672,7 +761,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-8 col-sm-8 col-xs-12" style="margin-left: -20px;">
-              <select id="comprobante_valorizacion" class="form-select" multiple data-placeholder="Elija opciones..." style="font-size: 14px;">
+              <select id="comprobante_valorizacion" class="form-select" multiple data-placeholder="Elija opciones..."
+                style="font-size: 14px;">
               </select>
             </div>
           </div>
@@ -686,7 +776,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -20px;">
-              <input id="comprobante_porc_detraccion" type="number" class="form-control" style="text-align: center; font-size: 14px; text-transform: uppercase;" placeholder="% Detracción">
+              <input id="comprobante_porc_detraccion" type="number" class="form-control"
+                style="text-align: center; font-size: 14px; text-transform: uppercase;" placeholder="% Detracción">
             </div>
           </div>
 
@@ -699,36 +790,43 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -20px;">
-              <input id="comprobante_tipocambio" type="number" class="form-control" style="text-align: center; font-size: 14px;" placeholder="Tipo cambio (Venta)">
+              <input id="comprobante_tipocambio" type="number" class="form-control"
+                style="text-align: center; font-size: 14px;" placeholder="Tipo cambio (Venta)">
 
-              <a href="https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias" target="_blank" rel="noopener noreferrer" style="font-size: 12px;">
+              <a href="https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias" target="_blank"
+                rel="noopener noreferrer" style="font-size: 12px;">
                 Consulta Sunat
                 <i class="bi bi-search ms-1" aria-hidden="true"></i>
               </a>
             </div>
 
             <div class="col-md-1 col-sm-1 col-xs-12" style="padding: 5px; text-align: center;">
-              <img src="<?php echo $img_tipocambio ?>" style="margin-top: -7px; width: 40px; cursor: pointer;" title="Configurar Tipo de Cambio" onclick="f_AdminTipoCambio();">
+              <img src="<?php echo $img_tipocambio ?>" style="margin-top: -7px; width: 40px; cursor: pointer;"
+                title="Configurar Tipo de Cambio" onclick="f_AdminTipoCambio();">
             </div>
           </div>
         </div>
 
         <div class="modal-footer" style="margin-top: -10px;">
-          <div id="wt_grabarcomprobante" class="" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+          <div id="wt_grabarcomprobante" class=""
+            style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
             <img src="<?php echo $img_waiting ?>" style="width: 20px;">
             <label style="font-style: italic;"> Grabando datos...</label>
           </div>
 
           <input id="modograbar_comprobante" type="hidden">
 
-          <button type="button" class="btn btn-secondary wt_grabarcomprobante_button" data-bs-dismiss="modal" style="font-size: 14px;">Cerrar</button>
-          <button type="button" class="btn btn-primary wt_grabarcomprobante_button" style="font-size: 14px;" onclick="f_GrabarComprobante();">Grabar Comprobante</button>
+          <button type="button" class="btn btn-secondary wt_grabarcomprobante_button" data-bs-dismiss="modal"
+            style="font-size: 14px;">Cerrar</button>
+          <button type="button" class="btn btn-primary wt_grabarcomprobante_button" style="font-size: 14px;"
+            onclick="f_GrabarComprobante();">Grabar Comprobante</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="modal fade" id="modal_registraradelanto" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_registraradelantoLabel" aria-hidden="true">
+  <div class="modal fade" id="modal_registraradelanto" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="modal_registraradelantoLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
@@ -748,11 +846,13 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-5 col-sm-5 col-xs-5">
-              <input id="ins_cod_lote" type="text" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold;" disabled>
+              <input id="ins_cod_lote" type="text" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold;" disabled>
             </div>
 
             <div class="col-md-5 col-sm-5 col-xs-5">
-              <input id="ins_cod_gel" type="text" class="form-control col-md-12 col-xs-12" style="margin-left: 5px; font-size: 14px; text-align: center; font-weight: bold;" disabled>
+              <input id="ins_cod_gel" type="text" class="form-control col-md-12 col-xs-12"
+                style="margin-left: 5px; font-size: 14px; text-align: center; font-weight: bold;" disabled>
             </div>
           </div>
 
@@ -761,8 +861,10 @@ if (!isset($_SESSION["Id"])) {
               Proveedor:
             </div>
             <div class="col-md-10 col-sm-10 col-xs-10">
-              <input id="ins_proveedor" type="text" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold;" disabled>
-              <input hidden id="ins_id_proveedor" type="text" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold;" disabled>
+              <input id="ins_proveedor" type="text" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold;" disabled>
+              <input hidden id="ins_id_proveedor" type="text" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold;" disabled>
             </div>
           </div>
           <br>
@@ -772,36 +874,45 @@ if (!isset($_SESSION["Id"])) {
             <div class="col-4">
               <div class="card shadow-sm">
                 <div class="card-body p-2">
-                  <div class="fw-bold" style="background-color: #816951; color: #ffffff; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 5px;">Valor Total <strong>($)</strong></div>
+                  <div class="fw-bold"
+                    style="background-color: #816951; color: #ffffff; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 5px;">
+                    Valor Total <strong>($)</strong></div>
                   <hr>
                   <label>Total: </label>
                   <input id="ins_totalventa" type="text" class="form-control text-center fw-bold " disabled>
                   <label>Por Pagar: </label>
-                  <input id="ins_por_pagar_venta" type="text" class="form-control text-center fw-bold text-success" disabled>
+                  <input id="ins_por_pagar_venta" type="text" class="form-control text-center fw-bold text-success"
+                    disabled>
                 </div>
               </div>
             </div>
             <div class="col-4">
               <div class="card shadow-sm">
                 <div class="card-body p-2">
-                  <div class="fw-bold" style="background-color: #768C6C; color: #ffffff; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 5px;">Neto <strong>($)</strong></div>
+                  <div class="fw-bold"
+                    style="background-color: #768C6C; color: #ffffff; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 5px;">
+                    Neto <strong>($)</strong></div>
                   <hr>
                   <label>Total: </label>
                   <input id="ins_sin_detraccion" type="text" class="form-control text-center fw-bold" disabled>
                   <label>Por Pagar: </label>
-                  <input id="ins_por_pagar_sin_detraccion" type="text" class="form-control text-center fw-bold text-success" disabled>
+                  <input id="ins_por_pagar_sin_detraccion" type="text"
+                    class="form-control text-center fw-bold text-success" disabled>
                 </div>
               </div>
             </div>
             <div class="col-4">
               <div class="card shadow-sm">
                 <div class="card-body p-2">
-                  <div class="fw-bold" style="background-color: #404040; color: #ffffff; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 5px;">Detracción <strong>(S/)</strong></div>
+                  <div class="fw-bold"
+                    style="background-color: #404040; color: #ffffff; border: solid; border-width: 1px; border-color: #E6E9ED; border-radius: 7px; padding: 5px;">
+                    Detracción <strong>(S/)</strong></div>
                   <hr>
                   <label>Total: </label>
                   <input id="ins_detraccion" type="text" class="form-control text-center fw-bold" disabled>
                   <label>Por Pagar: </label>
-                  <input id="ins_por_pagar_detraccion" type="text" class="form-control text-center fw-bold text-success" disabled>
+                  <input id="ins_por_pagar_detraccion" type="text" class="form-control text-center fw-bold text-success"
+                    disabled>
                 </div>
               </div>
             </div>
@@ -810,7 +921,8 @@ if (!isset($_SESSION["Id"])) {
           <hr>
 
           <div class="d-flex justify-content-center" style="padding: 5px; margin-top: 10px;">
-            <button type="button" class="btn btn-primary" style="font-size: 14px; width: 100%;" onclick="f_AddPago('N');">+ Nuevo Pago</button>
+            <button type="button" class="btn btn-primary" style="font-size: 14px; width: 100%;"
+              onclick="f_AddPago('N');">+ Nuevo Pago</button>
           </div>
 
           <div class="d-flex justify-content-center" style="padding: 5px;">
@@ -818,57 +930,70 @@ if (!isset($_SESSION["Id"])) {
               <table class="table table-bordered table-hover mb-0" style="white-space: nowrap;">
                 <thead>
                   <tr style="font-size: 12px;">
-                    <th colspan="14" style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; border-top-left-radius: 15px; border-top-right-radius: 15px;">
+                    <th colspan="14"
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; border-top-left-radius: 15px; border-top-right-radius: 15px;">
                       Detalle de Pagos
                     </th>
                   </tr>
 
                   <tr style="font-size: 12px;">
-                    <th colspan="3" style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
+                    <th colspan="3"
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                       Item
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                       Fecha
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                       Medio<br>pago
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                       GEL <br>(Desde)
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                       Proveedor <br>(Hacia)
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 200px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 200px;">
                       Monto
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 80px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 80px;">
                       T.C
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 100px;">
                       N° Operación
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 400px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 400px;">
                       Observación
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 150px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 150px;">
                       Registro
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 400px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 400px;">
                       Adjunto(s)
                     </th>
 
-                    <th style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 400px;">
+                    <th
+                      style="text-align: center; border: solid; border-width: 1px; background-color: #c00000; border-color: #ffffff; color: #ffffff; vertical-align: middle; width: 400px;">
                       Opciones
                     </th>
 
@@ -886,13 +1011,15 @@ if (!isset($_SESSION["Id"])) {
         <input id="hd_idregistro" type="hidden">
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="font-size: 14px;">Cerrar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+            style="font-size: 14px;">Cerrar</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="modal fade" id="modal_addpago" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_addpagoLabel" aria-hidden="true">
+  <div class="modal fade" id="modal_addpago" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="modal_addpagoLabel" aria-hidden="true">
     <div class="modal-dialog" style="margin-top: 5%;">
       <div class="modal-content">
         <div class="modal-header" style="background-color: #198754; color: #ffffff;">
@@ -934,7 +1061,8 @@ if (!isset($_SESSION["Id"])) {
 
             <!-- Flecha centrada verticalmente -->
             <div class="d-flex justify-content-center align-items-center" style="width: 40px;">
-              <div style="background-color: #198754; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+              <div
+                style="background-color: #198754; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
                 <i class="bi bi-arrow-right" style="font-size: 14px;"></i>
               </div>
             </div>
@@ -963,7 +1091,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-8 col-sm-8 col-xs-8">
-              <input id="pago_fecha" type="date" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold">
+              <input id="pago_fecha" type="date" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold">
             </div>
           </div>
 
@@ -989,9 +1118,10 @@ if (!isset($_SESSION["Id"])) {
                 if ($res_datos = mysqli_query($enlace, $q_datos)) {
                   if (mysqli_num_rows($res_datos) > 0) {
                     while ($row_datos = mysqli_fetch_array($res_datos)) {
-                ?>
-                      <option data-isefectivo="<?php echo $row_datos["is_efectivo"]; ?>" value="<?php echo $row_datos["Id"] ?>"><?php echo $row_datos["descripcion"] ?></option>
-                <?php
+                      ?>
+                      <option data-isefectivo="<?php echo $row_datos["is_efectivo"]; ?>"
+                        value="<?php echo $row_datos["Id"] ?>"><?php echo $row_datos["descripcion"] ?></option>
+                      <?php
                     }
                   }
                 }
@@ -1009,7 +1139,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-4 col-sm-4 col-xs-4">
-              <input id="pago_saldo" type="text" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold; color: green" disabled>
+              <input id="pago_saldo" type="text" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold; color: green" disabled>
             </div>
           </div>
 
@@ -1019,7 +1150,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-4 col-sm-4 col-xs-4">
-              <input id="pago_monto" type="number" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold">
+              <input id="pago_monto" type="number" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold">
             </div>
           </div>
 
@@ -1028,7 +1160,9 @@ if (!isset($_SESSION["Id"])) {
               Tipo de Cambio:
             </div>
             <div class="col-md-4 col-sm-4 col-xs-4">
-              <input id="pago_tipocambio" type="number" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; font-weight: bold; box-shadow: 0px 0px 8px #198754;" disabled>
+              <input id="pago_tipocambio" type="number" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; font-weight: bold; box-shadow: 0px 0px 8px #198754;"
+                disabled>
             </div>
           </div>
 
@@ -1039,7 +1173,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-8 col-sm-8 col-xs-8">
-              <input id="pago_numoperacion" type="text" class="form-control col-md-12 col-xs-12" style="font-size: 14px; text-align: center; text-transform: uppercase;">
+              <input id="pago_numoperacion" type="text" class="form-control col-md-12 col-xs-12"
+                style="font-size: 14px; text-align: center; text-transform: uppercase;">
             </div>
           </div>
 
@@ -1049,7 +1184,8 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-8 col-sm-8 col-xs-8">
-              <textarea id="pago_observacion" type="text" class="form-control col-md-12 col-xs-12" style="text-transform: uppercase;" rows="2"></textarea>
+              <textarea id="pago_observacion" type="text" class="form-control col-md-12 col-xs-12"
+                style="text-transform: uppercase;" rows="2"></textarea>
             </div>
           </div>
 
@@ -1059,19 +1195,23 @@ if (!isset($_SESSION["Id"])) {
         <input id="id_registropago" type="hidden">
 
         <div class="modal-footer">
-          <div id="wt_grabarpago" class="" style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
+          <div id="wt_grabarpago" class=""
+            style="font-size: 12px; text-align: center; display: none; padding-top: 5px;">
             <img src="<?php echo $img_waiting ?>" style="width: 20px;">
             <label style="font-style: italic;"> Grabando datos...</label>
           </div>
 
-          <button type="button" class="btn btn-secondary wt_grabarpago_button" data-bs-dismiss="modal" style="font-size: 14px;">Cerrar</button>
-          <button type="button" class="btn btn-primary wt_grabarpago_button" style="font-size: 14px;" onclick="f_GrabarPago();">Confirmar</button>
+          <button type="button" class="btn btn-secondary wt_grabarpago_button" data-bs-dismiss="modal"
+            style="font-size: 14px;">Cerrar</button>
+          <button type="button" class="btn btn-primary wt_grabarpago_button" style="font-size: 14px;"
+            onclick="f_GrabarPago();">Confirmar</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="modal fade" id="modal_admintipocambio" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_admintipocambioLabel" aria-hidden="true">
+  <div class="modal fade" id="modal_admintipocambio" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="modal_admintipocambioLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content" style="border: solid; border-width: 1px; border-color: #E6E9ED;">
         <div class="modal-header py-2">
@@ -1104,11 +1244,12 @@ if (!isset($_SESSION["Id"])) {
                 if ($res_monedas = mysqli_query($enlace, $q_monedas)) {
                   if (mysqli_num_rows($res_monedas) > 0) {
                     while ($row_monedas = mysqli_fetch_array($res_monedas)) {
-                ?>
+                      ?>
 
-                      <option value="<?php echo $row_monedas["Id"] ?>" style="font-size: 14px;"><?php echo $row_monedas["DESCRIPCION"] ?></option>
+                      <option value="<?php echo $row_monedas["Id"] ?>" style="font-size: 14px;">
+                        <?php echo $row_monedas["DESCRIPCION"] ?></option>
 
-                <?php
+                      <?php
                     }
                   }
                 }
@@ -1122,13 +1263,15 @@ if (!isset($_SESSION["Id"])) {
             <div class="col-md-1">
             </div>
             <div class="col-md-4">TC Compra:</div>
-            <div class="col-md-3"><input id="tipocambio_compra" type="number" step="0.0001" class="form-control form-control-sm text-center"></div>
+            <div class="col-md-3"><input id="tipocambio_compra" type="number" step="0.0001"
+                class="form-control form-control-sm text-center"></div>
           </div>
           <div class="row mb-2">
             <div class="col-md-1">
             </div>
             <div class="col-md-4">TC Venta:</div>
-            <div class="col-md-3"><input id="tipocambio_venta" type="number" step="0.0001" class="form-control form-control-sm text-center"></div>
+            <div class="col-md-3"><input id="tipocambio_venta" type="number" step="0.0001"
+                class="form-control form-control-sm text-center"></div>
           </div>
 
           <input id="hd_idtipocambio" type="hidden">
@@ -1139,16 +1282,21 @@ if (!isset($_SESSION["Id"])) {
             <img src="<?php echo $img_waiting ?>" style="width: 20px;">
             <label style="font-style: italic;"> Grabando datos...</label>
           </div>
-          <button type="button" class="btn btn-secondary wt_admintipocambio_button" data-bs-dismiss="modal">Cerrar</button>
-          <button type="button" class="btn btn-primary wt_admintipocambio_button" onclick="f_GrabarTipoCambio();">Grabar</button>
+          <button type="button" class="btn btn-secondary wt_admintipocambio_button"
+            data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary wt_admintipocambio_button"
+            onclick="f_GrabarTipoCambio();">Grabar</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Referenciando a JQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+    integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
+    crossorigin="anonymous"></script>
 
   <!-- Select2 -->
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -1176,7 +1324,7 @@ if (!isset($_SESSION["Id"])) {
   <script type="text/javascript">
     const dropdownParentComprobante = $('#modal_admincomprobantes');
 
-    $(document).ready(function() {
+    $(document).ready(function () {
       $('#comprobante_valorizacion, #comprobante_proveedor').select2({
         theme: 'bootstrap-5',
         dropdownParent: dropdownParentComprobante,
@@ -1195,7 +1343,7 @@ if (!isset($_SESSION["Id"])) {
       });
 
       // Al cambiar de banco
-      $("#pago_entidadbancaria_1").on("change", function() {
+      $("#pago_entidadbancaria_1").on("change", function () {
         const id_banco = $(this).val();
         const id_moneda = $("#hd_id_moneda").val();
         const $combo_cuentas = $("#pago_entidadbancaria_cuentas_1");
@@ -1206,11 +1354,11 @@ if (!isset($_SESSION["Id"])) {
             accion: "get_CuentasBancariasPorBanco",
             id_banco: id_banco,
             id_moneda: id_moneda
-          }, function(data) {
+          }, function (data) {
             $combo_cuentas.html('<option value="">Elija una opción...</option>');
 
             if (data.estado == 1) {
-              data.cuentas.forEach(function(item) {
+              data.cuentas.forEach(function (item) {
                 $combo_cuentas.append(`<option value="${item.id}" data-isdetraccion="${item.is_detraccion}" data-idmoneda="${item.id_moneda}" data-simbolomoneda="${item.simbolo_moneda}">(${item.moneda_abv}) ${item.num_cuenta}</option>`);
               });
 
@@ -1226,7 +1374,7 @@ if (!isset($_SESSION["Id"])) {
       });
 
       // Al cambiar de banco
-      $("#pago_entidadbancaria_2").on("change", function() {
+      $("#pago_entidadbancaria_2").on("change", function () {
         const id_banco = $(this).val();
         const id_proveedor = $('#ins_id_proveedor').val();
         const $combo_cuentas = $("#pago_entidadbancaria_cuentas_2");
@@ -1239,11 +1387,11 @@ if (!isset($_SESSION["Id"])) {
             accion: "get_CuentasBancariasPorProveedor",
             id_banco: id_banco,
             id_proveedor: id_proveedor
-          }, function(data) {
+          }, function (data) {
             $combo_cuentas.html('<option value="">Elija una opción...</option>');
 
             if (data.estado == 1) {
-              data.cuentas.forEach(function(item) {
+              data.cuentas.forEach(function (item) {
                 $combo_cuentas.append(`<option value="${item.id}" data-isdetraccion="${item.is_detraccion}" data-idmoneda="${item.id_moneda}" data-simbolomoneda="${item.simbolo_moneda}">(${item.moneda_abv}) ${item.nro_cuenta}</option>`);
               });
 
@@ -1276,11 +1424,11 @@ if (!isset($_SESSION["Id"])) {
       //   }
       // });
 
-      $('#modal_registraradelanto').on('hidden.bs.modal', function() {
+      $('#modal_registraradelanto').on('hidden.bs.modal', function () {
         f_LoadResultados();
       });
 
-      $('#comprobante_moneda').on('change', function() {
+      $('#comprobante_moneda').on('change', function () {
         const id_moneda = $(this).val();
         const id_proveedor = $('#comprobante_proveedor').val();
 
@@ -1289,14 +1437,14 @@ if (!isset($_SESSION["Id"])) {
         }
       });
 
-      $('#comprobante_proveedor').on('change', function() {
+      $('#comprobante_proveedor').on('change', function () {
         const id_proveedor = $(this).val();
         const id_moneda = $('#comprobante_moneda').val();
         $('#comprobante_valorizacion').val(null).trigger('change');
         f_CargarValorizaciones(id_proveedor, id_moneda);
       });
 
-      $("#pago_entidadbancaria_cuentas_1").on("change", function() {
+      $("#pago_entidadbancaria_cuentas_1").on("change", function () {
         const $opt = $("option:selected", this);
         const simbolo_moneda = $opt.data("simbolomoneda");
 
@@ -1310,7 +1458,7 @@ if (!isset($_SESSION["Id"])) {
 
       });
 
-      $("#pago_entidadbancaria_cuentas_2").on("change", function() {
+      $("#pago_entidadbancaria_cuentas_2").on("change", function () {
         // f_ValidarTipoCambioPorMoneda();
         $("#pago_saldo").val('');
 
@@ -1374,18 +1522,18 @@ if (!isset($_SESSION["Id"])) {
       $("#tbl_detalle").html('');
 
       $.post("apis/backend.php", {
-          accion: "get_ComprobantePago_ListaValorizacion",
-          fecha_inicio_emision: fecha_inicio_emision,
-          fecha_fin_emision: fecha_fin_emision,
-          fecha_inicio_sindetraccion: fecha_inicio_sindetraccion,
-          fecha_fin_sindetraccion: fecha_fin_sindetraccion,
-          fecha_inicio_detraccion: fecha_inicio_detraccion,
-          fecha_fin_detraccion: fecha_fin_detraccion,
-          filtro_lote: filtro_lote,
-          filtro_lote_gel: filtro_lote_gel,
-          is_administracioncomercial: 1
-        },
-        function(data) {
+        accion: "get_ComprobantePago_ListaValorizacion",
+        fecha_inicio_emision: fecha_inicio_emision,
+        fecha_fin_emision: fecha_fin_emision,
+        fecha_inicio_sindetraccion: fecha_inicio_sindetraccion,
+        fecha_fin_sindetraccion: fecha_fin_sindetraccion,
+        fecha_inicio_detraccion: fecha_inicio_detraccion,
+        fecha_fin_detraccion: fecha_fin_detraccion,
+        filtro_lote: filtro_lote,
+        filtro_lote_gel: filtro_lote_gel,
+        is_administracioncomercial: 1
+      },
+        function (data) {
           if (data.estado == 1) {
             $("#tbl_detalle").html(data.html);
           }
@@ -1426,7 +1574,7 @@ if (!isset($_SESSION["Id"])) {
         id_proveedor: id_proveedor,
         id_moneda: id_moneda
 
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           let html = '';
           data.registros.forEach(item => {
@@ -1513,7 +1661,7 @@ if (!isset($_SESSION["Id"])) {
 
         // Autocompletar con Transferencia si existe
         setTimeout(() => {
-          $("#pago_medio_pago").find("option").filter(function() {
+          $("#pago_medio_pago").find("option").filter(function () {
             return $(this).text().toUpperCase().includes("TRANSFERENCIA");
           }).prop("selected", true);
         }, 100);
@@ -1553,7 +1701,7 @@ if (!isset($_SESSION["Id"])) {
       $.post("apis/backend.php", {
         accion: "get_ComprobantePago_RegistroPagos",
         id_comprobante_pago: id_recepcion
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           $("#tbl_RegistrosPago").html(data.html);
           // $("#ins_por_pagar_venta").val(f_RedondearDecimales(total_venta - data.total_pagos, 2));
@@ -1578,10 +1726,10 @@ if (!isset($_SESSION["Id"])) {
       // Cargando datos
 
       $.post("apis/backend.php", {
-          accion: "get_TipoCambio",
-          fecha
-        },
-        function(data) {
+        accion: "get_TipoCambio",
+        fecha
+      },
+        function (data) {
           if (data.estado == 1) {
             data.data.forEach(d => {
               gb_tipocambio_idregistro = d.id_registro;
@@ -1680,7 +1828,7 @@ if (!isset($_SESSION["Id"])) {
 
       $.post("apis/backend.php", {
         accion: "get_monedas_listado"
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           $combo.empty().append('<option value="">Elija una moneda...</option>');
           data.data.forEach(m => {
@@ -1731,7 +1879,7 @@ if (!isset($_SESSION["Id"])) {
 
       // Total = suma de data-total de cada opción seleccionada
       let total = 0;
-      $("#comprobante_valorizacion option:selected").each(function() {
+      $("#comprobante_valorizacion option:selected").each(function () {
         const v = parseFloat($(this).data("total"));
         if (!isNaN(v)) total += v;
       });
@@ -1751,19 +1899,19 @@ if (!isset($_SESSION["Id"])) {
       const id_moneda = $("#comprobante_moneda").val();
 
       $.post("apis/backend.php", {
-          accion: "grabar_ComprobantePago_Valorizacion",
-          modograbar_comprobante: modo,
-          id_proveedor,
-          id_valorizacion_detalle: vals_str,
-          id_moneda: id_moneda,
-          comprobante_serie: serie,
-          comprobante_numero: numero,
-          comprobante_fecha: fecha,
-          sub_total: total,
-          comprobante_porc_detraccion: porc_detraccion,
-          tipo_cambio
-        },
-        function(data) {
+        accion: "grabar_ComprobantePago_Valorizacion",
+        modograbar_comprobante: modo,
+        id_proveedor,
+        id_valorizacion_detalle: vals_str,
+        id_moneda: id_moneda,
+        comprobante_serie: serie,
+        comprobante_numero: numero,
+        comprobante_fecha: fecha,
+        sub_total: total,
+        comprobante_porc_detraccion: porc_detraccion,
+        tipo_cambio
+      },
+        function (data) {
           if (data.estado == 1) {
             f_LoadResultados();
             f_cerrarModal('modal_admincomprobantes');
@@ -1785,10 +1933,10 @@ if (!isset($_SESSION["Id"])) {
       if (!confirm('¿Está seguro que desea eliminar este comprobante de pago?')) return;
 
       $.post("apis/backend.php", {
-          accion: "eliminar_ComprobantePago",
-          id: id_comprobante_pago
-        },
-        function(data) {
+        accion: "eliminar_ComprobantePago",
+        id: id_comprobante_pago
+      },
+        function (data) {
           if (data.estado == 1) {
             f_LoadResultados();
           } else {
@@ -1802,10 +1950,10 @@ if (!isset($_SESSION["Id"])) {
       if (!confirm('¿Está seguro que desea anular este comprobante de pago? La valorización se liberará y los anticipos (si aplica) serán restaurados.')) return;
 
       $.post("apis/backend.php", {
-          accion: "anular_ComprobantePago",
-          id_comprobante: id_comprobante_pago
-        },
-        function(data) {
+        accion: "anular_ComprobantePago",
+        id_comprobante: id_comprobante_pago
+      },
+        function (data) {
           if (data.estado == 1) {
             f_LoadResultados();
           } else {
@@ -1821,7 +1969,7 @@ if (!isset($_SESSION["Id"])) {
         accion: 'actualizar_FechaEmision_ComprobantePago',
         id: id_comprobante_pago,
         fecha: nueva_fecha
-      }, function(data) {
+      }, function (data) {
         if (data.estado != 1) {
           alert("Ocurrió un error al momento de actualizar el comprobante de pago.");
         }
@@ -1840,7 +1988,7 @@ if (!isset($_SESSION["Id"])) {
         id: id_comprobante,
         campo: campo,
         valor: valor
-      }, function(data) {
+      }, function (data) {
         if (data.estado != 1) {
           alert("Ocurrió un error al momento de actualizar el comprobante de pago.");
           if (is_checkbox) {
@@ -1878,7 +2026,7 @@ if (!isset($_SESSION["Id"])) {
       $.post("apis/backend.php", {
         accion: "get_BancosPorProveedor",
         id_proveedor: _id_proveedor
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           let html = '<option value="">Elija una opción...</option>';
           data.bancos.forEach(item => {
@@ -1894,7 +2042,7 @@ if (!isset($_SESSION["Id"])) {
     function f_AddArchivo(_id_registro) {
       // Abre el prompt para seleccionar el archivo
       var inputFile = $('<input type="file">');
-      inputFile.on('change', function() {
+      inputFile.on('change', function () {
         if (this.files.length > 0) {
           var selectedFile = this.files[0];
 
@@ -1910,7 +2058,7 @@ if (!isset($_SESSION["Id"])) {
             data: formData,
             processData: false,
             contentType: false,
-            success: function(response) {
+            success: function (response) {
               f_LoadDetallePagos();
             }
           });
@@ -2005,7 +2153,7 @@ if (!isset($_SESSION["Id"])) {
         pago_observacion: pago_observacion,
         total_venta: total_venta,
         is_detraccion: is_detraccion
-      }, function(data) {
+      }, function (data) {
         if (data.estado == 1) {
           f_cerrarModal('modal_addpago');
 
@@ -2039,7 +2187,7 @@ if (!isset($_SESSION["Id"])) {
         accion: "eliminar_ComprobantePago_RegistroPago",
         id: id_pago,
         id_comprobante_pago: id_comprobante
-      }, function(r) {
+      }, function (r) {
         f_LoadingRegistroPago(0);
 
         if (r && r.estado == 1) {
@@ -2107,15 +2255,15 @@ if (!isset($_SESSION["Id"])) {
       f_LoadingRegistro('admintipocambio', true);
 
       $.post('apis/backend.php', {
-          accion: 'grabar_config_tipocambio',
-          modo: modo,
-          id: id,
-          fecha: fecha,
-          compra: compra,
-          venta: venta,
-          id_moneda_base: id_moneda_base,
-        },
-        function(response) {
+        accion: 'grabar_config_tipocambio',
+        modo: modo,
+        id: id,
+        fecha: fecha,
+        compra: compra,
+        venta: venta,
+        id_moneda_base: id_moneda_base,
+      },
+        function (response) {
           f_LoadingRegistro('admintipocambio', false);
 
           if (response.estado == 1) {
