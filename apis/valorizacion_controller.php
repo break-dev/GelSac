@@ -199,6 +199,41 @@ switch ($_POST["accion"]) {
             $data[] = $row;
         }
 
+        // Cargar datos históricos desde JSON sin persistir en la BD
+        $json_path = __DIR__ . '/repo_old/valorizacion_compra.json';
+        if (file_exists($json_path)) {
+            $historicos = json_decode(file_get_contents($json_path), true);
+            if (is_array($historicos)) {
+                foreach ($historicos as $index => $h) {
+                    $cabecera = $h['cabecera'] ?? [];
+                    $data[] = [
+                        "Id" => "H-" . $index,
+                        "ID_MD5" => md5("H-" . $index),
+                        "correlativo" => "H-" . str_pad($index + 1, 4, "0", STR_PAD_LEFT),
+                        "version" => 1,
+                        "num_oficio" => "S/N",
+                        "id_proveedor" => null,
+                        "id_concesion" => null,
+                        "ruc" => $cabecera['ruc'] ?? '',
+                        "proveedor" => $cabecera['proveedor'] ?? '',
+                        "usuario_registro" => "Histórico",
+                        "is_aprobado" => 1,
+                        "is_aprobado_fechahoraregistro" => $cabecera['aprobado'] ?? '',
+                        "is_aprobado_usuarioregistro" => "Histórico",
+                        "id_cuentabancaria" => null,
+                        "id_cuentadetraccion" => null,
+                        "fechahora_registro" => $cabecera['elaborado'] ?? '',
+                        "estado" => (trim($cabecera['estado'] ?? '') == 'Activo') ? 'A' : 'I',
+                        "usa_anticipo" => 0,
+                        "IS_VALORIZACIONAPROBADA" => 1,
+                        "anticipos_usados" => null,
+                        "tiene_comprobante" => 0,
+                        "is_historico" => true
+                    ];
+                }
+            }
+        }
+
         echo json_encode(["estado" => 1, "registros" => $data]);
         break;
 
@@ -330,6 +365,54 @@ switch ($_POST["accion"]) {
         break;
     case "get_ValorizacionCompra_Detalle":
         $id_valorizacion = $_POST["id_valorizacion"];
+
+        if (strpos($id_valorizacion, "H-") === 0) {
+            $index = intval(substr($id_valorizacion, 2));
+            $registros = [];
+            $json_path = __DIR__ . '/repo_old/valorizacion_compra.json';
+            if (file_exists($json_path)) {
+                $historicos = json_decode(file_get_contents($json_path), true);
+                if (is_array($historicos) && isset($historicos[$index])) {
+                    $cabecera = $historicos[$index]['cabecera'] ?? [];
+                    $detalles = $historicos[$index]['detalles'] ?? [];
+                    foreach ($detalles as $det_idx => $d) {
+                        $registros[] = [
+                            "Id" => "HD-" . $index . "-" . $det_idx,
+                            "id_elemento" => null,
+                            "cod_lote" => $d['lote'] ?? '',
+                            "cod_gel" => $d['cod_gel'] ?? '',
+                            "guiaremision_remitente" => $d['guia_remitente'] ?? '',
+                            "guiaremision_transportista" => $d['guia_transportista'] ?? '',
+                            "fecha_ingreso" => $d['fecha_ingreso'] ?? '',
+                            "pesto_tmh" => floatval($d['tmh'] ?? 0),
+                            "porc_h20" => floatval($d['porc_h2o'] ?? 0),
+                            "peso_tms" => floatval($d['tms'] ?? 0),
+                            "ley_oztc" => floatval($d['ley'] ?? 0),
+                            "porc_rec" => floatval($d['rec'] ?? 0),
+                            "precio_inter" => floatval($d['inter'] ?? 0),
+                            "precio_inter_desc" => floatval($d['des_inter'] ?? 0),
+                            "maquila" => floatval($d['maquila'] ?? 0),
+                            "precio_reac" => floatval($d['react'] ?? 0),
+                            "factor" => floatval($d['factor'] ?? 0),
+                            "subtotal" => floatval($d['precio_por_tn'] ?? 0),
+                            "incentivo" => 0.00,
+                            "subtotal_final" => floatval($d['precio_por_tn'] ?? 0),
+                            "total" => floatval($d['total'] ?? 0),
+                            "elemento" => $d['elemento'] ?? '',
+                            "elemento_original" => $d['elemento'] ?? '',
+                            "PROVEEDOR_RUC" => $cabecera['ruc'] ?? '',
+                            "ID_LOTE" => null,
+                            "is_historico" => true
+                        ];
+                    }
+                }
+            }
+            echo json_encode([
+                "estado" => 1,
+                "registros" => $registros,
+            ]);
+            break;
+        }
 
         $sql = "SELECT VD.Id,
 		  							 VD.id_elemento,
