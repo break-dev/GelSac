@@ -3859,7 +3859,7 @@ function f_Guia_GenerarCodigoGel(
 			if ($existe_cero) {
 				return -2; // ALERTA
 			} else {
-				$idx_letra_inicio = 1; // empezamos en 'A'
+				$idx_letra_inicio = 0; 
 				$q_max_cero = "SELECT codigo_gel 
 				               FROM correlativo_codigosgel 
 				               WHERE correlativo = 0 
