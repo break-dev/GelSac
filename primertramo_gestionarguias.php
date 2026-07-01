@@ -1159,6 +1159,12 @@ if (!isset($_SESSION["Id"])) {
         f_CargarConcesionesProveedor(documento);
       });
 
+      $('#guia_fechas').on('change', function () {
+        var fecha = $(this).val();
+        $('#guia_fechaemision').val(fecha);
+        $('#guia_balanza_fecharegistro').val(fecha);
+      });
+
 
 
       $('#guia_placa').on('change', function () {
@@ -1244,7 +1250,7 @@ if (!isset($_SESSION["Id"])) {
       $("#guia_fechas").val(fecha_inicio);
 
       if (_fechahora_iniciotraslado == undefined) {
-        $("#guia_fechaemision").val('<?php echo $g_date ?>');
+        $("#guia_fechaemision").val(fecha_inicio);
         $("#guia_horaemision").val('<?php echo substr($g_time, 0, 5) ?>');
       }
       else {
@@ -1253,7 +1259,7 @@ if (!isset($_SESSION["Id"])) {
       }
 
       if (_fechahora_inicioplanta == undefined) {
-        $("#guia_balanza_fecharegistro").val('<?php echo $g_date ?>');
+        $("#guia_balanza_fecharegistro").val(fecha_inicio);
         $("#guia_balanza_horaregistro").val('<?php echo substr($g_time, 0, 5) ?>');
       }
       else {
