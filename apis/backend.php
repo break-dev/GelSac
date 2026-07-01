@@ -72540,6 +72540,81 @@ switch ($_POST["accion"]) {
 		$id_distribucion_arr = array_column($detalles_lotes, "id_distribucion");
 		$id_distribucion_str = implode(", ", array_map("intval", $id_distribucion_arr));
 		$is_edit = mysqli_real_escape_string($enlace, $_POST["is_edit"]);
+
+		// ============================================================
+		// Validación previa de código 0 para evitar registro fantasma
+		// ============================================================
+		$fecha_nueva_guia = substr($guia_balanza_fecharegistro, 0, 10);
+		$fecha_nueva_guia_esc = mysqli_real_escape_string($enlace, $fecha_nueva_guia);
+
+		$hay_registros = false;
+		$q_any = "SELECT 1 FROM despachos_primertramo_validaciondatos WHERE codigo_gel IS NOT NULL LIMIT 1";
+		if ($rs_any = mysqli_query($enlace, $q_any)) {
+			if (mysqli_num_rows($rs_any) > 0) {
+				$hay_registros = true;
+			}
+			mysqli_free_result($rs_any);
+		}
+
+		if ($hay_registros) {
+			$existe_menor_o_igual = false;
+			$q_menor = "SELECT EXISTS (
+			    SELECT 1
+			    FROM despachos_primertramo_validaciondatos gs
+			    WHERE DATE(gs.lote_pesoinicial_fechahoraregistro) <= '$fecha_nueva_guia_esc'
+			      AND gs.codigo_gel IS NOT NULL
+			) AS existe";
+			if ($rs_menor = mysqli_query($enlace, $q_menor)) {
+				if ($row_menor = mysqli_fetch_assoc($rs_menor)) {
+					$existe_menor_o_igual = (intval($row_menor["existe"]) === 1);
+				}
+				mysqli_free_result($rs_menor);
+			}
+
+			if (!$existe_menor_o_igual) {
+				$existen_valorizados = false;
+				$q_val = "SELECT EXISTS (
+				    SELECT 1
+				    FROM despachos_primertramo_validaciondatos gs
+				    INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_gel = gs.codigo_gel
+				    INNER JOIN valorizacion_compramineral vc ON vc.Id = vcd.id_valorizacion
+				    WHERE vc.is_aprobado = 1 
+				      AND DATE(gs.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+				) AS existen_valorizados";
+				if ($rs_val = mysqli_query($enlace, $q_val)) {
+					if ($row_val = mysqli_fetch_assoc($rs_val)) {
+						$existen_valorizados = (intval($row_val["existen_valorizados"]) === 1);
+					}
+					mysqli_free_result($rs_val);
+				}
+
+				if ($existen_valorizados) {
+					$existe_cero = false;
+					$q_cero = "SELECT EXISTS (
+					    SELECT 1 
+					    FROM correlativo_codigosgel 
+					    WHERE correlativo = 0 
+					      AND cod_anho = '$g_anho' 
+					      AND estado = 'A'
+					) AS existe_cero";
+					if ($rs_cero = mysqli_query($enlace, $q_cero)) {
+						if ($row_cero = mysqli_fetch_assoc($rs_cero)) {
+							$existe_cero = (intval($row_cero["existe_cero"]) === 1);
+						}
+						mysqli_free_result($rs_cero);
+					}
+
+					if ($existe_cero) {
+						echo json_encode([
+							"estado" => -2,
+							"msg" => "Ya hay lotes con el código 0 y no es posible reordenar."
+						]);
+						break;
+					}
+				}
+			}
+		}
+
 		// ============================================================
 		// Validación previa: Duplicidad exacta SOLO dentro del MISMO proveedor
 		// ============================================================
