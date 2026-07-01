@@ -1966,7 +1966,15 @@ if (!isset($_SESSION["Id"])) {
             const is_aprobado = row.is_aprobado == 1;
             const tiene_comprobante = row.tiene_comprobante == 1;
 
-            if (is_aprobado && !tiene_comprobante) {
+            if (row.is_historico) {
+              _html += `
+                        <div class="d-flex justify-content-center align-items-center">
+                                <span class="text-muted" style="font-size: 11px;">
+                                    Acciones deshabilitadas
+                                </span>
+                        </div>
+                    `;
+            } else if (is_aprobado && !tiene_comprobante) {
               // Si está aprobada y no tiene comprobante, mostrar solo botón "Reabrir"
               _html += `
                         <button class="btn btn-sm btn-warning" title="Reabrir Valorización" style="margin:2px;"
@@ -2136,9 +2144,14 @@ if (!isset($_SESSION["Id"])) {
                   <td style="text-align: right; vertical-align: middle; display: none;">${f_RedondearDecimales(v.subtotal_final, 2)}</td>
                   <td id="total_resumen_${d}" style="text-align: right; vertical-align: middle; font-weight: bold;">${f_RedondearDecimales(v.total, 2)}</td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-danger" onclick="f_EliminarRegistro(${v.Id})">
-                      <i class="bi bi-trash3-fill"></i>
-                    </button>
+                    ${v.is_historico
+                      ? `<button class="btn btn-sm btn-danger" disabled title="No permitido para histórico">
+                          <i class="bi bi-trash3-fill"></i>
+                         </button>`
+                      : `<button class="btn btn-sm btn-danger" onclick="f_EliminarRegistro(${v.Id})">
+                          <i class="bi bi-trash3-fill"></i>
+                         </button>`
+                    }
                   </td>
                 </tr>
               `;

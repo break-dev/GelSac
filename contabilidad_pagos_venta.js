@@ -114,9 +114,10 @@ function f_BuildCard(r) {
         '<div class="fv-planta text-white mb-0"><i class="bi bi-building me-1"></i>' + r.descripcion_planta + '</div>' +
         '</div>' +
         '<div class="text-end d-flex align-items-center gap-2">' +
+        (!r.is_historical ?
         '<button class="btn btn-outline-light btn-sm py-0 px-1 border-0" onclick="f_AbrirModalEvidencias(\'F\', ' + r.id + ');" title="Gestionar Evidencias">' +
         '<i class="bi bi-files fs-6"></i>' +
-        '</button>' +
+        '</button>' : '') +
         '<span class="estado-badge ' + estCls + '">' + estLbl + '</span>' +
         '</div>' +
         '</div>' +
@@ -200,14 +201,19 @@ function f_BuildCard(r) {
         '<i class="bi bi-person me-1"></i>Registrado por: <b>' + r.usuario_registro + '</b>' +
         '</div>' +
         '<div class="d-flex gap-2">' +
-        (!esAnulada ?
-            '<button class="btn btn-danger btn-sm" onclick="f_AnularFacturaDirecto(\'' + strJson + '\');">' +
-            '<i class="bi bi-x-circle me-1"></i> Anular' +
-            '</button>' +
+        (r.is_historical ?
+            '<span class="badge bg-secondary me-2">Data Histórica</span>' +
             '<button class="btn btn-success btn-sm px-4" onclick="f_IrAPagosDirecto(\'' + strJson + '\');">' +
-            '<i class="bi bi-cash-coin me-1"></i> Ver / Registrar Pagos' +
+            '<i class="bi bi-eye me-1"></i> Ver Pagos' +
             '</button>' :
-            '<span class="badge bg-secondary">Comprobante anulado</span>') +
+            (!esAnulada ?
+                '<button class="btn btn-danger btn-sm" onclick="f_AnularFacturaDirecto(\'' + strJson + '\');">' +
+                '<i class="bi bi-x-circle me-1"></i> Anular' +
+                '</button>' +
+                '<button class="btn btn-success btn-sm px-4" onclick="f_IrAPagosDirecto(\'' + strJson + '\');">' +
+                '<i class="bi bi-cash-coin me-1"></i> Ver / Registrar Pagos' +
+                '</button>' :
+                '<span class="badge bg-secondary">Comprobante anulado</span>')) +
         '</div>' +
         '</div>' +
         '</div>' +
@@ -692,7 +698,7 @@ function f_LoadPagos() {
                         '</div>' +
                         '<div class="text-end" style="font-size:11px;">' +
                             '<span class="text-muted me-3"><i class="bi bi-clock me-1"></i>Reg: ' + p.created_at + ' (' + (p.usuario_registro || '') + ')</span>' +
-                            '<button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="f_EliminarPago(' + p.id + ');" title="Eliminar"><i class="bi bi-trash"></i></button>' +
+                            (_factura_actual.is_historical ? '' : '<button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="f_EliminarPago(' + p.id + ');" title="Eliminar"><i class="bi bi-trash"></i></button>') +
                         '</div>' +
                     '</div>' +
                     '<div class="fv-card-body py-2">' +
@@ -749,7 +755,7 @@ function f_UpdatePagosSummary(pagado) {
     $('#lp_saldo_usd').text('$ ' + f_Fmt(saldo, 2));
     $('#lp_foot_total').text('$ ' + f_Fmt(total_pagado, 2));
 
-    $('#btn_nuevo_pago').prop('disabled', saldo <= 0.01);
+    $('#btn_nuevo_pago').prop('disabled', (saldo <= 0.01 || _factura_actual.is_historical));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------

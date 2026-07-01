@@ -110,25 +110,29 @@ function f_LoadValorizaciones() {
             <td>${badgeEstado}</td>
             <td>
               <div class="action-col">
-                ${!esAnulado ? `
+                ${row.is_historico ? `
+                  <span class="text-muted" style="font-size: 11px;">Acciones deshabilitadas</span>
+                ` : `
+                  ${!esAnulado ? `
+                    <a href="javascript:void(0)"
+                       onclick="event.stopPropagation(); f_AdminValorizacion('E', ${n}, ${row.id});"
+                       style="color:#0277bd;">
+                      <i class="bi bi-pencil-square"></i> Editar
+                    </a>
+                    <a href="javascript:void(0)"
+                       onclick="event.stopPropagation(); f_VerTrazabilidad(${row.id});"
+                       style="color:#7b1fa2;">
+                      <i class="bi bi-clock-history"></i> Cambios
+                    </a>` : `
+                    <span class="text-muted" style="font-size:11px;">Anulada</span>`}
                   <a href="javascript:void(0)"
-                     onclick="event.stopPropagation(); f_AdminValorizacion('E', ${n}, ${row.id});"
-                     style="color:#0277bd;">
-                    <i class="bi bi-pencil-square"></i> Editar
+                     onclick="event.stopPropagation(); f_AbrirModalArchivosVV(${row.id}, '${row.numero_correlativo}');"
+                     style="color:#2e7d32;">
+                    <i class="bi bi-folder2-open"></i> Ver archivos
                   </a>
-                  <a href="javascript:void(0)"
-                     onclick="event.stopPropagation(); f_VerTrazabilidad(${row.id});"
-                     style="color:#7b1fa2;">
-                    <i class="bi bi-clock-history"></i> Cambios
-                  </a>` : `
-                  <span class="text-muted" style="font-size:11px;">Anulada</span>`}
-                <a href="javascript:void(0)"
-                   onclick="event.stopPropagation(); f_AbrirModalArchivosVV(${row.id}, '${row.numero_correlativo}');"
-                   style="color:#2e7d32;">
-                  <i class="bi bi-folder2-open"></i> Ver archivos
-                </a>
+                `}
               </div>
-            </td> 
+            </td> 	
           </tr>`;
       });
 
@@ -208,11 +212,17 @@ function f_LoadDetalleValorizacion(idValorizacion) {
             <td class="text-end">${f_RedondearDecimales(v.precio_por_tonelada, 2)}</td>
             <td class="text-end" style="font-weight:700;">${f_RedondearDecimales(v.precio_total, 2)}</td>
             <td>
-              <a href="javascript:void(0)"
-                 onclick="f_EliminarDetalleValorizacion(${v.id});"
-                 style="color:#c62828;" title="Eliminar">
-                <i class="bi bi-trash3-fill"></i>
-              </a>
+              ${v.is_historico ? `
+                <a href="javascript:void(0)" style="color:#b0bec5; cursor:not-allowed;" title="No permitido para histórico">
+                  <i class="bi bi-trash3-fill"></i>
+                </a>
+              ` : `
+                <a href="javascript:void(0)"
+                   onclick="f_EliminarDetalleValorizacion(${v.id});"
+                   style="color:#c62828;" title="Eliminar">
+                  <i class="bi bi-trash3-fill"></i>
+                </a>
+              `}
             </td>
           </tr>`;
       });

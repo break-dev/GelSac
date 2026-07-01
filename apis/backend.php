@@ -112,7 +112,380 @@ function f_getTipoPagoValorizacion($enlace, $id_valorizacion)
 		return $tipo_pago;
 	}
 
-	throw new Exception("No se encontro informacion del tipo de pago de la valorizacion.");
+}
+
+function f_GetComprobantesFromAprobacionJson($fecha_inicio_emision, $fecha_fin_emision, $fecha_inicio_sindetraccion, $fecha_fin_sindetraccion, $fecha_inicio_detraccion, $fecha_fin_detraccion, $filtro_lote, $filtro_lote_gel)
+{
+	$records = [];
+	$json_path = __DIR__ . '/repo_old/aprobacion_comprobantes.json';
+	if (!file_exists($json_path)) {
+		return $records;
+	}
+
+	$json_content = file_get_contents($json_path);
+	$historical_data = json_decode($json_content, true);
+	if (!is_array($historical_data)) {
+		return $records;
+	}
+
+	$has_lote_filter = (isset($filtro_lote) && is_array($filtro_lote) && count($filtro_lote) > 0);
+	$has_gel_filter = (isset($filtro_lote_gel) && is_array($filtro_lote_gel) && count($filtro_lote_gel) > 0);
+
+	foreach ($historical_data as $index => $item) {
+		// 1. Filter by Lote (if filtro_lote is provided)
+		if ($has_lote_filter) {
+			$match_lote = false;
+			if (isset($item['detalles']) && is_array($item['detalles'])) {
+				foreach ($item['detalles'] as $det) {
+					if (isset($det['Lote']) && in_array($det['Lote'], $filtro_lote)) {
+						$match_lote = true;
+						break;
+					}
+				}
+			}
+			if (!$match_lote) {
+				continue;
+			}
+		}
+
+		// 2. Filter by Cod GEL (if filtro_lote_gel is provided)
+		if ($has_gel_filter) {
+			$match_gel = false;
+			if (isset($item['detalles']) && is_array($item['detalles'])) {
+				foreach ($item['detalles'] as $det) {
+					if (isset($det['Cod. GEL']) && in_array($det['Cod. GEL'], $filtro_lote_gel)) {
+						$match_gel = true;
+						break;
+					}
+				}
+			}
+			if (!$match_gel) {
+				continue;
+			}
+		}
+
+		// 3. Filter by Emission Dates
+		if (strlen($fecha_inicio_emision) > 0 && strlen($fecha_fin_emision) > 0) {
+			$em_date = substr($item['Fecha Emisión'] ?? '', 0, 10);
+			if ($em_date < $fecha_inicio_emision || $em_date > $fecha_fin_emision) {
+				continue;
+			}
+		}
+
+		// 4. Filter by Payment Dates (Sin Detracción)
+		if (strlen($fecha_inicio_sindetraccion) > 0 && strlen($fecha_fin_sindetraccion) > 0) {
+			$reg_date = substr($item['Registro'] ?? '', 0, 10);
+			if ($reg_date < $fecha_inicio_sindetraccion || $reg_date > $fecha_fin_sindetraccion) {
+				continue;
+			}
+		}
+
+		// 5. Filter by Payment Dates (Detracción)
+		if (strlen($fecha_inicio_detraccion) > 0 && strlen($fecha_fin_detraccion) > 0) {
+			$reg_date = substr($item['Registro'] ?? '', 0, 10);
+			if ($reg_date < $fecha_inicio_detraccion || $reg_date > $fecha_fin_detraccion) {
+				continue;
+			}
+		}
+
+		// Map JSON to unified row
+		$lotes = [];
+		$gels = [];
+		$elementos = [];
+		$subtotals = [];
+		if (isset($item['detalles']) && is_array($item['detalles'])) {
+			foreach ($item['detalles'] as $det) {
+				if (!empty($det['Lote'])) $lotes[] = $det['Lote'];
+				if (!empty($det['Cod. GEL'])) $gels[] = $det['Cod. GEL'];
+				if (!empty($det['Elemento'])) $elementos[] = $det['Elemento'];
+				if (isset($det['Sub Total'])) $subtotals[] = $det['Sub Total'];
+			}
+		}
+
+		$mapped = [
+			'id_comprobante_pago' => 'hist_aprob_' . $index,
+			'id_valorizacion' => 0,
+			'serie_comprobante' => $item['Serie'] ?? '',
+			'numero_comprobante' => intval($item['Número'] ?? 0),
+			'fecha_emision_comprobante' => $item['Fecha Emisión'] ?? '',
+			'PROVEEDOR_RUC' => $item['RUC'] ?? '',
+			'PROVEEDOR_RAZON_SOCIAL' => $item['Razón Social'] ?? '',
+			'is_aprobado_usuarioregistro' => $item['Aprobación'] ?? '',
+			'is_aprobado_fechahoraregistro' => null,
+			'COD_VALORIZACION' => $item['N°'] ?? '',
+			'cod_lote' => implode(',', $lotes),
+			'cod_gel' => implode(',', $gels),
+			'ARR_ELEMENTO' => implode(',', $elementos),
+			'ARR_VALORIZACION_TOTAL' => implode(',', $subtotals),
+			'sub_total' => $item['Valor Neto Mineral'] ?? 0,
+			'igv' => $item['I.G.V.'] ?? 0,
+			'total_comprobante' => $item['Valor Total'] ?? 0,
+			'total_sin_detraccion' => $item['Total por Pagar'] ?? 0,
+			'pago_sin_detraccion' => $item['Total Pagado'] ?? 0,
+			'porc_detraccion' => ($item['%'] ?? 0) * 100.0,
+			'total_detraccion' => $item['Total por Pagar_%'] ?? 0,
+			'tipo_cambio' => $item['Tipo'] ?? 0,
+			'total_detraccion_soles' => $item['Total por Pagar_Tipo'] ?? 0,
+			'DETRACCION_PAGOTOTAL' => $item['Total Pagado_Total por Pagar'] ?? 0,
+			'pago_detraccion' => ($item['Total Pagado_Total por Pagar'] ?? 0) / (floatval($item['Tipo'] ?? 0) ?: 1.0),
+			'aprobo_contabilidad' => !empty($item['Registro'] ?? '') ? 1 : 0,
+			'aprobo_contabilidad_fechahora_registro' => $item['Registro'] ?? '',
+			'aprobo_contabilidad_usuario_registro' => !empty($item['Registro'] ?? '') ? 'HISTORICO' : '',
+			'aprobo_comercial' => !empty($item['Registro_Comercial'] ?? '') ? 1 : 0,
+			'aprobo_comercial_fechahora_registro' => $item['Registro_Comercial'] ?? '',
+			'aprobo_comercial_usuario_registro' => !empty($item['Registro_Comercial'] ?? '') ? 'HISTORICO' : '',
+			'aprobo_documentaria' => !empty($item['Registro_Documentaria'] ?? '') ? 1 : 0,
+			'aprobo_documentaria_fechahora_registro' => $item['Registro_Documentaria'] ?? '',
+			'aprobo_documentaria_usuario_registro' => !empty($item['Registro_Documentaria'] ?? '') ? 'HISTORICO' : '',
+			'djvm' => !empty($item['Registro_DJVM'] ?? '') ? 1 : 0,
+			'djvm_fechahora_registro' => $item['Registro_DJVM'] ?? '',
+			'djvm_usuario_registro' => !empty($item['Registro_DJVM'] ?? '') ? 'HISTORICO' : '',
+			'val' => !empty($item['Registro_Firma Proveedor'] ?? '') ? 1 : 0,
+			'val_fechahora_registro' => $item['Registro_Firma Proveedor'] ?? '',
+			'val_usuario_registro' => !empty($item['Registro_Firma Proveedor'] ?? '') ? 'HISTORICO' : '',
+			'observaciones' => $item['Observaciones'] ?? '',
+			'estado' => 'P',
+			'neto_estado' => $item['Estado'] ?? '',
+			'detraccion_estado' => $item['Estado_Saldo'] ?? '',
+			'is_historical' => true
+		];
+
+		$records[] = $mapped;
+	}
+
+	return $records;
+}
+
+function f_GetComprobantesFromCompraMineralJson($fecha_inicio_emision, $fecha_fin_emision, $fecha_inicio_sindetraccion, $fecha_fin_sindetraccion, $fecha_inicio_detraccion, $fecha_fin_detraccion, $filtro_lote, $filtro_lote_gel)
+{
+	$records = [];
+	$json_path = __DIR__ . '/repo_old/compra_mineral_contabilidad.json';
+	if (!file_exists($json_path)) {
+		return $records;
+	}
+
+	$json_content = file_get_contents($json_path);
+	$historical_data = json_decode($json_content, true);
+	if (!is_array($historical_data)) {
+		return $records;
+	}
+
+	$has_lote_filter = (isset($filtro_lote) && is_array($filtro_lote) && count($filtro_lote) > 0);
+	$has_gel_filter = (isset($filtro_lote_gel) && is_array($filtro_lote_gel) && count($filtro_lote_gel) > 0);
+
+	foreach ($historical_data as $index => $item) {
+		$cab = $item['cabecera'] ?? [];
+
+		// 1. Filter by Lote (if filtro_lote is provided)
+		if ($has_lote_filter) {
+			$match_lote = false;
+			if (isset($item['detalles']) && is_array($item['detalles'])) {
+				foreach ($item['detalles'] as $det) {
+					if (isset($det['Lote']) && in_array($det['Lote'], $filtro_lote)) {
+						$match_lote = true;
+						break;
+					}
+				}
+			}
+			if (!$match_lote) {
+				continue;
+			}
+		}
+
+		// 2. Filter by Cod GEL (if filtro_lote_gel is provided)
+		if ($has_gel_filter) {
+			$match_gel = false;
+			if (isset($item['detalles']) && is_array($item['detalles'])) {
+				foreach ($item['detalles'] as $det) {
+					if (isset($det['Cod. GEL']) && in_array($det['Cod. GEL'], $filtro_lote_gel)) {
+						$match_gel = true;
+						break;
+					}
+				}
+			}
+			if (!$match_gel) {
+				continue;
+			}
+		}
+
+		// 3. Filter by Emission Dates
+		if (strlen($fecha_inicio_emision) > 0 && strlen($fecha_fin_emision) > 0) {
+			$em_date = substr($cab['Fecha Emisión'] ?? '', 0, 10);
+			if ($em_date < $fecha_inicio_emision || $em_date > $fecha_fin_emision) {
+				continue;
+			}
+		}
+
+		// 4. Filter by Payment Dates (Sin Detracción)
+		if (strlen($fecha_inicio_sindetraccion) > 0 && strlen($fecha_fin_sindetraccion) > 0) {
+			$reg_date = substr($cab['Registro'] ?? '', 0, 10);
+			if ($reg_date < $fecha_inicio_sindetraccion || $reg_date > $fecha_fin_sindetraccion) {
+				continue;
+			}
+		}
+
+		// 5. Filter by Payment Dates (Detracción)
+		if (strlen($fecha_inicio_detraccion) > 0 && strlen($fecha_fin_detraccion) > 0) {
+			$reg_date = substr($cab['Registro'] ?? '', 0, 10);
+			if ($reg_date < $fecha_inicio_detraccion || $reg_date > $fecha_fin_detraccion) {
+				continue;
+			}
+		}
+
+		// Map JSON to unified row
+		$lotes = [];
+		$gels = [];
+		$elementos = [];
+		$subtotals = [];
+		if (isset($item['detalles']) && is_array($item['detalles'])) {
+			foreach ($item['detalles'] as $det) {
+				if (!empty($det['Lote'])) $lotes[] = $det['Lote'];
+				if (!empty($det['Cod. GEL'])) $gels[] = $det['Cod. GEL'];
+				if (!empty($det['Elemento'])) $elementos[] = $det['Elemento'];
+				if (isset($det['Sub Total'])) $subtotals[] = $det['Sub Total'];
+			}
+		}
+
+		$mapped = [
+			'id_comprobante_pago' => 'hist_comp_' . $index,
+			'id_valorizacion' => 0,
+			'serie_comprobante' => $cab['Serie'] ?? '',
+			'numero_comprobante' => intval($cab['Número'] ?? 0),
+			'fecha_emision_comprobante' => $cab['Fecha Emisión'] ?? '',
+			'PROVEEDOR_RUC' => $cab['RUC'] ?? '',
+			'PROVEEDOR_RAZON_SOCIAL' => $cab['Razón Social'] ?? '',
+			'is_aprobado_usuarioregistro' => $cab['Aprobación'] ?? '',
+			'is_aprobado_fechahoraregistro' => null,
+			'COD_VALORIZACION' => $cab['N°'] ?? '',
+			'cod_lote' => implode(',', $lotes),
+			'cod_gel' => implode(',', $gels),
+			'ARR_ELEMENTO' => implode(',', $elementos),
+			'ARR_VALORIZACION_TOTAL' => implode(',', $subtotals),
+			'sub_total' => $cab['Valor Neto Mineral'] ?? 0,
+			'igv' => $cab['I.G.V.'] ?? 0,
+			'total_comprobante' => $cab['Valor Total'] ?? 0,
+			'total_sin_detraccion' => $cab['Total por Pagar'] ?? 0,
+			'pago_sin_detraccion' => $cab['Total Pagado'] ?? 0,
+			'porc_detraccion' => ($cab['%'] ?? 0) * 100.0,
+			'total_detraccion' => $cab['Total por Pagar_%'] ?? 0,
+			'tipo_cambio' => $cab['Tipo'] ?? 0,
+			'total_detraccion_soles' => $cab['Total por Pagar_Tipo'] ?? 0,
+			'DETRACCION_PAGOTOTAL' => $cab['Total Pagado_Total por Pagar'] ?? 0,
+			'pago_detraccion' => ($cab['Total Pagado_Total por Pagar'] ?? 0) / (floatval($cab['Tipo'] ?? 0) ?: 1.0),
+			'aprobo_contabilidad' => !empty($cab['Registro'] ?? '') ? 1 : 0,
+			'aprobo_contabilidad_fechahora_registro' => $cab['Registro'] ?? '',
+			'aprobo_contabilidad_usuario_registro' => !empty($cab['Registro'] ?? '') ? 'HISTORICO' : '',
+			'aprobo_comercial' => !empty($cab['Registro_Comercial'] ?? '') ? 1 : 0,
+			'aprobo_comercial_fechahora_registro' => $cab['Registro_Comercial'] ?? '',
+			'aprobo_comercial_usuario_registro' => !empty($cab['Registro_Comercial'] ?? '') ? 'HISTORICO' : '',
+			'aprobo_documentaria' => !empty($cab['Registro_Documentaria'] ?? '') ? 1 : 0,
+			'aprobo_documentaria_fechahora_registro' => $cab['Registro_Documentaria'] ?? '',
+			'aprobo_documentaria_usuario_registro' => !empty($cab['Registro_Documentaria'] ?? '') ? 'HISTORICO' : '',
+			'djvm' => !empty($cab['Registro_DJVM'] ?? '') ? 1 : 0,
+			'djvm_fechahora_registro' => $cab['Registro_DJVM'] ?? '',
+			'djvm_usuario_registro' => !empty($cab['Registro_DJVM'] ?? '') ? 'HISTORICO' : '',
+			'val' => !empty($cab['Registro_Firma Proveedor'] ?? '') ? 1 : 0,
+			'val_fechahora_registro' => $cab['Registro_Firma Proveedor'] ?? '',
+			'val_usuario_registro' => !empty($cab['Registro_Firma Proveedor'] ?? '') ? 'HISTORICO' : '',
+			'observaciones' => $cab['Observaciones'] ?? '',
+			'estado' => 'P',
+			'neto_estado' => $cab['Estado'] ?? '',
+			'detraccion_estado' => $cab['Estado_Saldo'] ?? '',
+			'is_historical' => true
+		];
+
+		$records[] = $mapped;
+	}
+
+	return $records;
+}
+
+function f_GetFacturasVentaFromVentaMineralJson($anio, $mes)
+{
+	$records = [];
+	$json_path = __DIR__ . '/repo_old/venta_mineral_contabilidad.json';
+	if (!file_exists($json_path)) {
+		return $records;
+	}
+
+	$json_content = file_get_contents($json_path);
+	$historical_data = json_decode($json_content, true);
+	if (!is_array($historical_data)) {
+		return $records;
+	}
+
+	foreach ($historical_data as $index => $item) {
+		$cab = $item['cabecera'] ?? [];
+
+		// Filter by Year / Month
+		if ($anio > 0 || $mes > 0) {
+			$em_date = $cab['fecha_emision'] ?? '';
+			if (!empty($em_date)) {
+				$time = strtotime($em_date);
+				if ($time !== false) {
+					if ($anio > 0 && intval(date('Y', $time)) !== $anio) {
+						continue;
+					}
+					if ($mes > 0 && intval(date('m', $time)) !== $mes) {
+						continue;
+					}
+				}
+			}
+		}
+
+		// Map details / lotes
+		$lotes = [];
+		if (isset($item['lotes']) && is_array($item['lotes'])) {
+			foreach ($item['lotes'] as $l) {
+				// Map Element: Au -> 1, Ag -> 2, others -> 0
+				$elem_str = $l['Elemento Quimico'] ?? '';
+				$elem_val = 0;
+				if ($elem_str == 'Au' || $elem_str == '1') {
+					$elem_val = 1;
+				} elseif ($elem_str == 'Ag' || $elem_str == '2') {
+					$elem_val = 2;
+				}
+
+				$lotes[] = [
+					'precio_total' => floatval($l['Precio Total'] ?? 0),
+					'elemento_quimico' => $elem_val,
+					'codigo_cliente' => $l['Lote Codigo Cliente'] ?? '',
+					'numero_parte' => intval($l['Numero Parte'] ?? 0),
+					'codigo_interno' => $l['lote_codigo_interno'] ?? ''
+				];
+			}
+		}
+
+		$mapped = [
+			'id' => 'hist_fv_' . $index,
+			'id_planta' => 0,
+			'serie' => $cab['serie'] ?? '',
+			'numero' => intval($cab['numero'] ?? 0),
+			'fecha_emision' => $cab['fecha_emision'] ?? '',
+			'tipo_cambio_venta' => floatval($cab['tipo_cambio_venta'] ?? 1),
+			'porcentaje_igv' => floatval($cab['porcentaje_igv'] ?? 0.18),
+			'porcentaje_detraccion' => floatval($cab['porcentaje_detraccion'] ?? 10.0),
+			'total_dolares' => floatval($cab['total_dolares'] ?? 0),
+			'total_soles' => floatval($cab['total_soles'] ?? 0),
+			'monto_igv' => floatval($cab['monto_igv'] ?? 0),
+			'avance_pago_anticipo' => floatval($cab['avance_pago_anticipo'] ?? 0),
+			'monto_detraccion' => floatval($cab['monto_detraccion'] ?? 0),
+			'monto_neto' => floatval($cab['monto_neto'] ?? 0),
+			'avance_pago_neto' => floatval($cab['avance_pago_neto'] ?? 0),
+			'avance_pago_detraccion' => floatval($cab['avance_pago_detraccion'] ?? 0),
+			'tipo_pago' => $cab['tipo_pago'] ?? '',
+			'estado' => $cab['estado'] ?? '',
+			'created_at' => $cab['Fecha de Creacion'] ?? '',
+			'descripcion_planta' => $cab['Cliente Planta'] ?? '',
+			'usuario_registro' => 'HISTORICO',
+			'lotes' => $lotes,
+			'is_historical' => true
+		];
+
+		$records[] = $mapped;
+	}
+
+	return $records;
 }
 
 function f_UpdateAllComprobantesStatus($enlace)
@@ -3346,19 +3719,46 @@ function saveLog($datos)
 
 function f_Guia_GenerarCodigoGel(
 	$enlace,
-	array $arr_lote_ids,
-	string $guia_remitente,
-	string $guia_fechahoraemision,
-	string $planta_fechallegada,
-	string $g_fecha,
-	string $g_anho
+	$arr_lote_ids,
+	$guia_remitente = null,
+	$guia_fechahoraemision = null,
+	$planta_fechallegada = null,
+	$g_fecha = null,
+	$g_anho = null
 ): int {
+	if (is_string($arr_lote_ids)) {
+		$actual_g_anho = $g_fecha;
+		$actual_g_fecha = $planta_fechallegada;
+		$actual_planta_fechallegada = $guia_fechahoraemision;
+		$actual_guia_fechahoraemision = $guia_remitente;
+		$actual_guia_remitente = $arr_lote_ids;
+
+		$guia_remitente = $actual_guia_remitente;
+		$guia_fechahoraemision = $actual_guia_fechahoraemision;
+		$planta_fechallegada = $actual_planta_fechallegada;
+		$g_fecha = $actual_g_fecha;
+		$g_anho = $actual_g_anho;
+
+		$guia_remitente_esc = mysqli_real_escape_string($enlace, $guia_remitente);
+		$guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
+
+		$arr_lote_ids = [];
+		$q_ids = "SELECT Id 
+		          FROM despachos_primertramo_validaciondatos 
+		          WHERE CONCAT(guiaremitente_serie,'-',guiaremitente_numero) = '$guia_remitente_esc'
+		            AND guias_fechahoraemision = '$guia_fechaemision_esc'";
+		if ($rs_ids = mysqli_query($enlace, $q_ids)) {
+			while ($row_ids = mysqli_fetch_assoc($rs_ids)) {
+				$arr_lote_ids[] = intval($row_ids["Id"]);
+			}
+			mysqli_free_result($rs_ids);
+		}
+	}
+
 	if (empty($arr_lote_ids))
 		return 0;
 
 	$lote_ids_str = implode(", ", array_map("intval", $arr_lote_ids));
-	$guia_remitente_esc = mysqli_real_escape_string($enlace, $guia_remitente);
-	$guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
 
 	// ----------------------------------------------------------
 	// Lotes SIN código GEL dentro de los seleccionados
@@ -3382,247 +3782,233 @@ function f_Guia_GenerarCodigoGel(
 	if (empty($lotes_sin_gel))
 		return 1;
 
-	// ----------------------------------------------------------
-	// Último código BJ de ESTA GUÍA
-	// Ordenamos por correlativo DESC y luego por codigo_gel DESC
-	// pero separamos: primero el mayor correlativo, luego dentro
-	// de ese correlativo el que tenga letra más alta (o ninguna)
-	// ----------------------------------------------------------
-	$ultimo_codigo_guia = null;
-	$ultimo_correlativo_guia = 0;
+	$fecha_nueva_guia = substr($planta_fechallegada, 0, 10);
+	$fecha_nueva_guia_esc = mysqli_real_escape_string($enlace, $fecha_nueva_guia);
 
-	// Paso 1: ¿cuál es el mayor correlativo de esta guía?
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT MAX(C.correlativo) AS max_corr
-        FROM   despachos_primertramo_validaciondatos V
-        INNER  JOIN correlativo_codigosgel C
-                 ON C.id_validaciondatos = V.Id
-                AND C.estado   = 'A'
-                AND C.cod_anho = '$g_anho'
-        WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
-          AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
-          AND  V.codigo_gel IS NOT NULL")
-	) {
-		if ($row = mysqli_fetch_assoc($rs)) {
-			$ultimo_correlativo_guia = intval($row["max_corr"]);
+	// 1. Verificar si hay registros (guías, lotes) con código GEL asignado
+	$hay_registros = false;
+	$q_any = "SELECT 1 FROM despachos_primertramo_validaciondatos WHERE codigo_gel IS NOT NULL LIMIT 1";
+	if ($rs_any = mysqli_query($enlace, $q_any)) {
+		if (mysqli_num_rows($rs_any) > 0) {
+			$hay_registros = true;
 		}
-		mysqli_free_result($rs);
+		mysqli_free_result($rs_any);
 	}
 
-	if ($ultimo_correlativo_guia === 0) {
-		// Guía nueva
-		$id_primero = intval($lotes_sin_gel[0]["id_validaciondatos"]);
-		$nueva_guia_fecha = null;
-		if ($rs_f = mysqli_query($enlace, "SELECT guias_fecha FROM despachos_primertramo_validaciondatos WHERE Id = $id_primero")) {
-			if ($row_f = mysqli_fetch_assoc($rs_f)) {
-				$nueva_guia_fecha = $row_f["guias_fecha"];
-			}
-			mysqli_free_result($rs_f);
+	if (!$hay_registros) {
+		// Comenzando por código 1
+		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, 1, $g_fecha, $g_anho);
+	}
+
+	// 2. Verificar si hay guías con fecha menor o igual
+	$existe_menor_o_igual = false;
+	$q_menor = "SELECT EXISTS (
+	    SELECT 1
+	    FROM despachos_primertramo_validaciondatos gs
+	    WHERE DATE(gs.lote_pesoinicial_fechahoraregistro) <= '$fecha_nueva_guia_esc'
+	      AND gs.codigo_gel IS NOT NULL
+	) AS existe";
+	if ($rs_menor = mysqli_query($enlace, $q_menor)) {
+		if ($row_menor = mysqli_fetch_assoc($rs_menor)) {
+			$existe_menor_o_igual = (intval($row_menor["existe"]) === 1);
 		}
+		mysqli_free_result($rs_menor);
+	}
 
-		$hay_posterior = false;
-		if ($nueva_guia_fecha) {
-			$q_post = "SELECT COUNT(*) AS total 
-			           FROM despachos_primertramo_validaciondatos 
-			           WHERE guias_fecha > '$nueva_guia_fecha' 
-			             AND codigo_gel IS NOT NULL";
-			if ($rs_post = mysqli_query($enlace, $q_post)) {
-				$row_post = mysqli_fetch_assoc($rs_post);
-				if (intval($row_post["total"]) > 0) {
-					$hay_posterior = true;
-				}
-				mysqli_free_result($rs_post);
-			}
+	// 3. Verificar si hay lotes valorizados posteriores
+	$existen_valorizados = false;
+	$q_val = "SELECT EXISTS (
+	    SELECT 1
+	    FROM despachos_primertramo_validaciondatos gs
+	    INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_gel = gs.codigo_gel
+	    INNER JOIN valorizacion_compramineral vc ON vc.Id = vcd.id_valorizacion
+	    WHERE vc.is_aprobado = 1 
+	      AND DATE(gs.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+	) AS existen_valorizados";
+	if ($rs_val = mysqli_query($enlace, $q_val)) {
+		if ($row_val = mysqli_fetch_assoc($rs_val)) {
+			$existen_valorizados = (intval($row_val["existen_valorizados"]) === 1);
 		}
+		mysqli_free_result($rs_val);
+	}
 
-		if ($hay_posterior) {
-			$fecha_anterior = null;
-			$q_ant = "SELECT MAX(guias_fecha) AS max_anterior 
-			          FROM despachos_primertramo_validaciondatos 
-			          WHERE guias_fecha < '$nueva_guia_fecha' 
-			            AND codigo_gel IS NOT NULL";
-			if ($rs_ant = mysqli_query($enlace, $q_ant)) {
-				$row_ant = mysqli_fetch_assoc($rs_ant);
-				$fecha_anterior = $row_ant["max_anterior"];
-				mysqli_free_result($rs_ant);
-			}
-
-			$ultimo_codigo = null;
-			$ultimo_correlativo = 0;
-			if ($fecha_anterior) {
-				$q_last = "SELECT C.correlativo, C.codigo_gel 
-				           FROM despachos_primertramo_validaciondatos V 
-				           INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado = 'A' AND C.cod_anho = '$g_anho'
-				           WHERE V.guias_fecha = '$fecha_anterior' 
-				             AND V.codigo_gel IS NOT NULL 
-				           ORDER BY C.correlativo DESC, C.codigo_gel DESC 
-				           LIMIT 1";
-				if ($rs_last = mysqli_query($enlace, $q_last)) {
-					if ($row_last = mysqli_fetch_assoc($rs_last)) {
-						$ultimo_codigo = $row_last["codigo_gel"];
-						$ultimo_correlativo = intval($row_last["correlativo"]);
-					}
-					mysqli_free_result($rs_last);
-				}
-			}
-
-			if ($ultimo_codigo) {
-				$tiene_letra = false;
-				$ultima_letra_idx = 0;
-				if (preg_match('/([A-Z]+)$/', $ultimo_codigo, $m)) {
-					$tiene_letra = true;
-					$ultima_letra_idx = _letraAIndice($m[1]);
-				}
-
-				$idx_letra_inicio = $tiene_letra ? ($ultima_letra_idx + 1) : 1;
-
-				return _asignarCodigosConLetra(
-					$enlace,
-					$lotes_sin_gel,
-					$ultimo_correlativo,
-					$idx_letra_inicio,
-					$g_fecha,
-					$g_anho
-				);
-			} else {
-				// Si no hay guía anterior, empezamos con correlativo 1 y letra A
-				return _asignarCodigosConLetra(
-					$enlace,
-					$lotes_sin_gel,
-					1,
-					1,
-					$g_fecha,
-					$g_anho
-				);
-			}
+	if (!$existe_menor_o_igual) {
+		// -- Si no hay guias menores o iguales:
+		if (!$existen_valorizados) {
+			// PROCESO DE REORDENAMIENTO
+			$N = count($lotes_sin_gel);
+			_shiftCodigosPosteriores($enlace, $fecha_nueva_guia_esc, $g_anho, $N);
+			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, 1, $g_fecha, $g_anho);
 		} else {
-			// Por cada lote, generas los códigos BJ respetando la continuidad (sin letra)
-			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
-		}
-	}
-
-	// Paso 2: dentro de ese correlativo, ¿hay alguno con letra?
-	// Si hay letras, traer la última letra asignada (ORDER BY codigo_gel DESC)
-	// Si no hay letras, traer el código sin letra
-	$ultimo_codigo_guia = null;
-	$tiene_letra = false;
-	$ultima_letra_idx = 0;
-
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT C.codigo_gel
-        FROM   despachos_primertramo_validaciondatos V
-        INNER  JOIN correlativo_codigosgel C
-                 ON C.id_validaciondatos = V.Id
-                AND C.estado   = 'A'
-                AND C.cod_anho = '$g_anho'
-        WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
-          AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
-          AND  V.codigo_gel IS NOT NULL
-          AND  C.correlativo = $ultimo_correlativo_guia
-        ORDER  BY V.codigo_gel DESC")
-	) {
-
-		// Recorremos todos y nos quedamos con el de mayor letra
-		$max_letra_idx = 0;
-		$codigo_sin_letra = null;
-
-		while ($row = mysqli_fetch_assoc($rs)) {
-			$cod = $row["codigo_gel"];
-			if (preg_match('/([A-Z]+)$/', $cod, $m)) {
-				$idx = _letraAIndice($m[1]);
-				if ($idx > $max_letra_idx) {
-					$max_letra_idx = $idx;
-					$ultimo_codigo_guia = $cod;
-					$tiene_letra = true;
-					$ultima_letra_idx = $idx;
+			// Verificamos si ya hay registros con el código 0
+			$existe_cero = false;
+			$q_cero = "SELECT EXISTS (
+			    SELECT 1 
+			    FROM correlativo_codigosgel 
+			    WHERE correlativo = 0 
+			      AND cod_anho = '$g_anho' 
+			      AND estado = 'A'
+			) AS existe_cero";
+			if ($rs_cero = mysqli_query($enlace, $q_cero)) {
+				if ($row_cero = mysqli_fetch_assoc($rs_cero)) {
+					$existe_cero = (intval($row_cero["existe_cero"]) === 1);
 				}
+				mysqli_free_result($rs_cero);
+			}
+
+			if ($existe_cero) {
+				return -2; // ALERTA
 			} else {
-				$codigo_sin_letra = $cod;
+				$idx_letra_inicio = 0; 
+				$q_max_cero = "SELECT codigo_gel 
+				               FROM correlativo_codigosgel 
+				               WHERE correlativo = 0 
+				                 AND cod_anho = '$g_anho' 
+				                 AND estado = 'A' 
+				               ORDER BY codigo_gel DESC 
+				               LIMIT 1";
+				if ($rs_max_cero = mysqli_query($enlace, $q_max_cero)) {
+					if ($row_max_cero = mysqli_fetch_assoc($rs_max_cero)) {
+						$cod_cero = $row_max_cero["codigo_gel"];
+						if (preg_match('/([A-Z]+)$/', $cod_cero, $m)) {
+							$idx_letra_inicio = _letraAIndice($m[1]) + 1;
+						}
+					}
+					mysqli_free_result($rs_max_cero);
+				}
+				return _asignarCodigosConLetra($enlace, $lotes_sin_gel, 0, $idx_letra_inicio, $g_fecha, $g_anho);
 			}
 		}
+	} else {
+		// -- Y si hay guias menores o igual:
+		// Obtenemos el ultimo registro anterior o igual de referencia
+		$ultimo_codigo = null;
+		$ultimo_correlativo = 0;
 
-		if (!$tiene_letra) {
-			$ultimo_codigo_guia = $codigo_sin_letra;
+		$q_last = "SELECT V.Id, V.codigo_gel, C.correlativo
+		           FROM despachos_primertramo_validaciondatos V 
+		           INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado = 'A' AND C.cod_anho = '$g_anho'
+		           WHERE DATE(V.lote_pesoinicial_fechahoraregistro) <= '$fecha_nueva_guia_esc' 
+		             AND V.codigo_gel IS NOT NULL 
+		           ORDER BY DATE(V.lote_pesoinicial_fechahoraregistro) DESC, C.correlativo DESC, V.codigo_gel DESC, V.Id DESC 
+		           LIMIT 1";
+		if ($rs_last = mysqli_query($enlace, $q_last)) {
+			if ($row_last = mysqli_fetch_assoc($rs_last)) {
+				$ultimo_codigo = $row_last["codigo_gel"];
+				$ultimo_correlativo = intval($row_last["correlativo"]);
+			}
+			mysqli_free_result($rs_last);
 		}
 
-		mysqli_free_result($rs);
+		// Verificamos si hay registros con una fecha posterior
+		$existen_posteriores = false;
+		$q_post = "SELECT EXISTS (
+		    SELECT 1
+		    FROM despachos_primertramo_validaciondatos gs
+		    WHERE DATE(gs.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+		      AND gs.codigo_gel IS NOT NULL
+		) AS existen_posteriores";
+		if ($rs_post = mysqli_query($enlace, $q_post)) {
+			if ($row_post = mysqli_fetch_assoc($rs_post)) {
+				$existen_posteriores = (intval($row_post["existen_posteriores"]) === 1);
+			}
+			mysqli_free_result($rs_post);
+		}
+
+		if (!$existen_posteriores) {
+			// Secuencia normal
+			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $ultimo_correlativo + 1, $g_fecha, $g_anho);
+		} else {
+			if (!$existen_valorizados) {
+				// PROCESO DE REORDENAMIENTO
+				$N = count($lotes_sin_gel);
+				_shiftCodigosPosteriores($enlace, $fecha_nueva_guia_esc, $g_anho, $N);
+				return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $ultimo_correlativo + 1, $g_fecha, $g_anho);
+			} else {
+				// Secuencia de letras
+				$idx_letra_inicio = 1;
+				$q_max_letra = "SELECT codigo_gel 
+				                FROM correlativo_codigosgel 
+				                WHERE correlativo = $ultimo_correlativo 
+				                  AND cod_anho = '$g_anho' 
+				                  AND estado = 'A' 
+				                ORDER BY codigo_gel DESC 
+				                LIMIT 1";
+				if ($rs_max_letra = mysqli_query($enlace, $q_max_letra)) {
+					if ($row_max_letra = mysqli_fetch_assoc($rs_max_letra)) {
+						$cod_ref = $row_max_letra["codigo_gel"];
+						if (preg_match('/([A-Z]+)$/', $cod_ref, $m)) {
+							$idx_letra_inicio = _letraAIndice($m[1]) + 1;
+						}
+					}
+					mysqli_free_result($rs_max_letra);
+				}
+				return _asignarCodigosConLetra($enlace, $lotes_sin_gel, $ultimo_correlativo, $idx_letra_inicio, $g_fecha, $g_anho);
+			}
+		}
+	}
+}
+
+function _shiftCodigosPosteriores($enlace, string $fecha_nueva_guia_esc, string $g_anho, int $N): void {
+	$q_sel = "SELECT C.Id AS id_correlativo, C.correlativo, C.codigo_gel, C.id_validaciondatos
+	          FROM correlativo_codigosgel C
+	          INNER JOIN despachos_primertramo_validaciondatos V ON V.Id = C.id_validaciondatos
+	          WHERE DATE(V.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+	            AND C.cod_anho = '$g_anho'
+	            AND C.estado = 'A'
+	          ORDER BY C.correlativo DESC, C.codigo_gel DESC";
+
+	$records = [];
+	if ($rs_sel = mysqli_query($enlace, $q_sel)) {
+		while ($row = mysqli_fetch_assoc($rs_sel)) {
+			$records[] = $row;
+		}
+		mysqli_free_result($rs_sel);
 	}
 
-	// ----------------------------------------------------------
-	// CASO B1: Último código TIENE letra → continuar secuencia
-	//          BJ-26-0009A → B   |   BJ-26-0009B → C
-	// ----------------------------------------------------------
-	if ($tiene_letra) {
-		return _asignarCodigosConLetra(
-			$enlace,
-			$lotes_sin_gel,
-			$ultimo_correlativo_guia,
-			$ultima_letra_idx + 1,   // siguiente letra
-			$g_fecha,
-			$g_anho
-		);
-	}
+	foreach ($records as $rec) {
+		$id_corr = intval($rec["id_correlativo"]);
+		$id_val = intval($rec["id_validaciondatos"]);
+		$codigo_actual = $rec["codigo_gel"];
+		$nuevo_correlativo = intval($rec["correlativo"]) + $N;
 
-	// ----------------------------------------------------------
-	// CASO B2: Último código SIN letra
-	//          ¿es el último correlativo global del año?
-	// ----------------------------------------------------------
-	$max_corr_global = 0;
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT MAX(correlativo) AS max_corr
-        FROM   correlativo_codigosgel
-        WHERE  cod_anho = '$g_anho' AND estado = 'A'")
-	) {
-		if ($row = mysqli_fetch_assoc($rs))
-			$max_corr_global = intval($row["max_corr"]);
-		mysqli_free_result($rs);
-	}
+		$nuevo_codigo = _shiftCodigoGelString($codigo_actual, $N);
 
-	if ($ultimo_correlativo_guia >= $max_corr_global) {
-		// B2a: ES la última guía → nuevos correlativos sin letra
-		//      BJ-26-0009 → BJ-26-0010, BJ-26-0011 ...
-		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
-	} else {
-		// B2b: NO es la última → letras desde A
-		//      BJ-26-0008 → BJ-26-0008A, BJ-26-0008B ...
-		return _asignarCodigosConLetra(
-			$enlace,
-			$lotes_sin_gel,
-			$ultimo_correlativo_guia,
-			1,
-			$g_fecha,
-			$g_anho
-		);
+		mysqli_query($enlace, "UPDATE correlativo_codigosgel 
+		                       SET correlativo = $nuevo_correlativo, 
+		                           codigo_gel = '$nuevo_codigo' 
+		                       WHERE Id = $id_corr");
+
+		mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos 
+		                       SET codigo_gel = '$nuevo_codigo' 
+		                       WHERE Id = $id_val");
 	}
+}
+
+function _shiftCodigoGelString(string $codigo_actual, int $shift_amount): string {
+	if (preg_match('/^BJ-(\d+)-(\d+)([A-Z]*)$/', $codigo_actual, $matches)) {
+		$year = $matches[1];
+		$corr = intval($matches[2]) + $shift_amount;
+		$suffix = $matches[3];
+		return sprintf("BJ-%s-%04d%s", $year, $corr, $suffix);
+	}
+	return $codigo_actual;
 }
 
 function _asignarCodigosNuevos(
 	$enlace,
 	array $lotes,
+	int $siguiente,
 	string $g_fecha,
 	string $g_anho
 ): int {
 	$usuario = $_SESSION["usu_usuario"];
-
-	$siguiente = 1;
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT IFNULL(MAX(correlativo), 0) AS max_corr
-        FROM   correlativo_codigosgel
-        WHERE  cod_anho = '$g_anho' AND estado = 'A'")
-	) {
-		if ($row = mysqli_fetch_assoc($rs))
-			$siguiente = intval($row["max_corr"]) + 1;
-		mysqli_free_result($rs);
-	}
+	$anho_corto = substr($g_anho, -2);
 
 	foreach ($lotes as $lote) {
 		$id = intval($lote["id_validaciondatos"]);
 		$fec = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
-		$codigo = sprintf("BJ-%02d-%04d", date("y"), $siguiente);
+		$codigo = sprintf("BJ-%s-%04d", $anho_corto, $siguiente);
 
 		mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
                                 WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
@@ -3656,12 +4042,13 @@ function _asignarCodigosConLetra(
 ): int {
 	$usuario = $_SESSION["usu_usuario"];
 	$idx = $idx_letra_inicio;
+	$anho_corto = substr($g_anho, -2);
 
 	foreach ($lotes as $lote) {
 		$id = intval($lote["id_validaciondatos"]);
 		$fec = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
 		$sufijo = _indiceALetra($idx);
-		$codigo = sprintf("BJ-%02d-%04d%s", date("y"), $correlativo_base, $sufijo);
+		$codigo = sprintf("BJ-%s-%04d%s", $anho_corto, $correlativo_base, $sufijo);
 
 		mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
                                 WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
@@ -71756,11 +72143,94 @@ switch ($_POST["accion"]) {
 			$data[] = $row;
 		}
 
+		// Cargar datos históricos desde JSON sin persistir en la BD
+		$json_path = __DIR__ . '/repo_old/valorizacion_compra.json';
+		if (file_exists($json_path)) {
+			$historicos = json_decode(file_get_contents($json_path), true);
+			if (is_array($historicos)) {
+				foreach ($historicos as $index => $h) {
+					$cabecera = $h['cabecera'] ?? [];
+					$data[] = [
+						"Id" => "H-" . $index,
+						"ID_MD5" => md5("H-" . $index),
+						"correlativo" => "H-" . str_pad($index + 1, 4, "0", STR_PAD_LEFT),
+						"version" => 1,
+						"num_oficio" => "S/N",
+						"id_proveedor" => null,
+						"id_concesion" => null,
+						"ruc" => $cabecera['ruc'] ?? '',
+						"proveedor" => $cabecera['proveedor'] ?? '',
+						"usuario_registro" => "Histórico",
+						"is_aprobado" => 1,
+						"is_aprobado_fechahoraregistro" => $cabecera['aprobado'] ?? '',
+						"is_aprobado_usuarioregistro" => "Histórico",
+						"id_cuentabancaria" => null,
+						"id_cuentadetraccion" => null,
+						"fechahora_registro" => $cabecera['elaborado'] ?? '',
+						"estado" => (trim($cabecera['estado'] ?? '') == 'Activo') ? 'A' : 'I',
+						"usa_anticipo" => 0,
+						"IS_VALORIZACIONAPROBADA" => 1,
+						"anticipos_usados" => null,
+						"tiene_comprobante" => 0,
+						"is_historico" => true
+					];
+				}
+			}
+		}
+
 		echo json_encode(["estado" => 1, "registros" => $data]);
 		break;
 
 	case "get_ValorizacionCompra_Detalle":
 		$id_valorizacion = $_POST["id_valorizacion"];
+
+		if (strpos($id_valorizacion, "H-") === 0) {
+			$index = intval(substr($id_valorizacion, 2));
+			$registros = [];
+			$json_path = __DIR__ . '/repo_old/valorizacion_compra.json';
+			if (file_exists($json_path)) {
+				$historicos = json_decode(file_get_contents($json_path), true);
+				if (is_array($historicos) && isset($historicos[$index])) {
+					$cabecera = $historicos[$index]['cabecera'] ?? [];
+					$detalles = $historicos[$index]['detalles'] ?? [];
+					foreach ($detalles as $det_idx => $d) {
+						$registros[] = [
+							"Id" => "HD-" . $index . "-" . $det_idx,
+							"id_elemento" => null,
+							"cod_lote" => $d['lote'] ?? '',
+							"cod_gel" => $d['cod_gel'] ?? '',
+							"guiaremision_remitente" => $d['guia_remitente'] ?? '',
+							"guiaremision_transportista" => $d['guia_transportista'] ?? '',
+							"fecha_ingreso" => $d['fecha_ingreso'] ?? '',
+							"pesto_tmh" => floatval($d['tmh'] ?? 0),
+							"porc_h20" => floatval($d['porc_h2o'] ?? 0),
+							"peso_tms" => floatval($d['tms'] ?? 0),
+							"ley_oztc" => floatval($d['ley'] ?? 0),
+							"porc_rec" => floatval($d['rec'] ?? 0),
+							"precio_inter" => floatval($d['inter'] ?? 0),
+							"precio_inter_desc" => floatval($d['des_inter'] ?? 0),
+							"maquila" => floatval($d['maquila'] ?? 0),
+							"precio_reac" => floatval($d['react'] ?? 0),
+							"factor" => floatval($d['factor'] ?? 0),
+							"subtotal" => floatval($d['precio_por_tn'] ?? 0),
+							"incentivo" => 0.00,
+							"subtotal_final" => floatval($d['precio_por_tn'] ?? 0),
+							"total" => floatval($d['total'] ?? 0),
+							"elemento" => $d['elemento'] ?? '',
+							"elemento_original" => $d['elemento'] ?? '',
+							"PROVEEDOR_RUC" => $cabecera['ruc'] ?? '',
+							"ID_LOTE" => null,
+							"is_historico" => true
+						];
+					}
+				}
+			}
+			echo json_encode([
+				"estado" => 1,
+				"registros" => $registros,
+			]);
+			break;
+		}
 
 		$sql = "SELECT VD.Id,
 										 VD.id_elemento,
@@ -72268,7 +72738,7 @@ switch ($_POST["accion"]) {
 			$planta_fechallegada = $guia_balanza_fecharegistro;
 			$guia_fechaemision_x = $guia_fechaemision . " " . $guia_horaemision;
 
-			f_Guia_GenerarCodigoGel(
+			$res_generar = f_Guia_GenerarCodigoGel(
 				$enlace,
 				$id_distribucion_arr,
 				$guia_remitente,
@@ -72277,6 +72747,15 @@ switch ($_POST["accion"]) {
 				$g_fecha,
 				$g_anho
 			);
+
+			if ($res_generar === -2) {
+				echo json_encode([
+					"estado" => -2,
+					"msg" => "Ya hay lotes con el código 0 y no es posible reordenar."
+				]);
+				break;
+			}
+
 
 			// -----------------------------------------------
 			// Devuelve hashes MD5 de los números de guía
@@ -72933,8 +73412,15 @@ switch ($_POST["accion"]) {
 						$lote_cerrado_texto .
 						"</label></td>";
 
+					$bg_gel = "#ffffff";
+					$color_gel = "#25476a";
+					if (!empty($row_validacion["codigogel_valorizado"])) {
+						$bg_gel = "#fff3cd"; // soft amber/yellow
+						$color_gel = "#856404"; // dark amber
+					}
+
 					$html .=
-						'    <td style="color: #25476a; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">' .
+						'    <td style="color: ' . $color_gel . '; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: ' . $bg_gel . ';">' .
 						$row_validacion["codigo_gel"] .
 						"</td>";
 
@@ -73233,7 +73719,12 @@ switch ($_POST["accion"]) {
 			$g_anho
 		);
 
-		echo json_encode(["estado" => $estado]);
+		$msg = "";
+		if ($estado === -2) {
+			$msg = "Ya hay lotes con el código 0 y no es posible reordenar.";
+		}
+
+		echo json_encode(["estado" => $estado, "msg" => $msg]);
 
 		break;
 
@@ -73658,134 +74149,11 @@ switch ($_POST["accion"]) {
 			}
 		}
 
-		// Load historical data from JSON
-		$json_path = __DIR__ . '/repo_old/aprobacion_comprobantes.json';
-		if (file_exists($json_path)) {
-			$json_content = file_get_contents($json_path);
-			$historical_data = json_decode($json_content, true);
-			if (is_array($historical_data)) {
-				$has_lote_filter = (isset($filtro_lote) && is_array($filtro_lote) && count($filtro_lote) > 0);
-				$has_gel_filter = (isset($filtro_lote_gel) && is_array($filtro_lote_gel) && count($filtro_lote_gel) > 0);
+		// Load historical data from BOTH JSON files
+		$aprob_records = f_GetComprobantesFromAprobacionJson($fecha_inicio_emision, $fecha_fin_emision, $fecha_inicio_sindetraccion, $fecha_fin_sindetraccion, $fecha_inicio_detraccion, $fecha_fin_detraccion, $filtro_lote, $filtro_lote_gel);
+		$comp_records = f_GetComprobantesFromCompraMineralJson($fecha_inicio_emision, $fecha_fin_emision, $fecha_inicio_sindetraccion, $fecha_fin_sindetraccion, $fecha_inicio_detraccion, $fecha_fin_detraccion, $filtro_lote, $filtro_lote_gel);
+		$records = array_merge($records, $aprob_records, $comp_records);
 
-				foreach ($historical_data as $index => $item) {
-					// 1. Filter by Lote (if filtro_lote is provided)
-					if ($has_lote_filter) {
-						$match_lote = false;
-						if (isset($item['detalles']) && is_array($item['detalles'])) {
-							foreach ($item['detalles'] as $det) {
-								if (isset($det['Lote']) && in_array($det['Lote'], $filtro_lote)) {
-									$match_lote = true;
-									break;
-								}
-							}
-						}
-						if (!$match_lote) {
-							continue;
-						}
-					}
-
-					// 2. Filter by Cod GEL (if filtro_lote_gel is provided)
-					if ($has_gel_filter) {
-						$match_gel = false;
-						if (isset($item['detalles']) && is_array($item['detalles'])) {
-							foreach ($item['detalles'] as $det) {
-								if (isset($det['Cod. GEL']) && in_array($det['Cod. GEL'], $filtro_lote_gel)) {
-									$match_gel = true;
-									break;
-								}
-							}
-						}
-						if (!$match_gel) {
-							continue;
-						}
-					}
-
-					// 3. Filter by Emission/Payment Dates (only if no lote or gel filter is active)
-					if (!$has_lote_filter && !$has_gel_filter) {
-						if (strlen($fecha_inicio_emision) > 0 && strlen($fecha_fin_emision) > 0) {
-							$em_date = substr($item['Fecha Emisión'], 0, 10);
-							if ($em_date < $fecha_inicio_emision || $em_date > $fecha_fin_emision) {
-								continue;
-							}
-						}
-						
-						if (strlen($fecha_inicio_sindetraccion) > 0 && strlen($fecha_fin_sindetraccion) > 0) {
-							continue;
-						}
-
-						if (strlen($fecha_inicio_detraccion) > 0 && strlen($fecha_fin_detraccion) > 0) {
-							continue;
-						}
-					}
-
-					// Map JSON to unified row
-					$lotes = [];
-					$gels = [];
-					$elementos = [];
-					$subtotals = [];
-					if (isset($item['detalles']) && is_array($item['detalles'])) {
-						foreach ($item['detalles'] as $det) {
-							if (!empty($det['Lote'])) $lotes[] = $det['Lote'];
-							if (!empty($det['Cod. GEL'])) $gels[] = $det['Cod. GEL'];
-							if (!empty($det['Elemento'])) $elementos[] = $det['Elemento'];
-							if (isset($det['Sub Total'])) $subtotals[] = $det['Sub Total'];
-						}
-					}
-
-					$mapped = [
-						'id_comprobante_pago' => 'hist_' . $index,
-						'id_valorizacion' => 0,
-						'serie_comprobante' => $item['Serie'],
-						'numero_comprobante' => intval($item['Número']),
-						'fecha_emision_comprobante' => $item['Fecha Emisión'],
-						'PROVEEDOR_RUC' => $item['RUC'],
-						'PROVEEDOR_RAZON_SOCIAL' => $item['Razón Social'],
-						'is_aprobado_usuarioregistro' => $item['Aprobación'],
-						'is_aprobado_fechahoraregistro' => null,
-						'COD_VALORIZACION' => $item['N°'],
-						'cod_lote' => implode(',', $lotes),
-						'cod_gel' => implode(',', $gels),
-						'ARR_ELEMENTO' => implode(',', $elementos),
-						'ARR_VALORIZACION_TOTAL' => implode(',', $subtotals),
-						'sub_total' => $item['Valor Neto Mineral'],
-						'igv' => $item['I.G.V.'],
-						'total_comprobante' => $item['Valor Total'],
-						'total_sin_detraccion' => $item['Total por Pagar'],
-						'pago_sin_detraccion' => $item['Total Pagado'],
-						'porc_detraccion' => $item['%'] * 100.0,
-						'total_detraccion' => $item['Total por Pagar_%'],
-						'tipo_cambio' => $item['Tipo'],
-						'total_detraccion_soles' => $item['Total por Pagar_Tipo'],
-						'DETRACCION_PAGOTOTAL' => $item['Total Pagado_Total por Pagar'],
-						'pago_detraccion' => $item['Total Pagado_Total por Pagar'] / (floatval($item['Tipo']) ?: 1.0),
-						'aprobo_contabilidad' => !empty($item['Registro']) ? 1 : 0,
-						'aprobo_contabilidad_fechahora_registro' => $item['Registro'],
-						'aprobo_contabilidad_usuario_registro' => !empty($item['Registro']) ? 'HISTORICO' : '',
-						'aprobo_comercial' => !empty($item['Registro_Comercial']) ? 1 : 0,
-						'aprobo_comercial_fechahora_registro' => $item['Registro_Comercial'],
-						'aprobo_comercial_usuario_registro' => !empty($item['Registro_Comercial']) ? 'HISTORICO' : '',
-						'aprobo_documentaria' => !empty($item['Registro_Documentaria']) ? 1 : 0,
-						'aprobo_documentaria_fechahora_registro' => $item['Registro_Documentaria'],
-						'aprobo_documentaria_usuario_registro' => !empty($item['Registro_Documentaria']) ? 'HISTORICO' : '',
-						'djvm' => !empty($item['Registro_DJVM']) ? 1 : 0,
-						'djvm_fechahora_registro' => $item['Registro_DJVM'],
-						'djvm_usuario_registro' => !empty($item['Registro_DJVM']) ? 'HISTORICO' : '',
-						'val' => !empty($item['Registro_Firma Proveedor']) ? 1 : 0,
-						'val_fechahora_registro' => $item['Registro_Firma Proveedor'],
-						'val_usuario_registro' => !empty($item['Registro_Firma Proveedor']) ? 'HISTORICO' : '',
-						'observaciones' => $item['Observaciones'],
-						'estado' => 'P',
-						'neto_estado' => $item['Estado'],
-						'detraccion_estado' => $item['Estado_Saldo'],
-						'is_historical' => true
-					];
-
-					$records[] = $mapped;
-				}
-			}
-		}
-
-		// Sort by emission date ascending
 		usort($records, function($a, $b) {
 			return strcmp($a['fecha_emision_comprobante'], $b['fecha_emision_comprobante']);
 		});
@@ -80666,6 +81034,31 @@ switch ($_POST["accion"]) {
 			}
 		}
 
+		// Cargar datos históricos desde JSON sin persistir en la BD
+		$json_path = __DIR__ . '/repo_old/valorizacion_venta.json';
+		if (file_exists($json_path)) {
+			$historicos = json_decode(file_get_contents($json_path), true);
+			if (is_array($historicos)) {
+				$estado = 1;
+				foreach ($historicos as $index => $h) {
+					$cabecera = $h['cabecera'] ?? [];
+					$registros[] = [
+						"id" => "H-" . $index,
+						"id_planta" => null,
+						"numero_correlativo" => "H-" . str_pad($index + 1, 4, "0", STR_PAD_LEFT),
+						"codigo_valorizacion_venta" => $cabecera['Cód. Valorización'] ?? '',
+						"evidencias" => null,
+						"estado" => (trim($cabecera['Estado'] ?? '') == 'Activo') ? 'A' : 'I',
+						"created_at" => $cabecera['Registrado'] ?? '',
+						"descripcion_planta" => $cabecera['Planta'] ?? '',
+						"ruc_planta" => '',
+						"usuario_registro" => "Histórico",
+						"is_historico" => true
+					];
+				}
+			}
+		}
+
 		echo json_encode(["estado" => $estado, "registros" => $registros]);
 		break;
 
@@ -80674,13 +81067,72 @@ switch ($_POST["accion"]) {
 // ─────────────────────────────────────────────────────────────
 	case "get_DetalleValorizacionVenta":
 
-		$id_valorizacion = (int) mysqli_real_escape_string($enlace, $_POST["id_valorizacion"]);
+		$id_valorizacion = $_POST["id_valorizacion"];
+
+		if (strpos($id_valorizacion, "H-") === 0) {
+			$index = intval(substr($id_valorizacion, 2));
+			$registros = [];
+			$cabecera = null;
+			$json_path = __DIR__ . '/repo_old/valorizacion_venta.json';
+			if (file_exists($json_path)) {
+				$historicos = json_decode(file_get_contents($json_path), true);
+				if (is_array($historicos) && isset($historicos[$index])) {
+					$cab_data = $historicos[$index]['cabecera'] ?? [];
+					$cabecera = [
+						"id" => "H-" . $index,
+						"id_planta" => null,
+						"evidencias" => null,
+						"estado" => (trim($cab_data['Estado'] ?? '') == 'Activo') ? 'A' : 'I',
+						"numero_correlativo" => "H-" . str_pad($index + 1, 4, "0", STR_PAD_LEFT),
+						"codigo_valorizacion_venta" => $cab_data['Cód. Valorización'] ?? '',
+						"is_historico" => true
+					];
+					
+					$detalles = $historicos[$index]['detalles'] ?? [];
+					foreach ($detalles as $det_idx => $d) {
+						$registros[] = [
+							"id" => "HD-" . $index . "-" . $det_idx,
+							"id_valorizacion_venta" => "H-" . $index,
+							"id_distribucion_detalle" => null,
+							"id_condicion_comercial" => null,
+							"elemento_quimico" => (trim($d['Elemento'] ?? '') == 'Au') ? 1 : 2,
+							"recuperacion" => floatval($d['Rec. %'] ?? 0),
+							"inter" => floatval($d['Inter ($/oz)'] ?? 0),
+							"des_inter" => floatval($d['Des. Inter'] ?? 0),
+							"maquila" => floatval($d['Maquila'] ?? 0),
+							"consumo" => floatval($d['Consumo'] ?? 0),
+							"factor" => floatval($d['Factor'] ?? 0),
+							"precio_por_tonelada" => floatval($d['P/TN'] ?? 0),
+							"precio_total" => floatval($d['Total'] ?? 0),
+							"peso_humedo" => null,
+							"codigo_cliente" => $d['Cód. Cliente'] ?? '',
+							"ley_oro" => floatval($d['Ley Oro'] ?? 0),
+							"ley_plata" => floatval($d['Ley Plata'] ?? 0),
+							"ley_humedad_en_planta_destino" => null,
+							"peso_seco" => floatval($d['Peso Seco (TM)'] ?? 0),
+							"guia_transportista" => $d['G.R.T.'] ?? '',
+							"codigo_interno" => $d['Cód. Interno'] ?? '',
+							"is_historico" => true
+						];
+					}
+				}
+			}
+			ob_clean();
+			echo json_encode([
+				"estado" => ($cabecera !== null) ? 1 : 0,
+				"cabecera" => $cabecera,
+				"registros" => $registros
+			]);
+			break;
+		}
+
+		$id_val_int = (int) mysqli_real_escape_string($enlace, $id_valorizacion);
 
 		// ── Cabecera ──
 		$q_cab = "
         SELECT vv.id, vv.id_planta, vv.evidencias, vv.estado, vv.numero_correlativo, vv.codigo_valorizacion_venta
         FROM   valorizacion_venta vv
-        WHERE  vv.id = $id_valorizacion
+        WHERE  vv.id = $id_val_int
         LIMIT  1
     ";
 		$res_cab = mysqli_query($enlace, $q_cab);
@@ -80741,7 +81193,7 @@ switch ($_POST["accion"]) {
         INNER  JOIN despacho_detalle     dsd  ON dsd.id  = dst.id_despacho_detalle
         INNER  JOIN distribucion         ds   ON ds.id   = dst.id_distribucion
         INNER  JOIN guia_segundo_tramo   gi   ON gi.id_distribucion = ds.id
-        WHERE  vd.id_valorizacion_venta = $id_valorizacion
+        WHERE  vd.id_valorizacion_venta = $id_val_int
         ORDER  BY vd.elemento_quimico, vd.id ASC
     ";
 
@@ -81881,9 +82333,18 @@ SQL;
 					$row['lotes'] = [];
 				}
 				unset($row['lotes_json']);
+				$row['is_historical'] = false;
 				$registros[] = $row;
 			}
 		}
+
+		$historical = f_GetFacturasVentaFromVentaMineralJson($anio, $mes);
+		$registros = array_merge($registros, $historical);
+
+		usort($registros, function($a, $b) {
+			return strcmp($b['fecha_emision'] . ' ' . sprintf('%08d', $b['numero']), $a['fecha_emision'] . ' ' . sprintf('%08d', $a['numero']));
+		});
+
 		echo json_encode(["estado" => count($registros) ? 1 : 0, "registros" => $registros]);
 		break;
 
@@ -82158,7 +82619,12 @@ SQL;
 
 	// ─── POST: Anular Factura de Venta ───
 	case "fv_AnularFacturaVenta":
-		$id_factura = intval($_POST["id_factura"] ?? 0);
+		$id_factura_str = $_POST["id_factura"] ?? '';
+		if (strpos($id_factura_str, 'hist_fv_') === 0) {
+			echo json_encode(["estado" => 0, "msg" => "No se puede anular comprobante histórico."]);
+			break;
+		}
+		$id_factura = intval($id_factura_str);
 
 		// No anular si tiene pagos confirmados
 		$q_chk = "SELECT COUNT(*) AS c FROM pago_factura_venta
@@ -82198,7 +82664,12 @@ SQL;
 
 	// ─── GET: Lista de pagos de una factura ───
 	case "fv_GetListaPagos":
-		$id_factura = intval($_POST["id_factura"] ?? 0);
+		$id_factura_str = $_POST["id_factura"] ?? '';
+		if (strpos($id_factura_str, 'hist_fv_') === 0) {
+			echo json_encode(["estado" => 1, "pagos" => []]);
+			break;
+		}
+		$id_factura = intval($id_factura_str);
 		$q = "
 			SELECT pf.*,
 				   mp.descripcion AS medio_pago,
@@ -82245,7 +82716,12 @@ SQL;
 
 	// ─── POST: Grabar Pago de Factura ───
 	case "fv_GrabarPagoFactura":
-		$id_factura = intval($_POST["id_factura_venta"] ?? 0);
+		$id_factura_str = $_POST["id_factura_venta"] ?? '';
+		if (strpos($id_factura_str, 'hist_fv_') === 0) {
+			echo json_encode(["estado" => 0, "msg" => "No se puede registrar pagos en comprobante histórico."]);
+			break;
+		}
+		$id_factura = intval($id_factura_str);
 		$fecha = mysqli_real_escape_string($enlace, $_POST["fecha"] ?? '');
 		$id_medio = intval($_POST["id_medio_pago"] ?? 0);
 		$is_det = intval($_POST["is_detraccion"] ?? 0);
@@ -82960,6 +83436,77 @@ function getDataReporte($enlace, $id_proveedor, $fecha_desde, $fecha_hasta)
 			];
 		}
 	}
+
+	// Cargar datos históricos desde JSON sin persistir en la BD
+	$json_path = __DIR__ . '/repo_old/transaccion_compra_anticipos.json';
+	if (file_exists($json_path)) {
+		$historicos = json_decode(file_get_contents($json_path), true);
+		if (is_array($historicos)) {
+			foreach ($historicos as $h) {
+				$ant_info = $h['anticipo_info'] ?? [];
+				$transacciones = [];
+				$anticipoMatchesDate = false;
+
+				foreach ($h['transacciones'] ?? [] as $tr) {
+					$fecha_comprobante = $tr['fecha_factura'] ?? null;
+					$matches = true;
+					if ($fecha_desde && (!$fecha_comprobante || $fecha_comprobante < $fecha_desde))
+						$matches = false;
+					if ($fecha_hasta && (!$fecha_comprobante || $fecha_comprobante > $fecha_hasta))
+						$matches = false;
+
+					if ($matches) {
+						$anticipoMatchesDate = true;
+					}
+
+					// Monto y porcentaje
+					$monto_retirado = floatval($tr['monto_aplicado'] ?? 0);
+					$porcentaje_aplicado_str = $tr['porcentaje_aplicado'] ?? '0.00%';
+
+					$transacciones[] = [
+						"id_transaccion" => null,
+						"lotes" => $tr['lotes'] ?? '',
+						"porcentaje_aplicado" => $porcentaje_aplicado_str,
+						"monto_aplicado" => $monto_retirado,
+						"factura_amortiza_serie" => $tr['factura_amortiza_serie'] ?? '',
+						"fecha_factura" => $fecha_comprobante ? $fecha_comprobante : '-',
+						"importe_factura_usd" => floatval($tr['importe_factura_usd'] ?? 0),
+						"importe_amortiza_adelanto_usd" => floatval($tr['importe_amortiza_adelanto_usd'] ?? 0),
+						"saldo_factura_amortiza" => floatval($tr['saldo_factura_amortiza'] ?? 0),
+						"saldo_neto_factura_amortiza" => floatval($tr['saldo_neto_factura'] ?? 0),
+						"saldo_deuda_usd" => floatval($tr['saldo_deuda_usd'] ?? 0),
+						"estado_comprobante" => $tr['estado_comprobante'] ?? '',
+						"nro_valorizacion" => $tr['nro_valorizacion'] ?? ''
+					];
+				}
+
+				$include = false;
+				if (!$fecha_desde && !$fecha_hasta) {
+					if (count($transacciones) > 0) {
+						$include = true;
+					}
+				} else {
+					if ($anticipoMatchesDate) {
+						$include = true;
+					}
+				}
+
+				if ($include) {
+					$data_final[] = [
+						"anticipo_info" => [
+							"factura" => $ant_info['factura'] ?? '',
+							"fecha" => formatDateShort($ant_info['fecha'] ?? ''),
+							"importe_inicial" => floatval($ant_info['importe_inicial'] ?? 0),
+							"id" => null,
+							"is_historico" => true
+						],
+						"transacciones" => $transacciones
+					];
+				}
+			}
+		}
+	}
+
 	return $data_final;
 }
 
@@ -83211,6 +83758,96 @@ function getDataReportePlanta($enlace, $id_planta, $fecha_desde, $fecha_hasta)
 				],
 				'transacciones' => $transacciones,
 			];
+		}
+	}
+
+	// Cargar datos históricos desde JSON sin persistir en la BD
+	$json_path = __DIR__ . '/repo_old/transaccion_venta_anticipos.json';
+	if (file_exists($json_path)) {
+		$historicos = json_decode(file_get_contents($json_path), true);
+		if (is_array($historicos)) {
+			foreach ($historicos as $h) {
+				$ant_info = $h['anticipo_info'] ?? [];
+				$transacciones = [];
+				$anticipoMatchDate = false;
+
+				foreach ($h['transacciones'] ?? [] as $tr) {
+					$fecha_emision = $tr['fecha_emision'] ?? null;
+					$matches = true;
+					if ($fecha_desde && (!$fecha_emision || $fecha_emision < $fecha_desde))
+						$matches = false;
+					if ($fecha_hasta && (!$fecha_emision || $fecha_emision > $fecha_hasta))
+						$matches = false;
+
+					if ($matches) {
+						$anticipoMatchDate = true;
+					}
+
+					// Mapear estado
+					$estado_label = $tr['estado_label'] ?? 'En espera';
+					$estado = 'E';
+					switch ($estado_label) {
+						case 'Pagado - Mixto':
+							$estado = 'A';
+							break;
+						case 'Pagado - Banco':
+							$estado = 'B';
+							break;
+						case 'Pagado - Anticipos':
+							$estado = 'C';
+							break;
+						case 'En proceso de pago':
+							$estado = 'P';
+							break;
+						case 'En espera':
+							$estado = 'E';
+							break;
+						case 'Anulada':
+							$estado = 'X';
+							break;
+					}
+
+					$transacciones[] = [
+						'id_transaccion' => null,
+						'factura_venta' => $tr['factura_venta'] ?? '',
+						'fecha_emision' => $fecha_emision ?: '-',
+						'total_dolares' => floatval($tr['total_dolares'] ?? 0),
+						'porcentaje_aplicado' => $tr['porcentaje_aplicado'] ?? '0.00%',
+						'monto_retirado' => floatval($tr['monto_retirado'] ?? 0),
+						'lotes' => $tr['lotes'] ?? '',
+						'saldo_factura_amortiza' => floatval($tr['saldo_factura_amortiza'] ?? 0),
+						'saldo_neto_factura' => floatval($tr['saldo_neto_factura'] ?? 0),
+						'saldo_restante' => floatval($tr['saldo_restante'] ?? 0),
+						'estado' => $estado,
+						'estado_label' => $estado_label,
+						'valorizaciones' => $tr['valorizaciones'] ?? '',
+					];
+				}
+
+				$include = false;
+				if (!$fecha_desde && !$fecha_hasta) {
+					if (count($transacciones) > 0) {
+						$include = true;
+					}
+				} else {
+					if ($anticipoMatchDate) {
+						$include = true;
+					}
+				}
+
+				if ($include) {
+					$data_final[] = [
+						'anticipo_info' => [
+							'id' => null,
+							'factura' => $ant_info['factura'] ?? '',
+							'fecha' => formatDateShort($ant_info['fecha'] ?? ''),
+							'importe_inicial' => floatval($ant_info['importe_inicial'] ?? 0),
+							'is_historico' => true
+						],
+						'transacciones' => $transacciones,
+					];
+				}
+			}
 		}
 	}
 
