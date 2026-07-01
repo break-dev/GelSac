@@ -3719,19 +3719,46 @@ function saveLog($datos)
 
 function f_Guia_GenerarCodigoGel(
 	$enlace,
-	array $arr_lote_ids,
-	string $guia_remitente,
-	string $guia_fechahoraemision,
-	string $planta_fechallegada,
-	string $g_fecha,
-	string $g_anho
+	$arr_lote_ids,
+	$guia_remitente = null,
+	$guia_fechahoraemision = null,
+	$planta_fechallegada = null,
+	$g_fecha = null,
+	$g_anho = null
 ): int {
+	if (is_string($arr_lote_ids)) {
+		$actual_g_anho = $g_fecha;
+		$actual_g_fecha = $planta_fechallegada;
+		$actual_planta_fechallegada = $guia_fechahoraemision;
+		$actual_guia_fechahoraemision = $guia_remitente;
+		$actual_guia_remitente = $arr_lote_ids;
+
+		$guia_remitente = $actual_guia_remitente;
+		$guia_fechahoraemision = $actual_guia_fechahoraemision;
+		$planta_fechallegada = $actual_planta_fechallegada;
+		$g_fecha = $actual_g_fecha;
+		$g_anho = $actual_g_anho;
+
+		$guia_remitente_esc = mysqli_real_escape_string($enlace, $guia_remitente);
+		$guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
+
+		$arr_lote_ids = [];
+		$q_ids = "SELECT Id 
+		          FROM despachos_primertramo_validaciondatos 
+		          WHERE CONCAT(guiaremitente_serie,'-',guiaremitente_numero) = '$guia_remitente_esc'
+		            AND guias_fechahoraemision = '$guia_fechaemision_esc'";
+		if ($rs_ids = mysqli_query($enlace, $q_ids)) {
+			while ($row_ids = mysqli_fetch_assoc($rs_ids)) {
+				$arr_lote_ids[] = intval($row_ids["Id"]);
+			}
+			mysqli_free_result($rs_ids);
+		}
+	}
+
 	if (empty($arr_lote_ids))
 		return 0;
 
 	$lote_ids_str = implode(", ", array_map("intval", $arr_lote_ids));
-	$guia_remitente_esc = mysqli_real_escape_string($enlace, $guia_remitente);
-	$guia_fechaemision_esc = mysqli_real_escape_string($enlace, $guia_fechahoraemision);
 
 	// ----------------------------------------------------------
 	// Lotes SIN código GEL dentro de los seleccionados
@@ -3755,247 +3782,233 @@ function f_Guia_GenerarCodigoGel(
 	if (empty($lotes_sin_gel))
 		return 1;
 
-	// ----------------------------------------------------------
-	// Último código BJ de ESTA GUÍA
-	// Ordenamos por correlativo DESC y luego por codigo_gel DESC
-	// pero separamos: primero el mayor correlativo, luego dentro
-	// de ese correlativo el que tenga letra más alta (o ninguna)
-	// ----------------------------------------------------------
-	$ultimo_codigo_guia = null;
-	$ultimo_correlativo_guia = 0;
+	$fecha_nueva_guia = substr($planta_fechallegada, 0, 10);
+	$fecha_nueva_guia_esc = mysqli_real_escape_string($enlace, $fecha_nueva_guia);
 
-	// Paso 1: ¿cuál es el mayor correlativo de esta guía?
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT MAX(C.correlativo) AS max_corr
-        FROM   despachos_primertramo_validaciondatos V
-        INNER  JOIN correlativo_codigosgel C
-                 ON C.id_validaciondatos = V.Id
-                AND C.estado   = 'A'
-                AND C.cod_anho = '$g_anho'
-        WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
-          AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
-          AND  V.codigo_gel IS NOT NULL")
-	) {
-		if ($row = mysqli_fetch_assoc($rs)) {
-			$ultimo_correlativo_guia = intval($row["max_corr"]);
+	// 1. Verificar si hay registros (guías, lotes) con código GEL asignado
+	$hay_registros = false;
+	$q_any = "SELECT 1 FROM despachos_primertramo_validaciondatos WHERE codigo_gel IS NOT NULL LIMIT 1";
+	if ($rs_any = mysqli_query($enlace, $q_any)) {
+		if (mysqli_num_rows($rs_any) > 0) {
+			$hay_registros = true;
 		}
-		mysqli_free_result($rs);
+		mysqli_free_result($rs_any);
 	}
 
-	if ($ultimo_correlativo_guia === 0) {
-		// Guía nueva
-		$id_primero = intval($lotes_sin_gel[0]["id_validaciondatos"]);
-		$nueva_guia_fecha = null;
-		if ($rs_f = mysqli_query($enlace, "SELECT guias_fecha FROM despachos_primertramo_validaciondatos WHERE Id = $id_primero")) {
-			if ($row_f = mysqli_fetch_assoc($rs_f)) {
-				$nueva_guia_fecha = $row_f["guias_fecha"];
-			}
-			mysqli_free_result($rs_f);
+	if (!$hay_registros) {
+		// Comenzando por código 1
+		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, 1, $g_fecha, $g_anho);
+	}
+
+	// 2. Verificar si hay guías con fecha menor o igual
+	$existe_menor_o_igual = false;
+	$q_menor = "SELECT EXISTS (
+	    SELECT 1
+	    FROM despachos_primertramo_validaciondatos gs
+	    WHERE DATE(gs.lote_pesoinicial_fechahoraregistro) <= '$fecha_nueva_guia_esc'
+	      AND gs.codigo_gel IS NOT NULL
+	) AS existe";
+	if ($rs_menor = mysqli_query($enlace, $q_menor)) {
+		if ($row_menor = mysqli_fetch_assoc($rs_menor)) {
+			$existe_menor_o_igual = (intval($row_menor["existe"]) === 1);
 		}
+		mysqli_free_result($rs_menor);
+	}
 
-		$hay_posterior = false;
-		if ($nueva_guia_fecha) {
-			$q_post = "SELECT COUNT(*) AS total 
-			           FROM despachos_primertramo_validaciondatos 
-			           WHERE guias_fecha > '$nueva_guia_fecha' 
-			             AND codigo_gel IS NOT NULL";
-			if ($rs_post = mysqli_query($enlace, $q_post)) {
-				$row_post = mysqli_fetch_assoc($rs_post);
-				if (intval($row_post["total"]) > 0) {
-					$hay_posterior = true;
-				}
-				mysqli_free_result($rs_post);
-			}
+	// 3. Verificar si hay lotes valorizados posteriores
+	$existen_valorizados = false;
+	$q_val = "SELECT EXISTS (
+	    SELECT 1
+	    FROM despachos_primertramo_validaciondatos gs
+	    INNER JOIN valorizacion_compramineral_detalle vcd ON vcd.cod_gel = gs.codigo_gel
+	    INNER JOIN valorizacion_compramineral vc ON vc.Id = vcd.id_valorizacion
+	    WHERE vc.is_aprobado = 1 
+	      AND DATE(gs.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+	) AS existen_valorizados";
+	if ($rs_val = mysqli_query($enlace, $q_val)) {
+		if ($row_val = mysqli_fetch_assoc($rs_val)) {
+			$existen_valorizados = (intval($row_val["existen_valorizados"]) === 1);
 		}
+		mysqli_free_result($rs_val);
+	}
 
-		if ($hay_posterior) {
-			$fecha_anterior = null;
-			$q_ant = "SELECT MAX(guias_fecha) AS max_anterior 
-			          FROM despachos_primertramo_validaciondatos 
-			          WHERE guias_fecha < '$nueva_guia_fecha' 
-			            AND codigo_gel IS NOT NULL";
-			if ($rs_ant = mysqli_query($enlace, $q_ant)) {
-				$row_ant = mysqli_fetch_assoc($rs_ant);
-				$fecha_anterior = $row_ant["max_anterior"];
-				mysqli_free_result($rs_ant);
-			}
-
-			$ultimo_codigo = null;
-			$ultimo_correlativo = 0;
-			if ($fecha_anterior) {
-				$q_last = "SELECT C.correlativo, C.codigo_gel 
-				           FROM despachos_primertramo_validaciondatos V 
-				           INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado = 'A' AND C.cod_anho = '$g_anho'
-				           WHERE V.guias_fecha = '$fecha_anterior' 
-				             AND V.codigo_gel IS NOT NULL 
-				           ORDER BY C.correlativo DESC, C.codigo_gel DESC 
-				           LIMIT 1";
-				if ($rs_last = mysqli_query($enlace, $q_last)) {
-					if ($row_last = mysqli_fetch_assoc($rs_last)) {
-						$ultimo_codigo = $row_last["codigo_gel"];
-						$ultimo_correlativo = intval($row_last["correlativo"]);
-					}
-					mysqli_free_result($rs_last);
-				}
-			}
-
-			if ($ultimo_codigo) {
-				$tiene_letra = false;
-				$ultima_letra_idx = 0;
-				if (preg_match('/([A-Z]+)$/', $ultimo_codigo, $m)) {
-					$tiene_letra = true;
-					$ultima_letra_idx = _letraAIndice($m[1]);
-				}
-
-				$idx_letra_inicio = $tiene_letra ? ($ultima_letra_idx + 1) : 1;
-
-				return _asignarCodigosConLetra(
-					$enlace,
-					$lotes_sin_gel,
-					$ultimo_correlativo,
-					$idx_letra_inicio,
-					$g_fecha,
-					$g_anho
-				);
-			} else {
-				// Si no hay guía anterior, empezamos con correlativo 1 y letra A
-				return _asignarCodigosConLetra(
-					$enlace,
-					$lotes_sin_gel,
-					1,
-					1,
-					$g_fecha,
-					$g_anho
-				);
-			}
+	if (!$existe_menor_o_igual) {
+		// -- Si no hay guias menores o iguales:
+		if (!$existen_valorizados) {
+			// PROCESO DE REORDENAMIENTO
+			$N = count($lotes_sin_gel);
+			_shiftCodigosPosteriores($enlace, $fecha_nueva_guia_esc, $g_anho, $N);
+			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, 1, $g_fecha, $g_anho);
 		} else {
-			// Por cada lote, generas los códigos BJ respetando la continuidad (sin letra)
-			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
-		}
-	}
-
-	// Paso 2: dentro de ese correlativo, ¿hay alguno con letra?
-	// Si hay letras, traer la última letra asignada (ORDER BY codigo_gel DESC)
-	// Si no hay letras, traer el código sin letra
-	$ultimo_codigo_guia = null;
-	$tiene_letra = false;
-	$ultima_letra_idx = 0;
-
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT C.codigo_gel
-        FROM   despachos_primertramo_validaciondatos V
-        INNER  JOIN correlativo_codigosgel C
-                 ON C.id_validaciondatos = V.Id
-                AND C.estado   = 'A'
-                AND C.cod_anho = '$g_anho'
-        WHERE  CONCAT(V.guiaremitente_serie,'-',V.guiaremitente_numero) = '$guia_remitente_esc'
-          AND  V.guias_fechahoraemision = '$guia_fechaemision_esc'
-          AND  V.codigo_gel IS NOT NULL
-          AND  C.correlativo = $ultimo_correlativo_guia
-        ORDER  BY V.codigo_gel DESC")
-	) {
-
-		// Recorremos todos y nos quedamos con el de mayor letra
-		$max_letra_idx = 0;
-		$codigo_sin_letra = null;
-
-		while ($row = mysqli_fetch_assoc($rs)) {
-			$cod = $row["codigo_gel"];
-			if (preg_match('/([A-Z]+)$/', $cod, $m)) {
-				$idx = _letraAIndice($m[1]);
-				if ($idx > $max_letra_idx) {
-					$max_letra_idx = $idx;
-					$ultimo_codigo_guia = $cod;
-					$tiene_letra = true;
-					$ultima_letra_idx = $idx;
+			// Verificamos si ya hay registros con el código 0
+			$existe_cero = false;
+			$q_cero = "SELECT EXISTS (
+			    SELECT 1 
+			    FROM correlativo_codigosgel 
+			    WHERE correlativo = 0 
+			      AND cod_anho = '$g_anho' 
+			      AND estado = 'A'
+			) AS existe_cero";
+			if ($rs_cero = mysqli_query($enlace, $q_cero)) {
+				if ($row_cero = mysqli_fetch_assoc($rs_cero)) {
+					$existe_cero = (intval($row_cero["existe_cero"]) === 1);
 				}
+				mysqli_free_result($rs_cero);
+			}
+
+			if ($existe_cero) {
+				return -2; // ALERTA
 			} else {
-				$codigo_sin_letra = $cod;
+				$idx_letra_inicio = 1; // empezamos en 'A'
+				$q_max_cero = "SELECT codigo_gel 
+				               FROM correlativo_codigosgel 
+				               WHERE correlativo = 0 
+				                 AND cod_anho = '$g_anho' 
+				                 AND estado = 'A' 
+				               ORDER BY codigo_gel DESC 
+				               LIMIT 1";
+				if ($rs_max_cero = mysqli_query($enlace, $q_max_cero)) {
+					if ($row_max_cero = mysqli_fetch_assoc($rs_max_cero)) {
+						$cod_cero = $row_max_cero["codigo_gel"];
+						if (preg_match('/([A-Z]+)$/', $cod_cero, $m)) {
+							$idx_letra_inicio = _letraAIndice($m[1]) + 1;
+						}
+					}
+					mysqli_free_result($rs_max_cero);
+				}
+				return _asignarCodigosConLetra($enlace, $lotes_sin_gel, 0, $idx_letra_inicio, $g_fecha, $g_anho);
 			}
 		}
+	} else {
+		// -- Y si hay guias menores o igual:
+		// Obtenemos el ultimo registro anterior o igual de referencia
+		$ultimo_codigo = null;
+		$ultimo_correlativo = 0;
 
-		if (!$tiene_letra) {
-			$ultimo_codigo_guia = $codigo_sin_letra;
+		$q_last = "SELECT V.Id, V.codigo_gel, C.correlativo
+		           FROM despachos_primertramo_validaciondatos V 
+		           INNER JOIN correlativo_codigosgel C ON C.id_validaciondatos = V.Id AND C.estado = 'A' AND C.cod_anho = '$g_anho'
+		           WHERE DATE(V.lote_pesoinicial_fechahoraregistro) <= '$fecha_nueva_guia_esc' 
+		             AND V.codigo_gel IS NOT NULL 
+		           ORDER BY DATE(V.lote_pesoinicial_fechahoraregistro) DESC, C.correlativo DESC, V.codigo_gel DESC, V.Id DESC 
+		           LIMIT 1";
+		if ($rs_last = mysqli_query($enlace, $q_last)) {
+			if ($row_last = mysqli_fetch_assoc($rs_last)) {
+				$ultimo_codigo = $row_last["codigo_gel"];
+				$ultimo_correlativo = intval($row_last["correlativo"]);
+			}
+			mysqli_free_result($rs_last);
 		}
 
-		mysqli_free_result($rs);
+		// Verificamos si hay registros con una fecha posterior
+		$existen_posteriores = false;
+		$q_post = "SELECT EXISTS (
+		    SELECT 1
+		    FROM despachos_primertramo_validaciondatos gs
+		    WHERE DATE(gs.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+		      AND gs.codigo_gel IS NOT NULL
+		) AS existen_posteriores";
+		if ($rs_post = mysqli_query($enlace, $q_post)) {
+			if ($row_post = mysqli_fetch_assoc($rs_post)) {
+				$existen_posteriores = (intval($row_post["existen_posteriores"]) === 1);
+			}
+			mysqli_free_result($rs_post);
+		}
+
+		if (!$existen_posteriores) {
+			// Secuencia normal
+			return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $ultimo_correlativo + 1, $g_fecha, $g_anho);
+		} else {
+			if (!$existen_valorizados) {
+				// PROCESO DE REORDENAMIENTO
+				$N = count($lotes_sin_gel);
+				_shiftCodigosPosteriores($enlace, $fecha_nueva_guia_esc, $g_anho, $N);
+				return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $ultimo_correlativo + 1, $g_fecha, $g_anho);
+			} else {
+				// Secuencia de letras
+				$idx_letra_inicio = 1;
+				$q_max_letra = "SELECT codigo_gel 
+				                FROM correlativo_codigosgel 
+				                WHERE correlativo = $ultimo_correlativo 
+				                  AND cod_anho = '$g_anho' 
+				                  AND estado = 'A' 
+				                ORDER BY codigo_gel DESC 
+				                LIMIT 1";
+				if ($rs_max_letra = mysqli_query($enlace, $q_max_letra)) {
+					if ($row_max_letra = mysqli_fetch_assoc($rs_max_letra)) {
+						$cod_ref = $row_max_letra["codigo_gel"];
+						if (preg_match('/([A-Z]+)$/', $cod_ref, $m)) {
+							$idx_letra_inicio = _letraAIndice($m[1]) + 1;
+						}
+					}
+					mysqli_free_result($rs_max_letra);
+				}
+				return _asignarCodigosConLetra($enlace, $lotes_sin_gel, $ultimo_correlativo, $idx_letra_inicio, $g_fecha, $g_anho);
+			}
+		}
+	}
+}
+
+function _shiftCodigosPosteriores($enlace, string $fecha_nueva_guia_esc, string $g_anho, int $N): void {
+	$q_sel = "SELECT C.Id AS id_correlativo, C.correlativo, C.codigo_gel, C.id_validaciondatos
+	          FROM correlativo_codigosgel C
+	          INNER JOIN despachos_primertramo_validaciondatos V ON V.Id = C.id_validaciondatos
+	          WHERE DATE(V.lote_pesoinicial_fechahoraregistro) > '$fecha_nueva_guia_esc'
+	            AND C.cod_anho = '$g_anho'
+	            AND C.estado = 'A'
+	          ORDER BY C.correlativo DESC, C.codigo_gel DESC";
+
+	$records = [];
+	if ($rs_sel = mysqli_query($enlace, $q_sel)) {
+		while ($row = mysqli_fetch_assoc($rs_sel)) {
+			$records[] = $row;
+		}
+		mysqli_free_result($rs_sel);
 	}
 
-	// ----------------------------------------------------------
-	// CASO B1: Último código TIENE letra → continuar secuencia
-	//          BJ-26-0009A → B   |   BJ-26-0009B → C
-	// ----------------------------------------------------------
-	if ($tiene_letra) {
-		return _asignarCodigosConLetra(
-			$enlace,
-			$lotes_sin_gel,
-			$ultimo_correlativo_guia,
-			$ultima_letra_idx + 1,   // siguiente letra
-			$g_fecha,
-			$g_anho
-		);
-	}
+	foreach ($records as $rec) {
+		$id_corr = intval($rec["id_correlativo"]);
+		$id_val = intval($rec["id_validaciondatos"]);
+		$codigo_actual = $rec["codigo_gel"];
+		$nuevo_correlativo = intval($rec["correlativo"]) + $N;
 
-	// ----------------------------------------------------------
-	// CASO B2: Último código SIN letra
-	//          ¿es el último correlativo global del año?
-	// ----------------------------------------------------------
-	$max_corr_global = 0;
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT MAX(correlativo) AS max_corr
-        FROM   correlativo_codigosgel
-        WHERE  cod_anho = '$g_anho' AND estado = 'A'")
-	) {
-		if ($row = mysqli_fetch_assoc($rs))
-			$max_corr_global = intval($row["max_corr"]);
-		mysqli_free_result($rs);
-	}
+		$nuevo_codigo = _shiftCodigoGelString($codigo_actual, $N);
 
-	if ($ultimo_correlativo_guia >= $max_corr_global) {
-		// B2a: ES la última guía → nuevos correlativos sin letra
-		//      BJ-26-0009 → BJ-26-0010, BJ-26-0011 ...
-		return _asignarCodigosNuevos($enlace, $lotes_sin_gel, $g_fecha, $g_anho);
-	} else {
-		// B2b: NO es la última → letras desde A
-		//      BJ-26-0008 → BJ-26-0008A, BJ-26-0008B ...
-		return _asignarCodigosConLetra(
-			$enlace,
-			$lotes_sin_gel,
-			$ultimo_correlativo_guia,
-			1,
-			$g_fecha,
-			$g_anho
-		);
+		mysqli_query($enlace, "UPDATE correlativo_codigosgel 
+		                       SET correlativo = $nuevo_correlativo, 
+		                           codigo_gel = '$nuevo_codigo' 
+		                       WHERE Id = $id_corr");
+
+		mysqli_query($enlace, "UPDATE despachos_primertramo_validaciondatos 
+		                       SET codigo_gel = '$nuevo_codigo' 
+		                       WHERE Id = $id_val");
 	}
+}
+
+function _shiftCodigoGelString(string $codigo_actual, int $shift_amount): string {
+	if (preg_match('/^BJ-(\d+)-(\d+)([A-Z]*)$/', $codigo_actual, $matches)) {
+		$year = $matches[1];
+		$corr = intval($matches[2]) + $shift_amount;
+		$suffix = $matches[3];
+		return sprintf("BJ-%s-%04d%s", $year, $corr, $suffix);
+	}
+	return $codigo_actual;
 }
 
 function _asignarCodigosNuevos(
 	$enlace,
 	array $lotes,
+	int $siguiente,
 	string $g_fecha,
 	string $g_anho
 ): int {
 	$usuario = $_SESSION["usu_usuario"];
-
-	$siguiente = 1;
-	if (
-		$rs = mysqli_query($enlace, "
-        SELECT IFNULL(MAX(correlativo), 0) AS max_corr
-        FROM   correlativo_codigosgel
-        WHERE  cod_anho = '$g_anho' AND estado = 'A'")
-	) {
-		if ($row = mysqli_fetch_assoc($rs))
-			$siguiente = intval($row["max_corr"]) + 1;
-		mysqli_free_result($rs);
-	}
+	$anho_corto = substr($g_anho, -2);
 
 	foreach ($lotes as $lote) {
 		$id = intval($lote["id_validaciondatos"]);
 		$fec = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
-		$codigo = sprintf("BJ-%02d-%04d", date("y"), $siguiente);
+		$codigo = sprintf("BJ-%s-%04d", $anho_corto, $siguiente);
 
 		mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
                                 WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
@@ -4029,12 +4042,13 @@ function _asignarCodigosConLetra(
 ): int {
 	$usuario = $_SESSION["usu_usuario"];
 	$idx = $idx_letra_inicio;
+	$anho_corto = substr($g_anho, -2);
 
 	foreach ($lotes as $lote) {
 		$id = intval($lote["id_validaciondatos"]);
 		$fec = mysqli_real_escape_string($enlace, $lote["fecha_llegada"]);
 		$sufijo = _indiceALetra($idx);
-		$codigo = sprintf("BJ-%02d-%04d%s", date("y"), $correlativo_base, $sufijo);
+		$codigo = sprintf("BJ-%s-%04d%s", $anho_corto, $correlativo_base, $sufijo);
 
 		mysqli_query($enlace, "DELETE FROM correlativo_codigosgel
                                 WHERE id_validaciondatos = $id AND cod_anho = '$g_anho'");
@@ -72724,7 +72738,7 @@ switch ($_POST["accion"]) {
 			$planta_fechallegada = $guia_balanza_fecharegistro;
 			$guia_fechaemision_x = $guia_fechaemision . " " . $guia_horaemision;
 
-			f_Guia_GenerarCodigoGel(
+			$res_generar = f_Guia_GenerarCodigoGel(
 				$enlace,
 				$id_distribucion_arr,
 				$guia_remitente,
@@ -72733,6 +72747,15 @@ switch ($_POST["accion"]) {
 				$g_fecha,
 				$g_anho
 			);
+
+			if ($res_generar === -2) {
+				echo json_encode([
+					"estado" => -2,
+					"msg" => "Ya hay lotes con el código 0 y no es posible reordenar."
+				]);
+				break;
+			}
+
 
 			// -----------------------------------------------
 			// Devuelve hashes MD5 de los números de guía
@@ -73389,8 +73412,15 @@ switch ($_POST["accion"]) {
 						$lote_cerrado_texto .
 						"</label></td>";
 
+					$bg_gel = "#ffffff";
+					$color_gel = "#25476a";
+					if (!empty($row_validacion["codigogel_valorizado"])) {
+						$bg_gel = "#fff3cd"; // soft amber/yellow
+						$color_gel = "#856404"; // dark amber
+					}
+
 					$html .=
-						'    <td style="color: #25476a; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: #ffffff;">' .
+						'    <td style="color: ' . $color_gel . '; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: ' . $bg_gel . ';">' .
 						$row_validacion["codigo_gel"] .
 						"</td>";
 
@@ -73689,7 +73719,12 @@ switch ($_POST["accion"]) {
 			$g_anho
 		);
 
-		echo json_encode(["estado" => $estado]);
+		$msg = "";
+		if ($estado === -2) {
+			$msg = "Ya hay lotes con el código 0 y no es posible reordenar.";
+		}
+
+		echo json_encode(["estado" => $estado, "msg" => $msg]);
 
 		break;
 

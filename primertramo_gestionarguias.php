@@ -524,7 +524,7 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
-              Fecha Hora Emisión:
+              Fecha Emisión:
             </div>
 
             <div class="col-md-3 col-sm-3 col-xs-12" style="margin-left: -20px;">
@@ -532,10 +532,7 @@ if (!isset($_SESSION["Id"])) {
                 style="text-align: center; font-size: 14px;" value="<?php echo $g_date; ?>">
             </div>
 
-            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -20px;">
-              <input id="guia_horaemision" type="time" class="form-control" style="text-align: center; font-size: 14px;"
-                value="<?php echo substr($g_time, 0, 5); ?>">
-            </div>
+            <input id="guia_horaemision" type="hidden" value="<?php echo substr($g_time, 0, 5); ?>">
           </div>
 
           <div class="row" style="padding: 5px;">
@@ -543,7 +540,7 @@ if (!isset($_SESSION["Id"])) {
             </div>
 
             <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
-              Fecha Hora en Planta:
+              Fecha en Planta:
             </div>
 
             <div class="col-md-3 col-sm-3 col-xs-12" style="margin-left: -20px;">
@@ -551,10 +548,7 @@ if (!isset($_SESSION["Id"])) {
                 style="text-align: center; font-size: 14px;">
             </div>
 
-            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -20px;">
-              <input id="guia_balanza_horaregistro" type="time" class="form-control"
-                style="text-align: center; font-size: 14px;">
-            </div>
+            <input id="guia_balanza_horaregistro" type="hidden">
           </div>
 
           <div class="row" style="padding: 5px;">
@@ -1412,6 +1406,10 @@ if (!isset($_SESSION["Id"])) {
       $.post('apis/backend.php', { accion: 'cierre_Guias_GenerarCodigosGEL', guia_remitente: _guia_remitente, guia_fecha_emision: _guia_fecha_emision, planta_fechallegada: _planta_fechallegada }, function (data) {
         if (data.estado == 1) {
           f_LoadResultados();
+        } else if (data.msg) {
+          alert(data.msg);
+        } else {
+          alert("Ocurrió un error al generar códigos GEL.");
         }
       }, 'json');
     };
@@ -2221,9 +2219,11 @@ if (!isset($_SESSION["Id"])) {
           } else if (data.estado == -1) {
             alert("Ya existe una guía con la misma combinación de serie y número (Remitente / Transportista)");
             return;
+          } else if (data.msg) {
+            alert(data.msg);
+            return;
           } else {
             alert("Ocurrió un error al momento de confirmar las guías.");
-
           }
 
           // Cierra modal
