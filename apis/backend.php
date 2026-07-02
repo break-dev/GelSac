@@ -73489,14 +73489,17 @@ switch ($_POST["accion"]) {
 
 					$bg_gel = "#ffffff";
 					$color_gel = "#25476a";
+					$extra_html_gel = "";
 					if (!empty($row_validacion["codigogel_valorizado"])) {
 						$bg_gel = "#fff3cd"; // soft amber/yellow
 						$color_gel = "#856404"; // dark amber
+						$extra_html_gel = '<br><span style="font-size: 11px; font-weight: normal; color: #856404;">(Valorizado)</span>';
 					}
 
 					$html .=
 						'    <td style="color: ' . $color_gel . '; border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; font-weight: bold; background-color: ' . $bg_gel . ';">' .
 						$row_validacion["codigo_gel"] .
+						$extra_html_gel .
 						"</td>";
 
 					$html .=
