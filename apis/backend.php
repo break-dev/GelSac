@@ -73491,7 +73491,8 @@ switch ($_POST["accion"]) {
 					$color_gel = "#25476a";
 					$extra_html_gel = "";
 					if (!empty($row_validacion["codigogel_valorizado"])) {
-						$bg_gel = "#fff3cd"; // soft amber/yellow
+						// $bg_gel = "#fff3cd"; // soft amber/yellow
+						$bg_gel = "#ffffff";
 						$color_gel = "#856404"; // dark amber
 						$extra_html_gel = '<br><span style="font-size: 11px; font-weight: normal; color: #856404;">(Valorizado)</span>';
 					}
