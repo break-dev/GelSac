@@ -72662,6 +72662,7 @@ switch ($_POST["accion"]) {
 		$q_save .= "  , guias_fecha = '" . $guia_fechas . "'";
 		$q_save .= ", guias_fechahoraemision = '" . $guia_fechaemision . " " . $guia_horaemision . "'";
 		$q_save .= ", lote_pesoinicial_fechahoraregistro = '" . $guia_balanza_fecharegistro . " " . $guia_balanza_horaregistro . "'";
+		$q_save .= ", lote_pesofinal_fechahoraregistro = '" . $guia_balanza_fecharegistro . " " . $guia_balanza_horaregistro . "'";
 		$q_save .= ", lote_id_proveedorminero = " . intval($guia_proveedor);
 		$q_save .= ", lote_proveedorminero_fechahoraregistro = '" . $g_date . "'";
 		$q_save .= ", lote_proveedorminero_usuarioregistro = '" . $usuario_registro . "'";
@@ -73027,7 +73028,7 @@ switch ($_POST["accion"]) {
 			V.lote_id_proveedorminero_concesion = CCS.Id
 		LEFT JOIN tbconfig_encargadosmuestra EM ON
 			V.lote_id_encargadomuestra = EM.Id
-		LEFT JOIN tbconfig_tipomineral TM ON
+		LEFT JOIN tbconfig_tipomineral TM ON 
 			V.lote_id_tipomineral = TM.Id
 		LEFT JOIN tbconfig_tipocarga TC ON
 			V.lote_id_tipocarga = TC.Id
