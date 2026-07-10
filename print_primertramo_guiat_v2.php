@@ -6,7 +6,9 @@
 	include('global/variables.php');
 
 	require_once 'dompdf/autoload.inc.php';
-
+	error_reporting(0);
+ini_set('display_errors', 0);
+ini_set('display_startuo_errors', 0);
 	use Dompdf\Dompdf;
 	use Dompdf\Options;
 
