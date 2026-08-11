@@ -74417,84 +74417,82 @@ switch ($_POST["accion"]) {
 		$html = "";
 
 		// Query para obtener el tipo: "Recepción de Mineral"
-		$q_validacion = "	SELECT 
-															CP.Id AS id_comprobante_pago,
-															CP.id_valorizacion,
-															CP.serie_comprobante,
-															CP.numero_comprobante,
-															CP.fecha_emision_comprobante,
-															CP.sub_total,
-															CP.igv,
-															CP.total_comprobante,
-															CP.total_detraccion,
-															CP.total_detraccion_soles,
-															CP.total_sin_detraccion,
-								P.Id AS PROVEEDOR_ID,
-															P.documento AS PROVEEDOR_RUC,
-															P.razon_social AS PROVEEDOR_RAZON_SOCIAL,
-															V.correlativo AS COD_VALORIZACION,
-															V.is_aprobado_fechahoraregistro,
-															V.is_aprobado_usuarioregistro,
-
-															
-															GROUP_CONCAT(DISTINCT V.correlativo ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_CODVALORIZACION,
-															GROUP_CONCAT(DISTINCT VD.total ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_VALORIZACION_TOTAL,
-															GROUP_CONCAT(DISTINCT VD.cod_lote ORDER BY VD.cod_gel SEPARATOR ',') AS cod_lote,
-															GROUP_CONCAT(DISTINCT VD.cod_gel ORDER BY VD.cod_gel SEPARATOR ',') AS cod_gel,
-															GROUP_CONCAT(DISTINCT E.abv ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_ELEMENTO,
-
-															(SELECT IFNULL(SUM(CPP.monto_pago), 0)
-																 FROM comprobante_pago_pagos CPP
-																WHERE CPP.estado = 'A'
-																	AND CPP.id_comprobante_pago = CP.Id
-																	AND CPP.id_moneda_destino = 1) AS DETRACCION_PAGOTOTAL,
-
-															CP.aprobo_contabilidad,
-															CP.aprobo_contabilidad_fechahora_registro,
-															CP.aprobo_contabilidad_usuario_registro,
-															CP.aprobo_comercial,
-															CP.aprobo_comercial_fechahora_registro,
-															CP.aprobo_comercial_usuario_registro,
-															CP.aprobo_documentaria,
-															CP.aprobo_documentaria_fechahora_registro,
-															CP.aprobo_documentaria_usuario_registro,
-															CP.djvm,
-															CP.djvm_fechahora_registro,
-															CP.djvm_usuario_registro,
-															CP.val,
-															CP.val_fechahora_registro,
-															CP.val_usuario_registro,
-															CP.observaciones,
-															CP.porc_detraccion,
-															CP.pago_sin_detraccion,
-
-															IFNULL((SELECT SUM(CPP.monto_pago)
-																			FROM comprobante_pago_pagos CPP
-																		 WHERE CPP.estado = 'A'
-																			 AND CPP.id_comprobante_pago = CP.Id
-																			 AND CPP.id_moneda_destino = 2), 0) AS pago_neto_banco,
-
-															IFNULL((SELECT SUM(PAT.monto_retirado)
-																			FROM proveedor_anticipo_transaccion PAT
-																		 WHERE PAT.estado = 'A'
-																			 AND PAT.id_valorizacion_compramineral = CP.id_valorizacion), 0) AS pago_neto_anticipo,
-
-															CP.pago_detraccion,
-															CP.pago_detraccion_fechahora_registro,
-															CP.pago_detraccion_usuario_registro,
-															CP.pago_sin_detraccion_fechahora_registro,
-															CP.pago_sin_detraccion_usuario_registro,
-															CP.tipo_cambio,
-															CP.id_moneda,
-															CP.estado
-
-														FROM comprobante_pago CP
-																INNER JOIN valorizacion_compramineral_detalle VD ON
-																		CP.id_valorizacion = VD.id_valorizacion
-																 INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
-																 LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
-																 LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
-														WHERE VD.estado <> 'X'";
+		$q_validacion = "
+		SELECT
+			CP.Id AS id_comprobante_pago,
+			CP.id_valorizacion,
+			CP.serie_comprobante,
+			CP.numero_comprobante,
+			CP.fecha_emision_comprobante,
+			CP.sub_total,
+			CP.igv,
+			CP.total_comprobante,
+			CP.total_detraccion,
+			CP.total_detraccion_soles,
+			CP.total_sin_detraccion,
+			P.Id AS PROVEEDOR_ID,
+			P.documento AS PROVEEDOR_RUC,
+			P.razon_social AS PROVEEDOR_RAZON_SOCIAL,
+			V.correlativo AS COD_VALORIZACION,
+			V.is_aprobado_fechahoraregistro,
+			V.is_aprobado_usuarioregistro,
+			GROUP_CONCAT(DISTINCT V.correlativo ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_CODVALORIZACION,
+			GROUP_CONCAT(DISTINCT VD.total ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_VALORIZACION_TOTAL,
+			GROUP_CONCAT(DISTINCT VD.cod_lote ORDER BY VD.cod_gel SEPARATOR ',') AS cod_lote,
+			GROUP_CONCAT(DISTINCT VD.cod_gel ORDER BY VD.cod_gel SEPARATOR ',') AS cod_gel,
+			GROUP_CONCAT(DISTINCT E.abv ORDER BY VD.cod_gel SEPARATOR ',') AS ARR_ELEMENTO,
+			(
+				SELECT IFNULL(SUM(CPP.monto_pago),0)
+				FROM comprobante_pago_pagos CPP
+				WHERE CPP.estado = 'A' AND CPP.id_comprobante_pago = CP.Id AND CPP.id_moneda_destino = 1
+			) AS DETRACCION_PAGOTOTAL,
+			CP.aprobo_contabilidad,
+			CP.aprobo_contabilidad_fechahora_registro,
+			CP.aprobo_contabilidad_usuario_registro,
+			CP.aprobo_comercial,
+			CP.aprobo_comercial_fechahora_registro,
+			CP.aprobo_comercial_usuario_registro,
+			CP.aprobo_documentaria,
+			CP.aprobo_documentaria_fechahora_registro,
+			CP.aprobo_documentaria_usuario_registro,
+			CP.djvm,
+			CP.djvm_fechahora_registro,
+			CP.djvm_usuario_registro,
+			CP.val,
+			CP.val_fechahora_registro,
+			CP.val_usuario_registro,
+			CP.observaciones,
+			CP.porc_detraccion,
+			CP.pago_sin_detraccion,
+			IFNULL((
+				SELECT SUM(CPP.monto_pago)
+				FROM comprobante_pago_pagos CPP
+				WHERE CPP.estado = 'A' AND CPP.id_comprobante_pago = CP.Id AND CPP.id_moneda_destino = 2
+			),0) AS pago_neto_banco,
+			IFNULL((
+				SELECT SUM(PAT.monto_retirado)
+				FROM proveedor_anticipo_transaccion PAT
+				WHERE PAT.estado = 'A' AND PAT.id_valorizacion_compramineral = CP.id_valorizacion
+			),0) AS pago_neto_anticipo,
+			CP.pago_detraccion,
+			CP.pago_detraccion_fechahora_registro,
+			CP.pago_detraccion_usuario_registro,
+			CP.pago_sin_detraccion_fechahora_registro,
+			CP.pago_sin_detraccion_usuario_registro,
+			CP.tipo_cambio,
+			CP.id_moneda,
+			CP.estado,
+            val.evidencias
+		FROM
+			comprobante_pago CP
+		INNER JOIN valorizacion_compramineral_detalle VD ON CP.id_valorizacion = VD.id_valorizacion
+        INNER JOIN catalogolotes lot on lot.ccod_Lote = VD.cod_lote
+        INNER JOIN despachos_primertramo_validaciondatos val on val.lote_id_lote = lot.id_CatalogoLotes
+		INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
+		LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
+		LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
+		WHERE VD.estado <> 'X'
+		";
 
 		if (strlen($arr_lotes) > 0) {
 			$q_validacion .= " AND VD.cod_lote IN (" . $arr_lotes . ")";
