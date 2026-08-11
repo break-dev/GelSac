@@ -71880,7 +71880,7 @@ switch ($_POST["accion"]) {
 				ELSE 0
 			END AS IS_SINVALORCOMERCIAL,
 			(dspv.lote_peso_neto / 1000) AS TMH,
-			ROUND(((100 - ly_hm.promedio) / 100) * 100,3) AS tms,
+			(dspv.lote_peso_neto * (1 - ly_hm.promedio)) / 1000 AS tms,
 			CASE 
 				WHEN(dspv.lote_peso_neto / 1000) <= 1 THEN 1 
 				ELSE 1.1023

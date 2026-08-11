@@ -2613,7 +2613,7 @@ if (!isset($_SESSION["Id"])) {
       let id_codlote = parseFloat(sel.data('idcodlote')) || 0;
       let tmh = parseFloat(sel.data('tmh')) || '';
       let h2o = parseFloat(sel.data('h2o')) || '';
-      let tms = ((h2o.length == 0) ? tmh : ((100 - h2o) / 100) * tmh);
+      let tms = parseFloat(sel.data('tms')) || '';
       let ley = parseFloat(sel.data('ley')) || '';
       let factor = ((tmh.length == 0) ? '' : (tmh <= 1) ? 1 : 1.1023);
 
