@@ -1119,7 +1119,7 @@
 
     	function f_PrintTicketBalanza(_tipo_ingreso, _id_md5){
     		if (_tipo_ingreso == 1){
-    			url = 'print_ticketbalanza.php?x=' + _id_md5;
+    			url = 'print_ticketbalanza_prev.php?x=' + _id_md5;
     		}
 
     		if (_tipo_ingreso == 2){

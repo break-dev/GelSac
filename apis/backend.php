@@ -1274,6 +1274,229 @@ function f_Update_DespachoSegundoTramo_PresentacionCarga(
 	}
 }
 
+// ============================================================================
+// Evidencias - Despachos Primer Tramo
+// ============================================================================
+// Carpeta donde se almacenan los archivos físicos de evidencia (guía remitente,
+// guía transportista, validación RUC, validación REINFO, no conformidad,
+// ticket de balanza por lote).
+function f_EvidenciasPrimerTramo_Carpeta()
+{
+	$carpeta = "../files/despachos_primtramo/evidencias/";
+	if (!file_exists($carpeta)) {
+		@mkdir($carpeta, 0777, true);
+	}
+	return $carpeta;
+}
+
+// Extensiones permitidas para los archivos de evidencia.
+function f_EvidenciasPrimerTramo_ExtensionesPermitidas()
+{
+	return ["pdf", "jpg", "jpeg", "png", "webp"];
+}
+
+// Procesa el archivo subido de $_FILES, valida extensión/tamaño y lo guarda en
+// la carpeta de evidencias. Devuelve el nombre del archivo generado o un string
+// vacío si no se subió nada. Si el archivo previo existe, devuelve su nombre en
+// $previo para que el caller lo elimine.
+function f_EvidenciasPrimerTramo_GuardarArchivo($field_name, &$previo_filename = null, &$error_msg = null)
+{
+	$previo_filename = null;
+	$error_msg = null;
+
+	if (!isset($_FILES[$field_name])) {
+		return "";
+	}
+
+	$file = $_FILES[$field_name];
+
+	// Si no se subió archivo (caso típico: input vacío)
+	if (!isset($file["error"]) || intval($file["error"]) === UPLOAD_ERR_NO_FILE) {
+		return "";
+	}
+
+	if (intval($file["error"]) !== UPLOAD_ERR_OK) {
+		$error_msg = "Error al subir el archivo (código " . intval($file["error"]) . ").";
+		return "";
+	}
+
+	$original_name = $file["name"];
+	$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+	$permitidas = f_EvidenciasPrimerTramo_ExtensionesPermitidas();
+
+	if (!in_array($ext, $permitidas, true)) {
+		$error_msg = "Extensión no permitida ($ext). Solo: " . implode(", ", $permitidas);
+		return "";
+	}
+
+	// 10 MB
+	$max_size = 10 * 1024 * 1024;
+	if (intval($file["size"]) > $max_size) {
+		$error_msg = "El archivo excede el tamaño máximo de 10 MB.";
+		return "";
+	}
+
+	$carpeta = f_EvidenciasPrimerTramo_Carpeta();
+	$date = date("Ymd_His");
+	$randomHash = bin2hex(random_bytes(16));
+	$fileName = $date . "_" . $randomHash . "." . $ext;
+
+	$filePath = $carpeta . $fileName;
+
+	if (!@move_uploaded_file($file["tmp_name"], $filePath)) {
+		$error_msg = "No se pudo guardar el archivo en disco.";
+		return "";
+	}
+
+	return $fileName;
+}
+
+// Elimina físicamente el archivo de evidencia si existe en la carpeta.
+function f_EvidenciasPrimerTramo_EliminarArchivo($filename)
+{
+	if (strlen($filename) === 0) {
+		return;
+	}
+	// Sanity: solo nombres simples (sin rutas)
+	if (strpos($filename, "/") !== false || strpos($filename, "\\") !== false) {
+		return;
+	}
+	$carpeta = f_EvidenciasPrimerTramo_Carpeta();
+	$path = $carpeta . $filename;
+	if (file_exists($path)) {
+		@unlink($path);
+	}
+}
+
+// Lee el JSON de evidencias de la fila indicada y devuelve un array asociativo.
+// Devuelve un array vacío si no hay contenido o si está mal formado.
+function f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote)
+{
+	$id_lote = intval($id_lote);
+	if ($id_lote <= 0) {
+		return [];
+	}
+
+	$q = "SELECT evidencias FROM despachos_primertramo_validaciondatos WHERE Id = " . $id_lote;
+	$res = mysqli_query($enlace, $q);
+	if (!$res) {
+		return [];
+	}
+
+	$row = mysqli_fetch_assoc($res);
+	if (!$row || strlen(trim($row["evidencias"] ?? "")) === 0) {
+		return [];
+	}
+
+	$decoded = json_decode($row["evidencias"], true);
+	return is_array($decoded) ? $decoded : [];
+}
+
+// Hace un UPDATE mergeando el JSON actual con los nuevos pares clave=>valor.
+// Devuelve true si el UPDATE se ejecutó correctamente.
+function f_EvidenciasPrimerTramo_ActualizarFila($enlace, $id_lote, $merge_array)
+{
+	$id_lote = intval($id_lote);
+	if ($id_lote <= 0) {
+		return false;
+	}
+
+	$actual = f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote);
+	$mergeado = array_merge($actual, $merge_array);
+
+	// Limpia las claves vacías para no dejar basura en el JSON
+	foreach ($mergeado as $k => $v) {
+		if ($v === null || $v === "" || (is_array($v) && count($v) === 0)) {
+			unset($mergeado[$k]);
+		}
+	}
+
+	$json_str = mysqli_real_escape_string($enlace, json_encode($mergeado, JSON_UNESCAPED_UNICODE));
+	$q = "UPDATE despachos_primertramo_validaciondatos SET evidencias = '$json_str' WHERE Id = " . $id_lote;
+	return mysqli_query($enlace, $q);
+}
+
+// Para evidencias de cabecera (guia_remitente, guia_transportista, validacion_ruc,
+// validacion_reinfo, no_conformidad): actualiza TODAS las filas que comparten el
+// mismo (guiaremitente_serie, guiaremitente_numero, guiatransportista_serie,
+// guiatransportista_numero, lote_id_proveedorminero).
+function f_EvidenciasPrimerTramo_ActualizarCabecera($enlace, $id_lote_referencia, $clave, $filename)
+{
+	$id_lote_referencia = intval($id_lote_referencia);
+	if ($id_lote_referencia <= 0 || strlen($clave) === 0) {
+		return false;
+	}
+
+	// 1. Cargar la fila de referencia para obtener los datos del grupo
+	$q_ref = "SELECT guiaremitente_serie,
+							 guiaremitente_numero,
+							 guiatransportista_serie,
+							 guiatransportista_numero,
+							 lote_id_proveedorminero
+						FROM despachos_primertramo_validaciondatos
+					 WHERE Id = " . $id_lote_referencia;
+
+	$res_ref = mysqli_query($enlace, $q_ref);
+	if (!$res_ref || mysqli_num_rows($res_ref) === 0) {
+		return false;
+	}
+	$row_ref = mysqli_fetch_assoc($res_ref);
+
+	$gr_serie = mysqli_real_escape_string($enlace, $row_ref["guiaremitente_serie"] ?? "");
+	$gr_numero = mysqli_real_escape_string($enlace, $row_ref["guiaremitente_numero"] ?? "");
+	$gt_serie_esc = mysqli_real_escape_string($enlace, $row_ref["guiatransportista_serie"] ?? "");
+	$gt_numero_esc = mysqli_real_escape_string($enlace, $row_ref["guiatransportista_numero"] ?? "");
+	$id_proveedor = intval($row_ref["lote_id_proveedorminero"] ?? 0);
+
+	$cond_gt_serie = strlen($gt_serie_esc) > 0
+		? "guiatransportista_serie = '" . $gt_serie_esc . "'"
+		: "(guiatransportista_serie IS NULL OR guiatransportista_serie = '')";
+	$cond_gt_numero = strlen($gt_numero_esc) > 0
+		? "guiatransportista_numero = '" . $gt_numero_esc . "'"
+		: "(guiatransportista_numero IS NULL OR guiatransportista_numero = '')";
+
+	// 2. Cargar todos los Ids del grupo
+	$q_ids = "SELECT Id, evidencias FROM despachos_primertramo_validaciondatos
+						WHERE guiaremitente_serie = '" . $gr_serie . "'
+							AND guiaremitente_numero = '" . $gr_numero . "'
+							AND " . $cond_gt_serie . "
+							AND " . $cond_gt_numero . "
+							AND lote_id_proveedorminero = " . $id_proveedor;
+
+	$res_ids = mysqli_query($enlace, $q_ids);
+	if (!$res_ids) {
+		return false;
+	}
+
+	$todos_ok = true;
+	while ($r = mysqli_fetch_assoc($res_ids)) {
+		$id_actual = intval($r["Id"]);
+		$actual = [];
+		if (strlen(trim($r["evidencias"] ?? "")) > 0) {
+			$decoded = json_decode($r["evidencias"], true);
+			if (is_array($decoded)) {
+				$actual = $decoded;
+			}
+		}
+		$actual[$clave] = $filename;
+
+		// No tocamos ticket_balanza propio de cada lote: limpiamos solo si vacío
+		foreach ($actual as $k => $v) {
+			if ($v === null || $v === "" || (is_array($v) && count($v) === 0)) {
+				unset($actual[$k]);
+			}
+		}
+
+		$json_str = mysqli_real_escape_string($enlace, json_encode($actual, JSON_UNESCAPED_UNICODE));
+		$q_up = "UPDATE despachos_primertramo_validaciondatos SET evidencias = '$json_str' WHERE Id = " . $id_actual;
+		if (!mysqli_query($enlace, $q_up)) {
+			$todos_ok = false;
+		}
+	}
+
+	return $todos_ok;
+}
+
 // Proceso para Recalcular los Tickets de balanza
 function f_RecalcularTicketsBalanza($enlace, $id_registro)
 {
@@ -73152,6 +73375,63 @@ switch ($_POST["accion"]) {
 				}
 			}
 
+			// -----------------------------------------------
+			// Procesar evidencias (cabecera + ticket_balanza por lote)
+			// -----------------------------------------------
+			$evidencias_msgs = [];
+
+			// 1. Evidencias de cabecera (se replican en todas las filas del grupo)
+			$evidencias_cabecera_keys = [
+				"evidencia_guia_remitente"     => "guia_remitente",
+				"evidencia_guia_transportista" => "guia_transportista",
+				"evidencia_validacion_ruc"     => "validacion_ruc",
+				"evidencia_validacion_reinfo"  => "validacion_reinfo",
+				"evidencia_no_conformidad"     => "no_conformidad",
+			];
+
+			// id_distribucion de referencia para cabecera = cualquier Id del grupo
+			$id_distribucion_ref = intval($id_distribucion_arr[0] ?? 0);
+
+			foreach ($evidencias_cabecera_keys as $field => $clave) {
+				$previo = null;
+				$err = null;
+				$filename = f_EvidenciasPrimerTramo_GuardarArchivo($field, $previo, $err);
+				if (strlen($err) > 0) {
+					$evidencias_msgs[] = ["clave" => $clave, "error" => $err];
+					continue;
+				}
+				if (strlen($filename) > 0 && $id_distribucion_ref > 0) {
+					$evidencias_actuales_ref = f_EvidenciasPrimerTramo_Obtener($enlace, $id_distribucion_ref);
+					if (!empty($evidencias_actuales_ref[$clave])) {
+						f_EvidenciasPrimerTramo_EliminarArchivo($evidencias_actuales_ref[$clave]);
+					}
+					f_EvidenciasPrimerTramo_ActualizarCabecera($enlace, $id_distribucion_ref, $clave, $filename);
+				}
+			}
+
+			// 2. Evidencias de ticket_balanza por lote (una por cada fila)
+			foreach ($detalles_lotes as $lote) {
+				$id_lote_x = intval($lote["id_distribucion"]);
+				if ($id_lote_x <= 0) {
+					continue;
+				}
+				$field_name = "evidencia_ticket_balanza_" . $id_lote_x;
+				$previo = null;
+				$err = null;
+				$filename = f_EvidenciasPrimerTramo_GuardarArchivo($field_name, $previo, $err);
+				if (strlen($err) > 0) {
+					$evidencias_msgs[] = ["clave" => "ticket_balanza_" . $id_lote_x, "error" => $err];
+					continue;
+				}
+				if (strlen($filename) > 0) {
+					$actual = f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote_x);
+					if (!empty($actual["ticket_balanza"])) {
+						f_EvidenciasPrimerTramo_EliminarArchivo($actual["ticket_balanza"]);
+					}
+					f_EvidenciasPrimerTramo_ActualizarFila($enlace, $id_lote_x, ["ticket_balanza" => $filename]);
+				}
+			}
+
 			$estado = 1;
 		}
 
@@ -73161,6 +73441,7 @@ switch ($_POST["accion"]) {
 			"gr_numero" => $gr_numero,
 			"gt_serie" => $gt_serie,
 			"gt_numero" => $gt_numero,
+			"evidencias_msgs" => $evidencias_msgs,
 		]);
 
 		break;
@@ -73279,6 +73560,7 @@ switch ($_POST["accion"]) {
 			V.lote_id_proveedorminero AS ID_REMITENTE,
 			T.id_Transportista AS ID_TRANSPORTISTA,
 			V.codigo_gel,
+			V.evidencias,
 			V.codigogel_valorizado,
 			V.codigogel_facturado,
 			V.codigo_gel_fechahoraregistro,
@@ -73319,7 +73601,7 @@ switch ($_POST["accion"]) {
 			V.lote_id_proveedorminero_concesion = CCS.Id
 		LEFT JOIN tbconfig_encargadosmuestra EM ON
 			V.lote_id_encargadomuestra = EM.Id
-		LEFT JOIN tbconfig_tipomineral TM ON 
+		LEFT JOIN tbconfig_tipomineral TM ON
 			V.lote_id_tipomineral = TM.Id
 		LEFT JOIN tbconfig_tipocarga TC ON
 			V.lote_id_tipocarga = TC.Id
@@ -73538,6 +73820,7 @@ switch ($_POST["accion"]) {
 			foreach ($grupos as $registros) {
 				$rowspan = count($registros);
 				$primera = true;
+				$es_primera_fila_grupo = true; // Marca de la primera fila del grupo, NO se modifica durante la iteración de la fila
 
 				//Validar si alguno de los lotes NO tiene código GEL
 				$mostrar_boton_gel = false;
@@ -73677,22 +73960,40 @@ switch ($_POST["accion"]) {
 						if (!empty($row_validacion["es_historico"])) {
 							$html .= ' - ';
 						} else {
-							$html .=
-								'		<img src="' .
-								$img_print .
-								'" style="width: 25px; cursor: pointer;" onclick="f_ImpirmirGuias(1, ' .
-								"'" .
-								$row_validacion["guiaremitente_serie_MD5"] .
-								"', '" .
-								$row_validacion["guiaremitente_numero_MD5"] .
-								"', 1, " .
-								$row_validacion["ID_REMITENTE"] .
-								", " .
-								$row_validacion["ID_TRANSPORTISTA"] .
-								", '" .
-								$row_validacion["guias_fecha"] .
-								"'" .
-								')">';
+							$ev_gr = "";
+							if (strlen(trim($row_validacion["evidencias"] ?? "")) > 0) {
+								$ev_decoded = json_decode($row_validacion["evidencias"], true);
+								if (is_array($ev_decoded) && !empty($ev_decoded["guia_remitente"])) {
+									$ev_gr = $ev_decoded["guia_remitente"];
+								}
+							}
+
+							if (strlen($ev_gr) > 0) {
+								$id_lote_sel = intval($row_validacion["Id"]);
+								$fn = addslashes($ev_gr);
+								$html .=
+									'		<img src="' . $img_print .
+									'" style="width: 25px; cursor: pointer;" title="Ver evidencia de Guía Remitente" onclick="f_VerEvidenciaGuiaPrimerTramo(\'' .
+									$fn . '\', \'guia_remitente\', ' . $id_lote_sel .
+									')">';
+							} else {
+								$html .=
+									'		<img src="' .
+									$img_print .
+									'" style="width: 25px; cursor: pointer;" onclick="f_ImpirmirGuias(1, ' .
+									"'" .
+									$row_validacion["guiaremitente_serie_MD5"] .
+									"', '" .
+									$row_validacion["guiaremitente_numero_MD5"] .
+									"', 1, " .
+									$row_validacion["ID_REMITENTE"] .
+									", " .
+									$row_validacion["ID_TRANSPORTISTA"] .
+									", '" .
+									$row_validacion["guias_fecha"] .
+									"'" .
+									')">';
+							}
 						}
 						$html .= "  </td>";
 
@@ -73712,24 +74013,42 @@ switch ($_POST["accion"]) {
 						if (!empty($row_validacion["es_historico"])) {
 							$html .= ' - ';
 						} else {
-							$html .=
-								'		<img src="' .
-								$img_print .
-								'" style="width: 25px; cursor: pointer;" onclick="f_ImpirmirGuias(2, ' .
-								"'" .
-								$row_validacion["guiatransportista_serie_MD5"] .
-								"', '" .
-								$row_validacion[
-									"guiatransportista_numero_MD5"
-								] .
-								"', 0, " .
-								$row_validacion["ID_REMITENTE"] .
-								", " .
-								$row_validacion["ID_TRANSPORTISTA"] .
-								", '" .
-								$row_validacion["guias_fecha"] .
-								"'" .
-								')">';
+							$ev_gt = "";
+							if (strlen(trim($row_validacion["evidencias"] ?? "")) > 0) {
+								$ev_decoded = json_decode($row_validacion["evidencias"], true);
+								if (is_array($ev_decoded) && !empty($ev_decoded["guia_transportista"])) {
+									$ev_gt = $ev_decoded["guia_transportista"];
+								}
+							}
+
+							if (strlen($ev_gt) > 0) {
+								$id_lote_sel = intval($row_validacion["Id"]);
+								$fn = addslashes($ev_gt);
+								$html .=
+									'		<img src="' . $img_print .
+									'" style="width: 25px; cursor: pointer;" title="Ver evidencia de Guía Transportista" onclick="f_VerEvidenciaGuiaPrimerTramo(\'' .
+									$fn . '\', \'guia_transportista\', ' . $id_lote_sel .
+									')">';
+							} else {
+								$html .=
+									'		<img src="' .
+									$img_print .
+									'" style="width: 25px; cursor: pointer;" onclick="f_ImpirmirGuias(2, ' .
+									"'" .
+									$row_validacion["guiatransportista_serie_MD5"] .
+									"', '" .
+									$row_validacion[
+										"guiatransportista_numero_MD5"
+									] .
+									"', 0, " .
+									$row_validacion["ID_REMITENTE"] .
+									", " .
+									$row_validacion["ID_TRANSPORTISTA"] .
+									", '" .
+									$row_validacion["guias_fecha"] .
+									"'" .
+									')">';
+							}
 						}
 						$html .= "  </td>";
 
@@ -73903,6 +74222,83 @@ switch ($_POST["accion"]) {
 					$html .= $row_validacion["despacho_observacion"];
 					$html .= "	</td>";
 
+					// Columna Evidencias (cabecera en primera fila, ticket_balanza por lote)
+					if ($es_primera_fila_grupo) {
+						$id_lote_ref_row = intval($row_validacion["Id"]);
+						$evidencias_row = [];
+						if (strlen(trim($row_validacion["evidencias"] ?? "")) > 0) {
+							$decoded = json_decode($row_validacion["evidencias"], true);
+							if (is_array($decoded)) {
+								$evidencias_row = $decoded;
+							}
+						}
+
+						$ev_html = '<table style="border: none; width: 100%; text-align: center;">';
+						$ev_html .= '<tr>';
+
+						// RUC
+						if (!empty($evidencias_row["validacion_ruc"])) {
+							$fn = htmlspecialchars($evidencias_row["validacion_ruc"], ENT_QUOTES);
+							$ev_html .= '<td style="border: none; padding: 1px;" title="Validación RUC">';
+							$ev_html .= '<i class="bi bi-file-earmark-pdf-fill" style="font-size: 18px; color: #2E7D32; cursor: pointer;" onclick="f_VerEvidenciaGuiaPrimerTramo(\'' . $fn . '\', \'validacion_ruc\', ' . $id_lote_ref_row . ')"></i>';
+							$ev_html .= '<br><small style="font-size: 9px;">RUC</small>';
+							$ev_html .= '</td>';
+						} else {
+							$ev_html .= '<td style="border: none; padding: 1px; color: #ccc;" title="Sin evidencia">-</td>';
+						}
+
+						// REINFO
+						if (!empty($evidencias_row["validacion_reinfo"])) {
+							$fn = htmlspecialchars($evidencias_row["validacion_reinfo"], ENT_QUOTES);
+							$ev_html .= '<td style="border: none; padding: 1px;" title="Validación REINFO">';
+							$ev_html .= '<i class="bi bi-file-earmark-pdf-fill" style="font-size: 18px; color: #1565C0; cursor: pointer;" onclick="f_VerEvidenciaGuiaPrimerTramo(\'' . $fn . '\', \'validacion_reinfo\', ' . $id_lote_ref_row . ')"></i>';
+							$ev_html .= '<br><small style="font-size: 9px;">REINFO</small>';
+							$ev_html .= '</td>';
+						} else {
+							$ev_html .= '<td style="border: none; padding: 1px; color: #ccc;">-</td>';
+						}
+
+						// No conformidad
+						if (!empty($evidencias_row["no_conformidad"])) {
+							$fn = htmlspecialchars($evidencias_row["no_conformidad"], ENT_QUOTES);
+							$ev_html .= '<td style="border: none; padding: 1px;" title="No Conformidad">';
+							$ev_html .= '<i class="bi bi-file-earmark-pdf-fill" style="font-size: 18px; color: #C62828; cursor: pointer;" onclick="f_VerEvidenciaGuiaPrimerTramo(\'' . $fn . '\', \'no_conformidad\', ' . $id_lote_ref_row . ')"></i>';
+							$ev_html .= '<br><small style="font-size: 9px;">Doc.NC</small>';
+							$ev_html .= '</td>';
+						} else {
+							$ev_html .= '<td style="border: none; padding: 1px; color: #ccc;">-</td>';
+						}
+
+						$ev_html .= '</tr></table>';
+
+						$html .=
+							'    <td rowspan="' .
+							$rowspan .
+							'" style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 110px;">';
+						$html .= $ev_html;
+						$html .= '    </td>';
+					}
+
+					// Columna Evidencia Ticket Balanza (por lote - cada fila)
+					$evidencias_actual = [];
+					if (strlen(trim($row_validacion["evidencias"] ?? "")) > 0) {
+						$decoded_tk = json_decode($row_validacion["evidencias"], true);
+						if (is_array($decoded_tk)) {
+							$evidencias_actual = $decoded_tk;
+						}
+					}
+
+					$html .=
+						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff; min-width: 60px;">';
+					if (!empty($evidencias_actual["ticket_balanza"])) {
+						$id_lote_tk = intval($row_validacion["Id"]);
+						$fn = htmlspecialchars($evidencias_actual["ticket_balanza"], ENT_QUOTES);
+						$html .= '<i class="bi bi-file-earmark-pdf-fill" style="font-size: 20px; color: #6A1B9A; cursor: pointer;" title="Ver evidencia de Ticket Balanza" onclick="f_VerEvidenciaGuiaPrimerTramo(\'' . $fn . '\', \'ticket_balanza\', ' . $id_lote_tk . ')"></i>';
+					} else {
+						$html .= '<span style="color: #ccc;">-</span>';
+					}
+					$html .= '  </td>';
+
 					$html .=
 						'  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
 					$html .=
@@ -73966,12 +74362,169 @@ switch ($_POST["accion"]) {
 					$html .= "  </td>";
 
 					$html .= "  </tr>";
+
+					// Marcar que ya se procesó la primera fila del grupo
+					$es_primera_fila_grupo = false;
 				}
 			}
 		}
 
 		echo json_encode(["estado" => $estado, "html" => $html]);
 
+		break;
+
+	case "obtener_evidencias_guia_primertramo":
+		$estado = 0;
+		$evidencias_out = [];
+
+		$id_lote_ref = intval($_POST["id_lote"] ?? 0);
+		if ($id_lote_ref > 0) {
+			$evidencias_out = f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote_ref);
+			$estado = 1;
+		}
+
+		echo json_encode(["estado" => $estado, "evidencias" => $evidencias_out]);
+		break;
+
+	case "actualizar_evidencias_guia_primertramo":
+		$estado = 0;
+		$errores = [];
+
+		$id_lote = intval($_POST["id_lote"] ?? 0);
+		$tipo_evidencia = $_POST["tipo_evidencia"] ?? "";
+
+		$tipos_validos_cabecera = ["guia_remitente", "guia_transportista", "validacion_ruc", "validacion_reinfo", "no_conformidad"];
+		$tipos_validos_lote = ["ticket_balanza"];
+
+		if ($id_lote <= 0 || strlen($tipo_evidencia) === 0) {
+			echo json_encode(["estado" => 0, "msg" => "Datos incompletos."]);
+			break;
+		}
+
+		if (in_array($tipo_evidencia, $tipos_validos_cabecera, true)) {
+			$previo = null;
+			$err = null;
+			$filename = f_EvidenciasPrimerTramo_GuardarArchivo("archivo", $previo, $err);
+			if (strlen($err) > 0) {
+				echo json_encode(["estado" => 0, "msg" => $err]);
+				break;
+			}
+			if (strlen($filename) === 0) {
+				echo json_encode(["estado" => 0, "msg" => "No se subió ningún archivo."]);
+				break;
+			}
+
+			$actual = f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote);
+			if (!empty($actual[$tipo_evidencia])) {
+				f_EvidenciasPrimerTramo_EliminarArchivo($actual[$tipo_evidencia]);
+			}
+
+			$ok = f_EvidenciasPrimerTramo_ActualizarCabecera($enlace, $id_lote, $tipo_evidencia, $filename);
+			$estado = $ok ? 1 : 0;
+		} elseif (in_array($tipo_evidencia, $tipos_validos_lote, true)) {
+			$previo = null;
+			$err = null;
+			$filename = f_EvidenciasPrimerTramo_GuardarArchivo("archivo", $previo, $err);
+			if (strlen($err) > 0) {
+				echo json_encode(["estado" => 0, "msg" => $err]);
+				break;
+			}
+			if (strlen($filename) === 0) {
+				echo json_encode(["estado" => 0, "msg" => "No se subió ningún archivo."]);
+				break;
+			}
+
+			$actual = f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote);
+			if (!empty($actual[$tipo_evidencia])) {
+				f_EvidenciasPrimerTramo_EliminarArchivo($actual[$tipo_evidencia]);
+			}
+
+			$ok = f_EvidenciasPrimerTramo_ActualizarFila($enlace, $id_lote, [$tipo_evidencia => $filename]);
+			$estado = $ok ? 1 : 0;
+		} else {
+			echo json_encode(["estado" => 0, "msg" => "Tipo de evidencia no válido."]);
+			break;
+		}
+
+		echo json_encode([
+			"estado" => $estado,
+			"msg" => $estado === 1 ? "Evidencia guardada." : "No se pudo guardar la evidencia.",
+			"filename" => $filename,
+		]);
+		break;
+
+	case "eliminar_evidencia_guia_primertramo":
+		$estado = 0;
+
+		$id_lote = intval($_POST["id_lote"] ?? 0);
+		$tipo_evidencia = $_POST["tipo_evidencia"] ?? "";
+
+		if ($id_lote <= 0 || strlen($tipo_evidencia) === 0) {
+			echo json_encode(["estado" => 0, "msg" => "Datos incompletos."]);
+			break;
+		}
+
+		$actual = f_EvidenciasPrimerTramo_Obtener($enlace, $id_lote);
+		if (empty($actual[$tipo_evidencia])) {
+			echo json_encode(["estado" => 0, "msg" => "No existe la evidencia."]);
+			break;
+		}
+
+		// Eliminar archivo físico
+		f_EvidenciasPrimerTramo_EliminarArchivo($actual[$tipo_evidencia]);
+
+		// Cabecera: replicar la eliminación en todas las filas del grupo
+		$tipos_cabecera = ["guia_remitente", "guia_transportista", "validacion_ruc", "validacion_reinfo", "no_conformidad"];
+		if (in_array($tipo_evidencia, $tipos_cabecera, true)) {
+			f_EvidenciasPrimerTramo_ActualizarCabecera($enlace, $id_lote, $tipo_evidencia, "");
+		} else {
+			f_EvidenciasPrimerTramo_ActualizarFila($enlace, $id_lote, [$tipo_evidencia => ""]);
+		}
+
+		echo json_encode(["estado" => 1, "msg" => "Evidencia eliminada."]);
+		break;
+
+	case "obtener_info_ticket_lote":
+		$id_lote = intval($_POST["id_lote"] ?? 0);
+		if ($id_lote <= 0) {
+			echo json_encode(["estado" => 0, "msg" => "ID de lote inválido."]);
+			break;
+		}
+
+		$q = "SELECT V.Id,
+										 V.lote_cod_lote,
+										 V.lote_id_lote,
+										 V.guias_ticketbalanza,
+										 V.evidencias
+							FROM despachos_primertramo_validaciondatos V
+							WHERE V.Id = " . $id_lote;
+		$res = mysqli_query($enlace, $q);
+		if (!$res || mysqli_num_rows($res) === 0) {
+			echo json_encode(["estado" => 0, "msg" => "Lote no encontrado."]);
+			break;
+		}
+
+		$row = mysqli_fetch_assoc($res);
+		$evidencia_filename = null;
+		if (strlen(trim($row["evidencias"] ?? "")) > 0) {
+			$decoded = json_decode($row["evidencias"], true);
+			if (is_array($decoded) && !empty($decoded["ticket_balanza"])) {
+				$evidencia_filename = $decoded["ticket_balanza"];
+			}
+		}
+
+		$id_md5_ticket = '';
+		if (!empty($row["lote_id_lote"])) {
+			$id_md5_ticket = md5($row["lote_id_lote"]);
+		}
+
+		echo json_encode([
+			"estado" => 1,
+			"cod_lote" => $row["lote_cod_lote"] ?? "",
+			"ticket_balanza" => $row["guias_ticketbalanza"] ?? "",
+			"id_md5_ticket" => $id_md5_ticket,
+			"evidencia_filename" => $evidencia_filename,
+		]);
 		break;
 
 	case "eliminar_Guias_PrimerTramo_Guias":
@@ -74044,10 +74597,12 @@ switch ($_POST["accion"]) {
 		$out = ["estado" => 0, "res" => []];
 
 		$q = "
-				SELECT 
+				SELECT
 					Id as id_distribucion,
 					lote_id_lote,
 					lote_cod_lote,
+					guias_ticketbalanza,
+					MD5(lote_id_lote) AS id_md5_ticket,
 					lote_peso_bruto,
 					lote_peso_tara,
 					lote_peso_neto,
@@ -74103,12 +74658,14 @@ switch ($_POST["accion"]) {
 
 		$q = "
 		SELECT
-			Id,
-			lote_cod_lote,
-			balanza_placa,
-			IFNULL(lote_peso_bruto, 0) AS lote_peso_bruto,
-			IFNULL(lote_peso_tara, 0) AS lote_peso_tara,
-			IFNULL(lote_peso_neto, 0) AS lote_peso_neto,
+			val.Id,
+			val.lote_cod_lote,
+			val.lote_id_lote,
+			MD5(val.lote_id_lote) AS id_md5_ticket,
+			val.balanza_placa,
+			IFNULL(val.lote_peso_bruto, 0) AS lote_peso_bruto,
+			IFNULL(val.lote_peso_tara, 0) AS lote_peso_tara,
+			IFNULL(val.lote_peso_neto, 0) AS lote_peso_neto,
 			lot.dFechaIngreso as fecha_ingreso_planta
 		FROM
 			despachos_primertramo_validaciondatos val
@@ -74116,7 +74673,7 @@ switch ($_POST["accion"]) {
 		WHERE
 			guias_fecha IS NULL
 		ORDER BY
-			lote_cod_lote
+			val.lote_cod_lote
 		";
 
 		$res = mysqli_query($enlace, $q);
@@ -78083,7 +78640,7 @@ switch ($_POST["accion"]) {
 		INNER JOIN tb_clientes prov ON prov.Id = vc.id_proveedor
 		WHERE 
 			-- estados de PAGADO: mixto, banco, anticipos
-			cp.estado IN ('A','B','C') AND
+			-- cp.estado IN ('A','B','C') AND
 			-- que aun tenga saldo
 			ROUND(lot.peso_actual, 2) > 0 
 			$where_clause
@@ -78701,7 +79258,7 @@ switch ($_POST["accion"]) {
 		INNER JOIN valorizacion_compramineral vc ON vc.Id = vcd.id_valorizacion
 		INNER JOIN comprobante_pago cp ON cp.id_valorizacion = vc.Id
 		WHERE 
-			cp.estado IN('A', 'B', 'C') AND 
+			-- cp.estado IN('A', 'B', 'C') AND 
 			ROUND(lot.peso_actual, 2) > 0 AND 
 			vc.id_proveedor = $id_proveedor
 		ORDER BY codigo;

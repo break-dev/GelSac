@@ -415,6 +415,16 @@ if (!isset($_SESSION["Id"])) {
                             Observación
                           </th>
 
+                          <th rowspan="2"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 110px;">
+                            Evidencias
+                          </th>
+
+                          <th rowspan="2"
+                            style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle; min-width: 80px;">
+                            Evid.<br>Ticket
+                          </th>
+
                           <th colspan="5"
                             style="text-align: center; border: solid; border-width: 1px; background-color: #816951; border-color: #ffffff; color: #ffffff; vertical-align: middle;">
                             Información de Pesos (Kg)
@@ -969,6 +979,116 @@ if (!isset($_SESSION["Id"])) {
             </div>
           </div>
           <hr>
+
+          <div class="d-flex justify-content-start" style="padding: 5px; margin-top: 5px;">
+            <h6 style="margin: 0px; color: #816951;">Evidencias (Documentos)</h6>
+          </div>
+
+          <div class="row" style="padding: 5px; font-size: 13px;">
+            <div class="col-md-1 col-sm-1 col-xs-12" style="padding: 5px;">
+            </div>
+
+            <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
+              <label>Guía de Remitente:</label>
+            </div>
+
+            <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: -20px;">
+              <input id="evidencia_guia_remitente" type="file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 13px;">
+              <small id="lbl_evidencia_guia_remitente" style="color: #2E7D32; display: none;"></small>
+            </div>
+
+            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -10px; padding: 5px;">
+              <button id="btn_view_guia_remitente" type="button" class="btn btn-outline-danger btn-sm" style="display: none; font-size: 12px;" title="Ver evidencia">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Ver
+              </button>
+            </div>
+          </div>
+
+          <div class="row" style="padding: 5px; font-size: 13px;">
+            <div class="col-md-1 col-sm-1 col-xs-12" style="padding: 5px;">
+            </div>
+
+            <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
+              <label>Guía de Transportista:</label>
+            </div>
+
+            <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: -20px;">
+              <input id="evidencia_guia_transportista" type="file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 13px;">
+              <small id="lbl_evidencia_guia_transportista" style="color: #2E7D32; display: none;"></small>
+            </div>
+
+            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -10px; padding: 5px;">
+              <button id="btn_view_guia_transportista" type="button" class="btn btn-outline-danger btn-sm" style="display: none; font-size: 12px;" title="Ver evidencia">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Ver
+              </button>
+            </div>
+          </div>
+
+          <div class="row" style="padding: 5px; font-size: 13px;">
+            <div class="col-md-1 col-sm-1 col-xs-12" style="padding: 5px;">
+            </div>
+
+            <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
+              <label>Validación RUC:</label>
+            </div>
+
+            <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: -20px;">
+              <input id="evidencia_validacion_ruc" type="file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 13px;">
+              <small id="lbl_evidencia_validacion_ruc" style="color: #2E7D32; display: none;"></small>
+            </div>
+
+            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -10px; padding: 5px;">
+              <button id="btn_view_validacion_ruc" type="button" class="btn btn-outline-success btn-sm" style="display: none; font-size: 12px;" title="Ver evidencia">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Ver
+              </button>
+            </div>
+          </div>
+
+          <div class="row" style="padding: 5px; font-size: 13px;">
+            <div class="col-md-1 col-sm-1 col-xs-12" style="padding: 5px;">
+            </div>
+
+            <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
+              <label>Validación REINFO:</label>
+            </div>
+
+            <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: -20px;">
+              <input id="evidencia_validacion_reinfo" type="file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 13px;">
+              <small id="lbl_evidencia_validacion_reinfo" style="color: #2E7D32; display: none;"></small>
+            </div>
+
+            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -10px; padding: 5px;">
+              <button id="btn_view_validacion_reinfo" type="button" class="btn btn-outline-primary btn-sm" style="display: none; font-size: 12px;" title="Ver evidencia">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Ver
+              </button>
+            </div>
+          </div>
+
+          <div class="row" style="padding: 5px; font-size: 13px;">
+            <div class="col-md-1 col-sm-1 col-xs-12" style="padding: 5px;">
+            </div>
+
+            <div class="col-md-3 col-sm-3 col-xs-12" style="padding: 5px;">
+              <label>Documento no conformidad:</label>
+            </div>
+
+            <div class="col-md-6 col-sm-6 col-xs-12" style="margin-left: -20px;">
+              <input id="evidencia_no_conformidad" type="file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 13px;">
+              <small id="lbl_evidencia_no_conformidad" style="color: #2E7D32; display: none;"></small>
+            </div>
+
+            <div class="col-md-2 col-sm-2 col-xs-12" style="margin-left: -10px; padding: 5px;">
+              <button id="btn_view_no_conformidad" type="button" class="btn btn-outline-danger btn-sm" style="display: none; font-size: 12px;" title="Ver evidencia">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Ver
+              </button>
+            </div>
+          </div>
+
+          <input type="hidden" id="hd_evidencias_cargadas" value="{}">
+          <input type="hidden" id="hd_id_lote_referencia_evidencias" value="0">
+
+          <hr style="color: #6c757d;">
+
           <div class="row" style="padding: 5px;">
             <div class="d-flex justify-content-end">
               <button id="btn_AddLote" type="button" class="btn btn-dark" style="font-size: 14px;"
@@ -1005,6 +1125,10 @@ if (!isset($_SESSION["Id"])) {
                     <th rowspan="2"
                       style="text-align: center; background-color: #816951; border: solid 1px #ffffff; color: #ffffff; vertical-align: middle;">
                       P. Neto</th>
+                    <th rowspan="2"
+                      style="text-align: center; background-color: #816951; border: solid 1px #ffffff; color: #ffffff; vertical-align: middle; min-width: 140px;">
+                      Ticket
+                    </th>
                   </tr>
 
                 </thead>
@@ -1087,6 +1211,77 @@ if (!isset($_SESSION["Id"])) {
       </div>
     </div>
   </div>
+
+
+  <!-- Modal: Subir Evidencia de Ticket de Balanza -->
+  <div class="modal fade" id="modal_evidencia_ticket" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_evidencia_ticketLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal_evidencia_ticketLabel">
+            <i class="bi bi-upload"></i> Subir Evidencia de Ticket de Balanza
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row" style="padding: 5px;">
+            <div class="col-md-4" style="padding-top: 7px;">
+              <label><b>Lote:</b></label>
+            </div>
+            <div class="col-md-8">
+              <label id="lbl_evidencia_ticket_lote" style="font-weight: bold; color: #25476a;"></label>
+            </div>
+          </div>
+          <div class="row" style="padding: 5px;">
+            <div class="col-md-4" style="padding-top: 7px;">
+              <label><b>Ticket:</b></label>
+            </div>
+            <div class="col-md-8">
+              <label id="lbl_evidencia_ticket_numero" style="font-weight: bold; color: #25476a;"></label>
+            </div>
+          </div>
+
+          <hr style="margin: 10px 0;">
+
+          <div class="row" style="padding: 5px;">
+            <div class="col-md-12">
+              <label><b>Archivo de evidencia</b> (PDF, JPG, PNG):</label>
+              <input type="file" id="input_evidencia_ticket_file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.webp" style="margin-top: 5px;">
+              <small class="text-muted">Tamaño máximo: 10 MB</small>
+            </div>
+          </div>
+
+          <div class="row" id="row_evidencia_ticket_actual" style="padding: 5px; display: none; margin-top: 10px;">
+            <div class="col-md-12">
+              <label><b>Evidencia actual:</b></label>
+              <div style="margin-top: 5px;">
+                <a id="lnk_evidencia_ticket_actual" href="#" target="_blank" class="btn btn-sm btn-outline-success">
+                  <i class="bi bi-file-earmark-pdf-fill"></i> Ver archivo subido
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div id="wt_evidencia_ticket_uploading" class="text-center" style="display: none; margin-top: 10px;">
+            <img src="<?php echo $img_waiting; ?>" style="width: 20px;">
+            <span style="font-style: italic; margin-left: 5px;">Subiendo archivo...</span>
+          </div>
+
+          <div id="msg_evidencia_ticket_result" class="alert" style="display: none; margin-top: 10px; margin-bottom: 0;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" onclick="f_SubirEvidenciaTicketModal();">
+            <i class="bi bi-upload"></i> Subir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="hidden" id="hd_evidencia_ticket_idlote" value="0">
+  <input type="hidden" id="hd_evidencia_ticket_codlote" value="">
+  <input type="hidden" id="hd_evidencia_ticket_numero" value="">
 
 
   <!-- Referenciando a JQuery -->
@@ -1293,7 +1488,31 @@ if (!isset($_SESSION["Id"])) {
       $("#tbl_guialistalotes").html('');
       $("#guia_capacidadunidad").val(((_is_edit == 1) ? ((parseFloat(_unidad_capacidad) || 0) + (parseFloat(_unidad_capacidad2) || 0)) : ''));
 
+      // Resetear inputs/labels de evidencias
+      f_LimpiarInputsEvidencia();
+
       f_AgregarLotesDesdeGuiaRemitente(_id_proveedorminero, _guiaremitente_serie, _guiaremitente_numero, _is_edit);
+
+      // Si estamos editando, intentar cargar las evidencias de cabecera
+      if (_is_edit == 1) {
+        $.post('apis/backend.php', {
+          accion: 'get_lotes_por_guiaremitente',
+          id_proveedor: _id_proveedorminero,
+          serie: _guiaremitente_serie,
+          numero: _guiaremitente_numero
+        }, function (data) {
+          if (data && data.estado === 1 && data.res && data.res.length > 0) {
+            var id_lote_ref = parseInt(data.res[0].id_distribucion || 0);
+            if (id_lote_ref > 0) {
+              $('#hd_id_lote_referencia_evidencias').val(id_lote_ref);
+              // Pequeño delay para asegurar que las filas estén renderizadas
+              setTimeout(function () {
+                f_CargarEvidenciasGuia(id_lote_ref);
+              }, 300);
+            }
+          }
+        }, 'json');
+      }
 
       f_OpenModal('modal_adminguias');
 
@@ -1395,7 +1614,9 @@ if (!isset($_SESSION["Id"])) {
                 <option value="${item.Id}"
                         data-pesobruto="${item.lote_peso_bruto}"
                         data-pesotara="${item.lote_peso_tara}"
-                        data-pesoneto="${item.lote_peso_neto}">
+                        data-pesoneto="${item.lote_peso_neto}"
+                        data-idcatalogolote="${item.lote_id_lote || 0}"
+                        data-idmd5ticket="${item.id_md5_ticket || ''}">
                   ${item.lote_cod_lote} | ${item.balanza_placa} | ${(item.lote_peso_neto / 1000).toFixed(2)} t
                 </option>`;
           });
@@ -1438,9 +1659,11 @@ if (!isset($_SESSION["Id"])) {
         const peso_bruto = parseFloat($opt.data('pesobruto')) || 0;
         const peso_tara = parseFloat($opt.data('pesotara')) || 0;
         const peso_neto = parseFloat($opt.data('pesoneto')) || 0;
+        const id_catalogo_lote = $opt.data('idcatalogolote') || 0;
+        const id_md5_ticket = $opt.data('idmd5ticket') || '';
 
         const fila = `
-            <tr class="fila-lote" data-id="${id_lote}">
+            <tr class="fila-lote" data-id="${id_lote}" data-idcatalogolote="${id_catalogo_lote}" data-idmd5ticket="${id_md5_ticket}">
               <td class="col-numero" style="text-align: center;">${index + 1}</td>
 
               <!-- Columna de acciones -->
@@ -1469,7 +1692,20 @@ if (!isset($_SESSION["Id"])) {
               <td>
                 <input type="number" step="0.01" min="0" class="form-control text-end input-neto" value="${(peso_neto / 1000).toFixed(2)}" data-index="${index}" disabled>
               </td>
-              
+              <td class="col-ticket-evidencia" data-idlote="${id_lote}" style="text-align: center; white-space: nowrap;">
+                <div class="d-flex align-items-center justify-content-center" style="gap: 4px;">
+                  <span style="font-size: 11px; color: #666; margin-right: 2px;">Ticket:</span>
+                  <button type="button" class="btn btn-outline-secondary btn-sm p-1" style="font-size: 11px; line-height: 1; padding: 3px 6px;" onclick="f_PrintTicketBakanza('${id_md5_ticket}')" title="Ver ticket generado">
+                    <i class="bi bi-receipt-cutoff"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-primary btn-sm p-1" style="font-size: 11px; line-height: 1; padding: 3px 6px;" onclick="f_OpenModalEvidenciaTicket(${id_lote})" title="Subir evidencia del ticket">
+                    <i class="bi bi-upload"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-success btn-sm p-1 btn_view_ticket_evidencia" data-idlote="${id_lote}" style="display: none; font-size: 11px; line-height: 1; padding: 3px 6px;" onclick="f_VerEvidenciaTicketLote(${id_lote})" title="Ver evidencia subida">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                  </button>
+                </div>
+              </td>
             </tr>
           `;
 
@@ -1477,6 +1713,8 @@ if (!isset($_SESSION["Id"])) {
 
         tbody.find('tr.fila-lote').removeClass('table-success');
         tbody.find(`tr[data-id="${id_lote}"]`).addClass('table-success');
+
+        f_RefrescarBotonesTicketEvidencia();
 
         index++;
       });
@@ -1624,10 +1862,372 @@ if (!isset($_SESSION["Id"])) {
     }
 
     function f_PrintTicketBakanza(_id_md5) {
-      url = 'print_ticketbalanza.php?x=' + _id_md5;
+      url = 'print_ticketbalanza_prev.php?x=' + _id_md5;
 
       window.open(url, '_blank');
     }
+
+    // ============================================================================
+    // Funciones para manejo de evidencias
+    // ============================================================================
+    function f_VerEvidenciaGuiaPrimerTramo(filename, tipo_evidencia, id_lote) {
+      if (!filename) return;
+      var url = 'files/despachos_primtramo/evidencias/' + filename;
+      window.open(url, '_blank');
+    }
+
+    // Implementación mínima de MD5 (RFC 1321) para uso en el frontend
+    function md5(string) {
+      function rh(n) { var j, s = ""; for (j = 0; j <= 3; j++) s += ((n >> (j * 8 + 4)) & 0x0F).toString(16) + ((n >> (j * 8)) & 0x0F).toString(16); return s; }
+      function ad(x, y) { var l = (x & 0xFFFF) + (y & 0xFFFF), m = (x >> 16) + (y >> 16) + (l >> 16); return (m << 16) | (l & 0xFFFF); }
+      function rl(n, c) { return (n << c) | (n >>> (32 - c)); }
+      function cm(q, a, b, x, s, t) { return ad(rl(ad(ad(a, q), ad(x, t)), s), b); }
+      function ff(a, b, c, d, x, s, t) { return cm((b & c) | ((~b) & d), a, b, x, s, t); }
+      function gg(a, b, c, d, x, s, t) { return cm((b & d) | (c & (~d)), a, b, x, s, t); }
+      function hh(a, b, c, d, x, s, t) { return cm(b ^ c ^ d, a, b, x, s, t); }
+      function ii(a, b, c, d, x, s, t) { return cm(c ^ (b | (~d)), a, b, x, s, t); }
+      function sb(s) {
+        var i, nblk = ((s.length + 8) >> 6) + 1, blks = new Array(nblk * 16);
+        for (i = 0; i < nblk * 16; i++) blks[i] = 0;
+        for (i = 0; i < s.length; i++) blks[i >> 2] |= s.charCodeAt(i) << ((i % 4) * 8);
+        blks[i >> 2] |= 0x80 << ((i % 4) * 8);
+        blks[nblk * 16 - 2] = s.length * 8;
+        return blks;
+      }
+      var x = sb(string), a = 1732584193, b = -271733879, c = -1732584194, d = 271733878, i;
+      for (i = 0; i < x.length; i += 16) {
+        var oa = a, ob = b, oc = c, od = d;
+        a = ff(a, b, c, d, x[i + 0], 7, -680876936);
+        d = ff(d, a, b, c, x[i + 1], 12, -389564586);
+        c = ff(c, d, a, b, x[i + 2], 17, 606105819);
+        b = ff(b, c, d, a, x[i + 3], 22, -1044525330);
+        a = ff(a, b, c, d, x[i + 4], 7, -176418897);
+        d = ff(d, a, b, c, x[i + 5], 12, 1200080426);
+        c = ff(c, d, a, b, x[i + 6], 17, -1473231341);
+        b = ff(b, c, d, a, x[i + 7], 22, -45705983);
+        a = ff(a, b, c, d, x[i + 8], 7, 1770035416);
+        d = ff(d, a, b, c, x[i + 9], 12, -1958414417);
+        c = ff(c, d, a, b, x[i + 10], 17, -42063);
+        b = ff(b, c, d, a, x[i + 11], 22, -1990404162);
+        a = ff(a, b, c, d, x[i + 12], 7, 1804603682);
+        d = ff(d, a, b, c, x[i + 13], 12, -40341101);
+        c = ff(c, d, a, b, x[i + 14], 17, -1502002290);
+        b = ff(b, c, d, a, x[i + 15], 22, 1236535329);
+        a = gg(a, b, c, d, x[i + 1], 5, -165796510);
+        d = gg(d, a, b, c, x[i + 6], 9, -1069501632);
+        c = gg(c, d, a, b, x[i + 11], 14, 643717713);
+        b = gg(b, c, d, a, x[i + 0], 20, -373897302);
+        a = gg(a, b, c, d, x[i + 5], 5, -701558691);
+        d = gg(d, a, b, c, x[i + 10], 9, 38016083);
+        c = gg(c, d, a, b, x[i + 15], 14, -660478335);
+        b = gg(b, c, d, a, x[i + 4], 20, -405537848);
+        a = gg(a, b, c, d, x[i + 9], 5, 568446438);
+        d = gg(d, a, b, c, x[i + 14], 9, -1019803690);
+        c = gg(c, d, a, b, x[i + 3], 14, -187363961);
+        b = gg(b, c, d, a, x[i + 8], 20, 1163531501);
+        a = gg(a, b, c, d, x[i + 13], 5, -1444681467);
+        d = gg(d, a, b, c, x[i + 2], 9, -51403784);
+        c = gg(c, d, a, b, x[i + 7], 14, 1735328473);
+        b = gg(b, c, d, a, x[i + 12], 20, -1926607734);
+        a = hh(a, b, c, d, x[i + 5], 4, -378558);
+        d = hh(d, a, b, c, x[i + 8], 11, -2022574463);
+        c = hh(c, d, a, b, x[i + 11], 16, 1839030562);
+        b = hh(b, c, d, a, x[i + 14], 23, -35309556);
+        a = hh(a, b, c, d, x[i + 1], 4, -1530992060);
+        d = hh(d, a, b, c, x[i + 4], 11, 1272893353);
+        c = hh(c, d, a, b, x[i + 7], 16, -155497632);
+        b = hh(b, c, d, a, x[i + 10], 23, -1094730640);
+        a = hh(a, b, c, d, x[i + 13], 4, 681279174);
+        d = hh(d, a, b, c, x[i + 0], 11, -358537222);
+        c = hh(c, d, a, b, x[i + 3], 16, -722521979);
+        b = hh(b, c, d, a, x[i + 6], 23, 76029189);
+        a = hh(a, b, c, d, x[i + 9], 4, -640364487);
+        d = hh(d, a, b, c, x[i + 12], 11, -421815835);
+        c = hh(c, d, a, b, x[i + 15], 16, 530742520);
+        b = hh(b, c, d, a, x[i + 2], 23, -995338651);
+        a = ii(a, b, c, d, x[i + 0], 6, -198630844);
+        d = ii(d, a, b, c, x[i + 7], 10, 1126891415);
+        c = ii(c, d, a, b, x[i + 14], 15, -1416354905);
+        b = ii(b, c, d, a, x[i + 5], 21, -57434055);
+        a = ii(a, b, c, d, x[i + 12], 6, 1700485571);
+        d = ii(d, a, b, c, x[i + 3], 10, -1894986606);
+        c = ii(c, d, a, b, x[i + 10], 15, -1051523);
+        b = ii(b, c, d, a, x[i + 1], 21, -2054922799);
+        a = ii(a, b, c, d, x[i + 8], 6, 1873313359);
+        d = ii(d, a, b, c, x[i + 15], 10, -30611744);
+        c = ii(c, d, a, b, x[i + 6], 15, -1560198380);
+        b = ii(b, c, d, a, x[i + 13], 21, 1309151649);
+        a = ii(a, b, c, d, x[i + 4], 6, -145523070);
+        d = ii(d, a, b, c, x[i + 11], 10, -1120210379);
+        c = ii(c, d, a, b, x[i + 2], 15, 718787259);
+        b = ii(b, c, d, a, x[i + 9], 21, -343485551);
+        a = ad(a, oa); b = ad(b, ob); c = ad(c, oc); d = ad(d, od);
+      }
+      return rh(a) + rh(b) + rh(c) + rh(d);
+    }
+
+    function f_VerEvidenciaTicketLote(id_lote) {
+      if (!id_lote) return;
+      var $row = $('#tbl_guialistalotes tr[data-id="' + id_lote + '"]');
+      var filename = $row.data('ticket-evidencia-filename');
+      if (filename) {
+        window.open('files/despachos_primtramo/evidencias/' + filename, '_blank');
+      }
+    }
+
+    function f_RefrescarBotonesTicketEvidencia() {
+      var evidencias_cargadas = {};
+      try {
+        evidencias_cargadas = JSON.parse($('#hd_evidencias_cargadas').val() || '{}');
+      } catch (e) {
+        evidencias_cargadas = {};
+      }
+
+      $('#tbl_guialistalotes tr.fila-lote').each(function () {
+        var $tr = $(this);
+        var id_lote = $tr.data('id');
+        var $btn = $tr.find('.btn_view_ticket_evidencia');
+        var key = 'ticket_balanza_' + id_lote;
+        if (evidencias_cargadas[key]) {
+          $tr.data('ticket-evidencia-filename', evidencias_cargadas[key]);
+          $btn.show();
+        } else {
+          $tr.removeData('ticket-evidencia-filename');
+          $btn.hide();
+        }
+      });
+    }
+
+    function f_AplicarEvidenciasCargadas(evidencias) {
+      var $hd = $('#hd_evidencias_cargadas');
+      var actuales = {};
+      try { actuales = JSON.parse($hd.val() || '{}'); } catch (e) { actuales = {}; }
+
+      // Cabecera - 5 archivos
+      var labels_cabecera = {
+        'guia_remitente':     { lbl: 'lbl_evidencia_guia_remitente',     btn: 'btn_view_guia_remitente' },
+        'guia_transportista': { lbl: 'lbl_evidencia_guia_transportista', btn: 'btn_view_guia_transportista' },
+        'validacion_ruc':     { lbl: 'lbl_evidencia_validacion_ruc',     btn: 'btn_view_validacion_ruc' },
+        'validacion_reinfo':  { lbl: 'lbl_evidencia_validacion_reinfo',  btn: 'btn_view_validacion_reinfo' },
+        'no_conformidad':     { lbl: 'lbl_evidencia_no_conformidad',     btn: 'btn_view_no_conformidad' }
+      };
+
+      Object.keys(labels_cabecera).forEach(function (k) {
+        var $lbl = $('#' + labels_cabecera[k].lbl);
+        var $btn = $('#' + labels_cabecera[k].btn);
+        $lbl.hide().text('');
+        $btn.hide().off('click').removeData('filename');
+        if (evidencias && evidencias[k]) {
+          actuales[k] = evidencias[k];
+          $lbl.text('Archivo adjunto: ' + evidencias[k]).show();
+          (function (filename) {
+            $btn.show().on('click', function () {
+              window.open('files/despachos_primtramo/evidencias/' + filename, '_blank');
+            });
+          })(evidencias[k]);
+        } else {
+          delete actuales[k];
+        }
+      });
+
+      // Ticket balanza por lote (se completa vía f_RefrescarBotonesTicketEvidencia)
+      $('#tbl_guialistalotes tr.fila-lote').each(function () {
+        var $tr = $(this);
+        var id_lote = $tr.data('id');
+        var key = 'ticket_balanza_' + id_lote;
+        delete actuales[key];
+      });
+      if (evidencias && evidencias.ticket_balanza) {
+        // No aplica (cabecera) — se omite
+      }
+
+      $hd.val(JSON.stringify(actuales));
+      f_RefrescarBotonesTicketEvidencia();
+    }
+
+    function f_CargarEvidenciasGuia(_id_lote_referencia) {
+      if (!_id_lote_referencia || _id_lote_referencia <= 0) {
+        f_AplicarEvidenciasCargadas({});
+        return;
+      }
+      $.post('apis/backend.php', {
+        accion: 'obtener_evidencias_guia_primertramo',
+        id_lote: _id_lote_referencia
+      }, function (data) {
+        if (data && data.estado === 1) {
+          f_AplicarEvidenciasCargadas(data.evidencias || {});
+        } else {
+          f_AplicarEvidenciasCargadas({});
+        }
+      }, 'json');
+    }
+
+    function f_LimpiarInputsEvidencia() {
+      // Cabecera
+      ['evidencia_guia_remitente','evidencia_guia_transportista','evidencia_validacion_ruc','evidencia_validacion_reinfo','evidencia_no_conformidad'].forEach(function (id) {
+        var $el = $('#' + id);
+        if ($el.length) { $el.val(''); }
+      });
+      $('#hd_evidencias_cargadas').val('{}');
+      $('#hd_id_lote_referencia_evidencias').val('0');
+      f_AplicarEvidenciasCargadas({});
+    }
+
+    function f_SubirEvidenciaCabeceraEnVivo(tipo_evidencia, id_input) {
+      var id_lote = parseInt($('#hd_id_lote_referencia_evidencias').val() || '0');
+      if (id_lote <= 0) {
+        // Modo creación: el archivo se enviará junto con la guía en f_EmitirGuia.
+        // No hacemos nada aquí para evitar el alert innecesario.
+        return;
+      }
+      var $input = $('#' + id_input);
+      if (!$input.length || !$input[0].files || $input[0].files.length === 0) {
+        return;
+      }
+      var formData = new FormData();
+      formData.append('accion', 'actualizar_evidencias_guia_primertramo');
+      formData.append('id_lote', id_lote);
+      formData.append('tipo_evidencia', tipo_evidencia);
+      formData.append('archivo', $input[0].files[0]);
+
+      f_LoadingResumen(1);
+      $.ajax({
+        url: 'apis/backend.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function (data) {
+          f_LoadingResumen(0);
+          if (data.estado === 1) {
+            f_CargarEvidenciasGuia(id_lote);
+            $input.val('');
+          } else {
+            alert(data.msg || 'No se pudo subir la evidencia.');
+          }
+        },
+        error: function () {
+          f_LoadingResumen(0);
+          alert('Error de red al subir la evidencia.');
+        }
+      });
+    }
+
+    function f_SubirEvidenciaTicketEnVivo(id_lote) {
+      // [DEPRECATED] Reemplazado por f_OpenModalEvidenciaTicket + f_SubirEvidenciaTicketModal
+    }
+
+    function f_OpenModalEvidenciaTicket(id_lote) {
+      if (!id_lote || id_lote <= 0) return;
+      $('#hd_evidencia_ticket_idlote').val(id_lote);
+      $('#input_evidencia_ticket_file').val('');
+      $('#msg_evidencia_ticket_result').hide().removeClass('alert-success alert-danger alert-warning');
+      $('#wt_evidencia_ticket_uploading').hide();
+      $('#row_evidencia_ticket_actual').hide();
+
+      var $tr = $('#tbl_guialistalotes tr[data-id="' + id_lote + '"]');
+      var cod_lote = $tr.find('td').eq(2).text().trim();
+      $('#lbl_evidencia_ticket_lote').text(cod_lote || '-');
+
+      $.post('apis/backend.php', {
+        accion: 'obtener_info_ticket_lote',
+        id_lote: id_lote
+      }, function (data) {
+        if (data && data.estado === 1) {
+          $('#lbl_evidencia_ticket_numero').text(data.ticket_balanza || '-');
+          $('#hd_evidencia_ticket_codlote').val(data.cod_lote || '');
+          $('#hd_evidencia_ticket_numero').val(data.ticket_balanza || '');
+
+          if (data.evidencia_filename) {
+            $('#lnk_evidencia_ticket_actual').attr('href', 'files/despachos_primtramo/evidencias/' + data.evidencia_filename);
+            $('#row_evidencia_ticket_actual').show();
+          } else {
+            $('#row_evidencia_ticket_actual').hide();
+          }
+        } else {
+          $('#lbl_evidencia_ticket_numero').text('-');
+        }
+      }, 'json').fail(function () {
+        $('#lbl_evidencia_ticket_numero').text('-');
+      });
+
+      f_OpenModal('modal_evidencia_ticket');
+    }
+
+    function f_SubirEvidenciaTicketModal() {
+      var id_lote = parseInt($('#hd_evidencia_ticket_idlote').val() || 0);
+      if (id_lote <= 0) {
+        $('#msg_evidencia_ticket_result').removeClass('alert-success alert-danger').addClass('alert-warning').text('ID de lote inválido.').show();
+        return;
+      }
+
+      var $file = $('#input_evidencia_ticket_file');
+      if (!$file.length || !$file[0].files || $file[0].files.length === 0) {
+        $('#msg_evidencia_ticket_result').removeClass('alert-success alert-danger').addClass('alert-warning').text('Por favor, seleccione un archivo.').show();
+        return;
+      }
+
+      var formData = new FormData();
+      formData.append('accion', 'actualizar_evidencias_guia_primertramo');
+      formData.append('id_lote', id_lote);
+      formData.append('tipo_evidencia', 'ticket_balanza');
+      formData.append('archivo', $file[0].files[0]);
+
+      $('#wt_evidencia_ticket_uploading').show();
+      $('#msg_evidencia_ticket_result').hide();
+
+      $.ajax({
+        url: 'apis/backend.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function (data) {
+          $('#wt_evidencia_ticket_uploading').hide();
+          if (data.estado === 1) {
+            $('#msg_evidencia_ticket_result').removeClass('alert-warning alert-danger').addClass('alert-success').text('Evidencia guardada correctamente.').show();
+            $file.val('');
+
+            var $tr = $('#tbl_guialistalotes tr[data-id="' + id_lote + '"]');
+            $tr.find('.btn_view_ticket_evidencia').show();
+            $tr.data('ticket-evidencia-filename', data.filename);
+
+            $('#lnk_evidencia_ticket_actual').attr('href', 'files/despachos_primtramo/evidencias/' + data.filename);
+            $('#row_evidencia_ticket_actual').show();
+
+            try {
+              var cargadas = JSON.parse($('#hd_evidencias_cargadas').val() || '{}');
+              cargadas['ticket_balanza_' + id_lote] = data.filename;
+              $('#hd_evidencias_cargadas').val(JSON.stringify(cargadas));
+            } catch (e) {}
+          } else {
+            $('#msg_evidencia_ticket_result').removeClass('alert-warning alert-success').addClass('alert-danger').text(data.msg || 'Error al subir.').show();
+          }
+        },
+        error: function () {
+          $('#wt_evidencia_ticket_uploading').hide();
+          $('#msg_evidencia_ticket_result').removeClass('alert-warning alert-success').addClass('alert-danger').text('Error de red al subir el archivo.').show();
+        }
+      });
+    }
+
+    $(document).ready(function () {
+      // Cambio en input de evidencia de cabecera: sube el archivo en vivo (modo edición)
+      var inputs_cabecera = {
+        'evidencia_guia_remitente': 'guia_remitente',
+        'evidencia_guia_transportista': 'guia_transportista',
+        'evidencia_validacion_ruc': 'validacion_ruc',
+        'evidencia_validacion_reinfo': 'validacion_reinfo',
+        'evidencia_no_conformidad': 'no_conformidad'
+      };
+      Object.keys(inputs_cabecera).forEach(function (id_input) {
+        $('#' + id_input).on('change', function () {
+          f_SubirEvidenciaCabeceraEnVivo(inputs_cabecera[id_input], id_input);
+        });
+      });
+    });
 
 
   </script>
@@ -1733,14 +2333,8 @@ if (!isset($_SESSION["Id"])) {
             const peso_bruto = parseFloat(item.lote_peso_bruto) || 0;
             const peso_tara = parseFloat(item.lote_peso_tara) || 0;
             const peso_neto = parseFloat(item.lote_peso_neto) || 0;
-
-            /*const botonEliminar = (_is_edit != 1) ? `
-              <button type="button" class="btn btn-outline-danger btn-sm rounded-square" style="width: 30px; height: 30px; padding: 0;" onclick="f_EliminarLote(this)" title="Eliminar">
-                <i class="bi bi-trash-fill"></i>
-              </button>` : `
-              <button type="button" class="btn btn-outline-danger btn-sm rounded-square" style="width: 30px; height: 30px; padding: 0;" onclick="f_EliminarLote(this)" title="Eliminar">
-                <i class="bi bi-trash-fill"></i>
-              </button>`;*/
+            const id_catalogo_lote = item.lote_id_lote || 0;
+            const id_md5_ticket = item.id_md5_ticket || '';
 
             const botonEliminar = `
                 <button type="button" class="btn btn-outline-danger btn-sm rounded-square" style="width: 30px; height: 30px; padding: 0;" onclick="f_EliminarLote(this,${id_distribucion} )" title="Eliminar">
@@ -1748,7 +2342,7 @@ if (!isset($_SESSION["Id"])) {
                 </button>`;
 
             const fila = `
-                <tr class="fila-lote" data-id="${id_distribucion}">
+                <tr class="fila-lote" data-id="${id_distribucion}" data-idcatalogolote="${id_catalogo_lote}" data-idmd5ticket="${id_md5_ticket}">
                   <td class="col-numero" style="text-align: center;">${index + 1}</td>
 
                   <!-- Columna de acciones -->
@@ -1760,7 +2354,7 @@ if (!isset($_SESSION["Id"])) {
                     <button type="button" class="btn btn-outline-primary btn-sm rounded-square me-1" style="width: 30px; height: 30px; padding: 0;" onclick="f_MoverLoteIndividual(this, 'down')" title="Bajar">
                       <img src="images/down.png" style="width: 18px; height: 18px;" alt="Bajar">
                     </button>
-                    
+
                      ${botonEliminar}
                   </td>
 
@@ -1774,6 +2368,20 @@ if (!isset($_SESSION["Id"])) {
                   <td>
                     <input type="number" step="0.01" min="0" class="form-control text-end input-neto" value="${(peso_neto / 1000).toFixed(2)}" data-index="${index}" disabled>
                   </td>
+                  <td class="col-ticket-evidencia" data-idlote="${id_distribucion}" style="text-align: center; white-space: nowrap;">
+                    <div class="d-flex align-items-center justify-content-center" style="gap: 4px;">
+                      <span style="font-size: 11px; color: #666; margin-right: 2px;">Ticket:</span>
+                      <button type="button" class="btn btn-outline-secondary btn-sm p-1" style="font-size: 11px; line-height: 1; padding: 3px 6px;" onclick="f_PrintTicketBakanza('${id_md5_ticket}')" title="Ver ticket generado">
+                        <i class="bi bi-receipt-cutoff"></i>
+                      </button>
+                      <button type="button" class="btn btn-outline-primary btn-sm p-1" style="font-size: 11px; line-height: 1; padding: 3px 6px;" onclick="f_OpenModalEvidenciaTicket(${id_distribucion})" title="Subir evidencia del ticket">
+                        <i class="bi bi-upload"></i>
+                      </button>
+                      <button type="button" class="btn btn-outline-success btn-sm p-1 btn_view_ticket_evidencia" data-idlote="${id_distribucion}" style="display: none; font-size: 11px; line-height: 1; padding: 3px 6px;" onclick="f_VerEvidenciaTicketLote(${id_distribucion})" title="Ver evidencia subida">
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               `;
 
@@ -1785,6 +2393,7 @@ if (!isset($_SESSION["Id"])) {
 
           f_ActualizarNumeracionLotes();
           f_RecalcularDesde(0);
+          f_RefrescarBotonesTicketEvidencia();
 
         }
       }, 'json');
@@ -2184,58 +2793,100 @@ if (!isset($_SESSION["Id"])) {
         alert("Debe seleccionar la Planta de Destino.");
         return;
       }
-      // Grabando datos
-      $.post("apis/backend.php", {
-        accion: "grabar_Guias_PrimerTramo_GestionGuias",
-        planta_destino: planta_destino,
-        modograbar_guia: modograbar_guia,
-        guia_fechas: guia_fechas,
-        guia_fechaemision: guia_fechaemision,
-        guia_horaemision: guia_horaemision,
-        guia_balanza_fecharegistro: guia_balanza_fecharegistro,
-        guia_balanza_horaregistro: guia_balanza_horaregistro,
-        guia_proveedor: guia_proveedor,
-        guia_concesion: guia_concesion,
-        guia_remitenteserie: guia_remitenteserie,
-        guia_remitentenumero: guia_remitentenumero,
-        guia_transportistaserie: guia_transportistaserie,
-        guia_transportistanumero: guia_transportistanumero,
-        guia_puntopartida: guia_puntopartida,
-        guia_puntodestino: guia_puntodestino,
-        guia_destinatario: guia_destinatario,
-        guia_placa: guia_placa,
-        guia_placa_numero: guia_placa_numero,
-        guia_empresatransporte: guia_empresatransporte,
-        guia_constanciamtc: guia_constanciamtc,
-        guia_marcaunidad: guia_marcaunidad,
-        guia_placa2: guia_placa2,
-        guia_placa_numero2: guia_placa_numero2,
-        guia_empresatransporte2: guia_empresatransporte2,
-        guia_constanciamtc2: guia_constanciamtc2,
-        guia_marcaunidad2: guia_marcaunidad2,
-        guia_conductor: guia_conductor,
-        guia_motivotraslado: guia_motivotraslado,
-        guia_capacidadunidad: guia_capacidadunidad,
-        detalles_lotes: detalles_lotes_json,
-        isEdit: 1
-      },
-        function (data) {
+
+      // Construir FormData con los datos + archivos de evidencia
+      var formData = new FormData();
+      formData.append("accion", "grabar_Guias_PrimerTramo_GestionGuias");
+      formData.append("planta_destino", planta_destino);
+      formData.append("modograbar_guia", modograbar_guia);
+      formData.append("guia_fechas", guia_fechas);
+      formData.append("guia_fechaemision", guia_fechaemision);
+      formData.append("guia_horaemision", guia_horaemision);
+      formData.append("guia_balanza_fecharegistro", guia_balanza_fecharegistro);
+      formData.append("guia_balanza_horaregistro", guia_balanza_horaregistro);
+      formData.append("guia_proveedor", guia_proveedor);
+      formData.append("guia_concesion", guia_concesion);
+      formData.append("guia_remitenteserie", guia_remitenteserie);
+      formData.append("guia_remitentenumero", guia_remitentenumero);
+      formData.append("guia_transportistaserie", guia_transportistaserie);
+      formData.append("guia_transportistanumero", guia_transportistanumero);
+      formData.append("guia_puntopartida", guia_puntopartida);
+      formData.append("guia_puntodestino", guia_puntodestino);
+      formData.append("guia_destinatario", guia_destinatario);
+      formData.append("guia_placa", guia_placa);
+      formData.append("guia_placa_numero", guia_placa_numero);
+      formData.append("guia_empresatransporte", guia_empresatransporte);
+      formData.append("guia_constanciamtc", guia_constanciamtc);
+      formData.append("guia_marcaunidad", guia_marcaunidad);
+      formData.append("guia_placa2", guia_placa2);
+      formData.append("guia_placa_numero2", guia_placa_numero2);
+      formData.append("guia_empresatransporte2", guia_empresatransporte2);
+      formData.append("guia_constanciamtc2", guia_constanciamtc2);
+      formData.append("guia_marcaunidad2", guia_marcaunidad2);
+      formData.append("guia_conductor", guia_conductor);
+      formData.append("guia_motivotraslado", guia_motivotraslado);
+      formData.append("guia_capacidadunidad", guia_capacidadunidad);
+      formData.append("detalles_lotes", detalles_lotes_json);
+      formData.append("isEdit", 1);
+
+      // Archivos de cabecera
+      var cabeceras_map = {
+        "evidencia_guia_remitente": "evidencia_guia_remitente",
+        "evidencia_guia_transportista": "evidencia_guia_transportista",
+        "evidencia_validacion_ruc": "evidencia_validacion_ruc",
+        "evidencia_validacion_reinfo": "evidencia_validacion_reinfo",
+        "evidencia_no_conformidad": "evidencia_no_conformidad"
+      };
+      Object.keys(cabeceras_map).forEach(function (input_id) {
+        var $el = $("#" + input_id);
+        if ($el.length && $el[0].files && $el[0].files.length > 0) {
+          formData.append(input_id, $el[0].files[0]);
+        }
+      });
+
+      f_SavingDatos(1);
+
+      // Grabando datos vía AJAX con FormData
+      $.ajax({
+        url: "apis/backend.php",
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: "json",
+        success: function (data) {
+          f_SavingDatos(0);
           if (data.estado == 1) {
+            // Guardar el id_lote_referencia para poder subir evidencias después
+            try {
+              if (data.gr_serie && data.gr_numero) {
+                // No tenemos el id directamente; usaremos el primero de la lista
+                var primer_id = parseInt($("#tbl_guialistalotes tr.fila-lote").first().data("id") || 0);
+                $("#hd_id_lote_referencia_evidencias").val(primer_id);
+              }
+            } catch (e) {}
+
             f_LoadResultados();
+            f_cerrarModal('modal_adminguias');
+            f_LimpiarInputsEvidencia();
+
+            if (data.evidencias_msgs && data.evidencias_msgs.length > 0) {
+              var msgs = data.evidencias_msgs.map(function (m) { return m.clave + ': ' + m.error; }).join('\n');
+              alert('Guía guardada, pero hubo advertencias en evidencias:\n' + msgs);
+            }
           } else if (data.estado == -1) {
             alert("Ya existe una guía con la misma combinación de serie y número (Remitente / Transportista)");
-            return;
           } else if (data.msg) {
             alert(data.msg);
-            return;
           } else {
             alert("Ocurrió un error al momento de confirmar las guías.");
           }
-
-          // Cierra modal
-          f_cerrarModal('modal_adminguias');
-
-        }, "json");
+        },
+        error: function (xhr, status, err) {
+          f_SavingDatos(0);
+          alert("Error de red al guardar la guía: " + err);
+        }
+      });
     }
 
     function f_DisabledGRT() {

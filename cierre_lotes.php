@@ -711,7 +711,7 @@ if (!isset($_SESSION["Id"])) {
 		// }
 
 		function f_PrintTicketBakanza(_id_md5) {
-			url = 'print_ticketbalanza.php?x=' + _id_md5;
+			url = 'print_ticketbalanza_prev.php?x=' + _id_md5;
 
 			window.open(url, '_blank');
 		}

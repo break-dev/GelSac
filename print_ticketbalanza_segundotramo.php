@@ -430,7 +430,7 @@
 						}
 
 					// Genera el Código QR
-						$url = $url_lims.'print_ticketbalanza.php?x='.$id_md5;
+						$url = $url_lims.'print_ticketbalanza_prev.php?x='.$id_md5;
 
 		        $dir = 'images/qr/';
 		        $file_name = $dir.'ticket_qr_'.$id_md5.'.png';
