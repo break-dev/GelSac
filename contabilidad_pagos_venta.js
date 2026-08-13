@@ -43,6 +43,27 @@ function f_LoadFacturas() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
+//  Evidencias por lote (Ticket / G. Remitente / G. Transportista)
+// ---------------------------------------------------------------------------------------------------------------------------------------
+function f_EvidenciasLote(l) {
+    var base = 'files/despachos_primtramo/evidencias/';
+    function chip(fn, icon, title) {
+        var link;
+        if (fn && fn.length > 0) {
+            link = '<a target="_blank" href="' + base + encodeURIComponent(fn) + '" title="' + title + ': ' + fn + '">' + fn + '</a>';
+        } else {
+            link = '<span class="ev-empty" title="Sin evidencia">--</span>';
+        }
+        return '<span class="ev-chip"><i class="bi ' + icon + '"></i> ' + link + '</span>';
+    }
+    return '<div class="lote-evidencias">' +
+        chip(l.evidencias_ticket_balanza,     'bi-receipt',            'Ticket') +
+        chip(l.evidencias_guia_remitente,     'bi-file-earmark-image', 'G. Remitente') +
+        chip(l.evidencias_guia_transportista, 'bi-truck',              'G. Transportista') +
+        '</div>';
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
 //  Card HTML
 // ---------------------------------------------------------------------------------------------------------------------------------------
 function f_BuildCard(r) {
@@ -95,6 +116,7 @@ function f_BuildCard(r) {
             '<div class="lote-codes">' +
             '<span class="lote-client">' + (l.codigo_cliente || 'S/C') + '</span>' +
             '<span class="lote-internal">' + (l.codigo_interno || '') + ' <small class="text-muted">(P:' + (l.numero_parte || '') + ')</small></span>' +
+            f_EvidenciasLote(l) +
             '</div>' +
             '</div>' +
             '<div class="lote-price">$ ' + f_Fmt(l.precio_total, 2) + '</div>' +
@@ -522,13 +544,14 @@ function f_AdminTipoCambio() {
 function f_GrabarTipoCambio() {
     var fecha = $('#tipocambio_fecha').val();
     var moneda = $('#tipocambio_moneda').val();
-    var compra = $('#tipocambio_compra').val();
+    var compra_raw = $('#tipocambio_compra').val();
+    var compra = (compra_raw === '' || compra_raw === null) ? '' : compra_raw;
     var venta = $('#tipocambio_venta').val();
     var id = $('#hd_idtipocambio').val();
     var modo = $('#hd_tipocambio_modograbar').val();
 
-    if (!compra || !venta) {
-        alert('Ingrese TC Compra y Venta');
+    if (!venta) {
+        alert('Debe ingresar el Tipo de Cambio para Venta.');
         return;
     }
 

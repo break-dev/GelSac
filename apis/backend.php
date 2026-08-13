@@ -75039,12 +75039,16 @@ switch ($_POST["accion"]) {
 			CP.tipo_cambio,
 			CP.id_moneda,
 			CP.estado,
-            val.evidencias
+			GROUP_CONCAT(
+				DISTINCT CONCAT(VD.cod_lote, '###', IFNULL(val.evidencias, ''))
+				ORDER BY VD.cod_gel
+				SEPARATOR '||'
+			) AS ARR_EVIDENCIAS_POR_LOTE
 		FROM
 			comprobante_pago CP
 		INNER JOIN valorizacion_compramineral_detalle VD ON CP.id_valorizacion = VD.id_valorizacion
-        INNER JOIN catalogolotes lot on lot.ccod_Lote = VD.cod_lote
-        INNER JOIN despachos_primertramo_validaciondatos val on val.lote_id_lote = lot.id_CatalogoLotes
+        LEFT JOIN catalogolotes lot ON lot.ccod_Lote = VD.cod_lote
+        LEFT JOIN despachos_primertramo_validaciondatos val ON val.lote_id_lote = lot.id_CatalogoLotes
 		INNER JOIN tb_ensayos_analisis E ON VD.id_elemento = E.Id
 		LEFT JOIN valorizacion_compramineral V ON VD.id_valorizacion = V.Id
 		LEFT JOIN tb_clientes P ON V.id_proveedor = P.Id
@@ -75144,6 +75148,38 @@ switch ($_POST["accion"]) {
 					$tiene_aprobaciones = 1;
 				}
 
+				// Pre-cálculo: cod_lote y payload de evidencias (usado por columna de acciones)
+				$arr_lotes = explode(",", $row_validacion["cod_lote"]);
+				$arr_cod_gel_clean = array_map('trim', explode(",", $row_validacion["cod_gel"]));
+				$evidencias_lotes_parsed = [];
+				if (!empty($row_validacion["ARR_EVIDENCIAS_POR_LOTE"])) {
+					$arr_evidencias_concat = explode("||", $row_validacion["ARR_EVIDENCIAS_POR_LOTE"]);
+					foreach ($arr_evidencias_concat as $item) {
+						$parts = explode("###", $item, 2);
+						if (count($parts) == 2) {
+							$evidencias_lotes_parsed[$parts[0]] = $parts[1];
+						}
+					}
+				}
+				$evidencias_payload = [
+					'comprobante' => $row_validacion["serie_comprobante"] . '-' . $row_validacion["numero_comprobante"],
+					'lotes'       => [],
+				];
+				foreach ($arr_lotes as $idx => $lote) {
+					$lote_key = trim($lote);
+					$ev_json  = isset($evidencias_lotes_parsed[$lote_key]) ? $evidencias_lotes_parsed[$lote_key] : '';
+					$ev_arr   = json_decode($ev_json, true);
+					$evidencias_payload['lotes'][] = [
+						'cod_lote'          => $lote_key,
+						'cod_gel'           => isset($arr_cod_gel_clean[$idx]) ? $arr_cod_gel_clean[$idx] : '',
+						'ticket_balanza'    => (is_array($ev_arr) && isset($ev_arr['ticket_balanza']))     ? $ev_arr['ticket_balanza']     : '',
+						'guia_remitente'    => (is_array($ev_arr) && isset($ev_arr['guia_remitente']))     ? $ev_arr['guia_remitente']     : '',
+						'guia_transportista'=> (is_array($ev_arr) && isset($ev_arr['guia_transportista'])) ? $ev_arr['guia_transportista'] : '',
+					];
+				}
+				$ev_payload_json = htmlspecialchars(json_encode($evidencias_payload, JSON_UNESCAPED_UNICODE), ENT_QUOTES);
+				$btn_evidencias_html = '<button type="button" class="btn btn-sm" style="width: 35px; margin-bottom: 3px; background-color: #cfaa41; color: #ffffff;" title="Ver Evidencias" onclick="f_VerEvidenciasComprobante(this);" data-evidencias=\'' . $ev_payload_json . '\'><i class="bi bi-folder2-open"></i></button>';
+
 				// Inicia con la carga de datos
 				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center; background-color: #ffffff;">';
 				$html .= "    " . $d;
@@ -75193,6 +75229,8 @@ switch ($_POST["accion"]) {
 					$html .= '			<button class="btn btn-sm btn-warning me-1" style="width: 35px; margin-bottom: 3px; color: white;" title="Anular Comprobante" onclick="f_Anular_ComprobantePago(' . $row_validacion["id_comprobante_pago"] . ');" ' . ($row_validacion["estado"] == 'X' ? "hidden" : "") . '>';
 					$html .= '				<i class="bi bi-x-circle"></i>';
 					$html .= "			</button>";
+
+					$html .= '			' . $btn_evidencias_html;
 
 					if ($row_validacion["estado"] != 'C' && $row_validacion["estado"] != 'X') {
 						$aprobado_total = intval($row_validacion["aprobo_contabilidad"]) === 1 && intval($row_validacion["aprobo_comercial"]) === 1 && intval($row_validacion["aprobo_documentaria"]) === 1;
@@ -75264,7 +75302,6 @@ switch ($_POST["accion"]) {
 
 				// Lote
 				$html .= '  <td style="border: solid; border-width: 1px; border-color: #D9D9D9; vertical-align: middle; text-align: center;  background-color: #ffffff;">';
-				$arr_lotes = explode(",", $row_validacion["cod_lote"]);
 				foreach ($arr_lotes as $lote) {
 					$html .= "		" . trim($lote) . "<br>";
 				}
@@ -77223,7 +77260,8 @@ switch ($_POST["accion"]) {
 		$modo = $_POST["modo"];
 		$id = intval($_POST["id"]);
 		$fecha = mysqli_real_escape_string($enlace, $_POST["fecha"]);
-		$compra = floatval($_POST["compra"]);
+		$compra_raw = $_POST["compra"];
+		$compra_sql = (strlen(trim((string)$compra_raw)) === 0) ? "NULL" : floatval($compra_raw);
 		$venta = floatval($_POST["venta"]);
 		$id_moneda = intval($_POST["id_moneda_base"]);
 		$usuario = $_SESSION["usu_usuario"];
@@ -77240,16 +77278,16 @@ switch ($_POST["accion"]) {
 				$res["estado"] = 2; // duplicado
 			} else {
 				$q = "INSERT INTO tb_tipocambio (id_moneda_base, tc_compra, tc_venta, fecha, estado, fechahora_registro, usuario_registro)
-								VALUES ($id_moneda, $compra, $venta, '$fecha', 'A', '$f_registro', '$usuario')";
+								VALUES ($id_moneda, $compra_sql, $venta, '$fecha', 'A', '$f_registro', '$usuario')";
 				if (mysqli_query($enlace, $q)) {
 					$res["estado"] = 1;
 				}
 			}
 		} else {
 			$q = "UPDATE tb_tipocambio
-								SET 
+								SET
 										fecha = '$fecha',
-										tc_compra = $compra,
+										tc_compra = $compra_sql,
 										tc_venta = $venta,
 										id_moneda_base = $id_moneda
 							WHERE id = $id";
@@ -83260,13 +83298,18 @@ SQL;
 										WHERE lot.id_CatalogoLotes = dsd.id_mineral LIMIT 1
 									)
 								END
-							)
+							),
+							'evidencias_ticket_balanza',     JSON_UNQUOTE(JSON_EXTRACT(dptv.evidencias, '$.ticket_balanza')),
+							'evidencias_guia_remitente',     JSON_UNQUOTE(JSON_EXTRACT(dptv.evidencias, '$.guia_remitente')),
+							'evidencias_guia_transportista', JSON_UNQUOTE(JSON_EXTRACT(dptv.evidencias, '$.guia_transportista'))
 						)
 					)
 					FROM factura_venta_detalle fvd
 					INNER JOIN valorizacion_venta_detalle vd ON vd.id = fvd.id_valorizacion_venta_detalle
 					INNER JOIN distribucion_detalle dst ON dst.id = vd.id_distribucion_detalle
 					INNER JOIN despacho_detalle dsd ON dsd.id = dst.id_despacho_detalle
+					LEFT JOIN catalogolotes lot_ev ON lot_ev.id_CatalogoLotes = dsd.id_mineral
+					LEFT JOIN despachos_primertramo_validaciondatos dptv ON dptv.lote_id_lote = lot_ev.id_CatalogoLotes
 					WHERE fvd.id_factura_venta = fv.id
 				) AS lotes_json
 			FROM factura_venta fv

@@ -1206,8 +1206,8 @@ if (!isset($_SESSION["Id"])) {
 					<div class="row mb-2">
 						<div class="col-md-1">
 						</div>
-						<div class="col-md-4">TC Compra:</div>
-						<div class="col-md-3"><input id="tipocambio_compra" type="number" step="0.0001" class="form-control form-control-sm text-center"></div>
+						<div class="col-md-4">TC Compra: <small class="text-muted">(Opcional)</small></div>
+						<div class="col-md-3"><input id="tipocambio_compra" type="number" step="0.0001" class="form-control form-control-sm text-center" placeholder="Opcional"></div>
 					</div>
 					<div class="row mb-2">
 						<div class="col-md-1">
@@ -1226,6 +1226,41 @@ if (!isset($_SESSION["Id"])) {
 					</div>
 					<button type="button" class="btn btn-secondary wt_admintipocambio_button" data-bs-dismiss="modal">Cerrar</button>
 					<button type="button" class="btn btn-primary wt_admintipocambio_button" onclick="f_GrabarTipoCambio();">Grabar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal: Evidencias del Comprobante -->
+	<div class="modal fade" id="modal_evidencias_comprobante" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modal_evidencias_comprobanteLabel" aria-hidden="true">
+		<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content" style="border: solid; border-width: 1px; border-color: #E6E9ED;">
+				<div class="modal-header py-2" style="background-color: #816951; color: #ffffff;">
+					<h5 class="modal-title" id="modal_evidencias_comprobanteLabel">Evidencias del Comprobante</h5>
+					<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row" style="margin-bottom: 10px;">
+						<div class="col-md-3 col-sm-3 col-xs-12" style="font-weight: bold;">Comprobante:</div>
+						<div class="col-md-9 col-sm-9 col-xs-12" id="lbl_evidencias_comprobante"></div>
+					</div>
+					<div class="table-responsive">
+						<table class="table table-bordered table-hover mb-0" style="font-size: 13px;">
+							<thead>
+								<tr style="font-size: 12px;">
+									<th style="text-align: center; background-color: #816951; color: #ffffff; min-width: 120px;">Lote</th>
+									<th style="text-align: center; background-color: #816951; color: #ffffff; min-width: 120px;">Cod. GEL</th>
+									<th style="text-align: center; background-color: #816951; color: #ffffff; min-width: 140px;">Ticket</th>
+									<th style="text-align: center; background-color: #816951; color: #ffffff; min-width: 140px;">Guía Remitente</th>
+									<th style="text-align: center; background-color: #816951; color: #ffffff; min-width: 140px;">Guía Transportista</th>
+								</tr>
+							</thead>
+							<tbody id="tbl_evidencias_lotes"></tbody>
+						</table>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="font-size: 14px;">Cerrar</button>
 				</div>
 			</div>
 		</div>
@@ -1913,6 +1948,46 @@ if (!isset($_SESSION["Id"])) {
 			}
 		}
 
+		function f_VerEvidenciasComprobante(btn) {
+			var raw = $(btn).attr('data-evidencias');
+			var payload;
+			try {
+				payload = JSON.parse(raw);
+			} catch (e) {
+				console.error('No se pudo parsear data-evidencias', e);
+				return;
+			}
+
+			$('#lbl_evidencias_comprobante').html(payload.comprobante || '');
+
+			var html = '';
+			var basePath = 'files/despachos_primtramo/evidencias/';
+
+			function evCell(filename, icon, title) {
+				if (filename && filename.length > 0) {
+					return '<a target="_blank" href="' + basePath + encodeURIComponent(filename) + '" title="' + title + '" style="text-decoration: none; color: #337ab7; font-size: 18px;"><i class="bi ' + icon + '"></i></a>';
+				}
+				return '<span style="color: #999;">--</span>';
+			}
+
+			if (payload.lotes && payload.lotes.length > 0) {
+				payload.lotes.forEach(function(l) {
+					html += '<tr>';
+					html += '  <td style="text-align: center; vertical-align: middle;">' + (l.cod_lote || '') + '</td>';
+					html += '  <td style="text-align: center; vertical-align: middle;">' + (l.cod_gel || '') + '</td>';
+					html += '  <td style="text-align: center; vertical-align: middle;">' + evCell(l.ticket_balanza,     'bi-receipt',            'Ticket de Balanza')     + '</td>';
+					html += '  <td style="text-align: center; vertical-align: middle;">' + evCell(l.guia_remitente,     'bi-file-earmark-image', 'Guía Remitente')        + '</td>';
+					html += '  <td style="text-align: center; vertical-align: middle;">' + evCell(l.guia_transportista, 'bi-truck',              'Guía Transportista')    + '</td>';
+					html += '</tr>';
+				});
+			} else {
+				html = '<tr><td colspan="5" style="text-align: center; font-size: 13px;">Sin lotes asociados.</td></tr>';
+			}
+
+			$('#tbl_evidencias_lotes').html(html);
+			f_OpenModal('modal_evidencias_comprobante');
+		}
+
 		function f_SavingDatos(_is_show) {
 			if (_is_show == 1) {
 				$("#wt_grabarcomprobante").show();
@@ -2395,7 +2470,8 @@ if (!isset($_SESSION["Id"])) {
 
 			var fecha = $('#tipocambio_fecha').val();
 			var id_moneda_base = $('#tipocambio_moneda').val();
-			var compra = parseFloat($('#tipocambio_compra').val());
+			var compra_raw = $('#tipocambio_compra').val();
+			var compra = (compra_raw === '' || compra_raw === null) ? '' : parseFloat(compra_raw);
 			var venta = parseFloat($('#tipocambio_venta').val());
 
 			// Validando datos
@@ -2407,12 +2483,6 @@ if (!isset($_SESSION["Id"])) {
 
 			if (!id_moneda_base) {
 				alert("Debe seleccionar la Moneda base.");
-
-				return;
-			}
-
-			if (!compra) {
-				alert("Debe ingresar el Tipo de Cambio para Compra.");
 
 				return;
 			}

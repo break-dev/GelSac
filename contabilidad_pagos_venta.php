@@ -502,10 +502,11 @@ $r_plantas = mysqli_query($enlace, $q_plantas);
             background: #fff;
             border: 1px solid #cbd5e0;
             border-radius: 8px;
-            padding: 10px;
+            padding: 10px 12px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
+            gap: 12px;
             font-size: 12px;
             transition: border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -518,8 +519,10 @@ $r_plantas = mysqli_query($enlace, $q_plantas);
 
         .lote-info-main {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
+            flex: 1;
+            min-width: 0;
         }
 
         .pill-au,
@@ -561,11 +564,61 @@ $r_plantas = mysqli_query($enlace, $q_plantas);
             color: #64748b;
         }
 
+        .lote-evidencias {
+            margin-top: 8px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .ev-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 10px;
+            color: #475569;
+            font-weight: 600;
+            line-height: 1.4;
+            max-width: 100%;
+        }
+
+        .ev-chip i {
+            font-size: 11px;
+            color: #337ab7;
+        }
+
+        .ev-chip a {
+            text-decoration: none;
+            color: #337ab7;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px;
+            display: inline-block;
+        }
+
+        .ev-chip a:hover {
+            color: #1d4e89;
+            text-decoration: underline;
+        }
+
+        .ev-chip .ev-empty {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
         .lote-price {
             text-align: right;
             font-weight: 800;
             color: #0f172a;
-            font-size: 13px;
+            font-size: 14px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .chk-lote-lg {
@@ -1094,9 +1147,9 @@ $r_plantas = mysqli_query($enlace, $q_plantas);
 
                     <div class="row mb-2">
                         <div class="col-md-1"></div>
-                        <div class="col-md-4">TC Compra:</div>
+                        <div class="col-md-4">TC Compra: <small class="text-muted">(Opcional)</small></div>
                         <div class="col-md-3"><input id="tipocambio_compra" type="number" step="0.0001"
-                                class="form-control form-control-sm text-center"></div>
+                                class="form-control form-control-sm text-center" placeholder="Opcional"></div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-md-1"></div>
